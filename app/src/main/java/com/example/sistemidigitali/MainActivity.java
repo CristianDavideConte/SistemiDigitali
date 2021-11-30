@@ -2,12 +2,19 @@ package com.example.sistemidigitali;
 
 import android.os.Bundle;
 
+import com.example.sistemidigitali.model.Permission;
 import com.google.android.material.snackbar.Snackbar;
 
+import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 
 import android.view.View;
 
+import androidx.camera.core.ImageAnalysis;
+import androidx.camera.core.ImageCapture;
+import androidx.camera.core.ImageProxy;
+import androidx.camera.core.Preview;
+import androidx.camera.view.PreviewView;
 import androidx.navigation.NavController;
 import androidx.navigation.Navigation;
 import androidx.navigation.ui.AppBarConfiguration;
@@ -17,60 +24,51 @@ import com.example.sistemidigitali.databinding.ActivityMainBinding;
 
 import android.view.Menu;
 import android.view.MenuItem;
+import android.widget.Button;
+import android.widget.ImageView;
 
-public class MainActivity extends AppCompatActivity {
+public class MainActivity extends AppCompatActivity implements View.OnClickListener, ImageAnalysis.Analyzer {
 
-    private AppBarConfiguration appBarConfiguration;
-    private ActivityMainBinding binding;
+    private Permission permission;
+
+    private Button picture_bt, analysis_bt;
+    private PreviewView pview;
+    private ImageView imview;
+    private ImageCapture imageCapt;
+    private ImageAnalysis imageAn;
+    private boolean analysis_on;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        setContentView(R.layout.activity_main);
 
-        binding = ActivityMainBinding.inflate(getLayoutInflater());
-        setContentView(binding.getRoot());
+        permission = new Permission();
+        picture_bt = findViewById(R.id.picture_bt);
+        analysis_bt = findViewById(R.id.analysis_bt);
+        pview = findViewById(R.id.previewView);
+        imview = findViewById(R.id.imageView);
 
-        setSupportActionBar(binding.toolbar);
-
-        NavController navController = Navigation.findNavController(this, R.id.nav_host_fragment_content_main);
-        appBarConfiguration = new AppBarConfiguration.Builder(navController.getGraph()).build();
-        NavigationUI.setupActionBarWithNavController(this, navController, appBarConfiguration);
-
-        binding.fab.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                Snackbar.make(view, "My custom action", Snackbar.LENGTH_LONG)
-                        .setAction("Action", null).show();
-            }
-        });
+        picture_bt.setOnClickListener(this);
+        analysis_bt.setOnClickListener((e) -> this.onClick2());
+        this.analysis_on = false;
     }
 
     @Override
-    public boolean onCreateOptionsMenu(Menu menu) {
-        // Inflate the menu; this adds items to the action bar if it is present.
-        getMenuInflater().inflate(R.menu.menu_main, menu);
-        return true;
+    public void analyze(@NonNull ImageProxy image) {
     }
 
     @Override
-    public boolean onOptionsItemSelected(MenuItem item) {
-        // Handle action bar item clicks here. The action bar will
-        // automatically handle clicks on the Home/Up button, so long
-        // as you specify a parent activity in AndroidManifest.xml.
-        int id = item.getItemId();
-
-        //noinspection SimplifiableIfStatement
-        if (id == R.id.action_settings) {
-            return true;
+    public void onClick(View v) {
+        //TODO:
+        //Check why permission is null -> nullPointerException
+        if(!this.permission.checkPermission()) {
+            this.permission.requestPermission();
         }
-
-        return super.onOptionsItemSelected(item);
+        System.out.println("PICTURE");
     }
 
-    @Override
-    public boolean onSupportNavigateUp() {
-        NavController navController = Navigation.findNavController(this, R.id.nav_host_fragment_content_main);
-        return NavigationUI.navigateUp(navController, appBarConfiguration)
-                || super.onSupportNavigateUp();
+    public void onClick2() {
+        System.out.println("ANALYZE");
     }
 }
