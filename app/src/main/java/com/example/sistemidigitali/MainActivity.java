@@ -13,8 +13,6 @@ import android.view.View;
 
 import androidx.camera.core.ImageAnalysis;
 import androidx.camera.core.ImageProxy;
-import androidx.camera.lifecycle.ProcessCameraProvider;
-import com.google.common.util.concurrent.ListenableFuture;
 
 import android.widget.Button;
 import android.widget.ImageView;
