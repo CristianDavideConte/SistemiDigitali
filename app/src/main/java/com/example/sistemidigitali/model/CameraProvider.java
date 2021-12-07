@@ -3,7 +3,14 @@ package com.example.sistemidigitali.model;
 import android.content.ContentProvider;
 import android.content.ContentValues;
 import android.content.Context;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
+import android.media.Image;
+import android.media.MediaScannerConnection;
+import android.net.Uri;
+import android.os.Environment;
 import android.provider.MediaStore;
+import android.view.Surface;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
@@ -21,8 +28,14 @@ import androidx.lifecycle.LifecycleOwner;
 
 import com.google.common.util.concurrent.ListenableFuture;
 
+import java.io.ByteArrayInputStream;
 import java.io.File;
+import java.io.IOException;
+import java.io.OutputStream;
+import java.nio.ByteBuffer;
+import java.text.SimpleDateFormat;
 import java.util.Calendar;
+import java.util.Date;
 import java.util.GregorianCalendar;
 import java.util.concurrent.Executor;
 
@@ -55,10 +68,6 @@ public class CameraProvider extends AppCompatActivity implements ImageAnalysis.A
         }, this.getExecutor());
     }
 
-    private Executor getExecutor() {
-        return ContextCompat.getMainExecutor(this.context);
-    }
-
     public void startCamera(ProcessCameraProvider cameraProvider) {
         cameraProvider.unbindAll(); //Clear usecases
         CameraSelector cameraSelector = new CameraSelector.Builder().requireLensFacing(CameraSelector.LENS_FACING_BACK).build(); //backward facing camera
@@ -66,54 +75,61 @@ public class CameraProvider extends AppCompatActivity implements ImageAnalysis.A
         Preview preview = new Preview.Builder().build();
         preview.setSurfaceProvider(pview.getSurfaceProvider());
 
-        imageCapt = new ImageCapture.Builder().setCaptureMode(ImageCapture.CAPTURE_MODE_MINIMIZE_LATENCY).build();
-        imageAn = new ImageAnalysis.Builder().setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST).build();
-        imageAn.setAnalyzer(this.getExecutor(), this);
+        this.imageCapt = new ImageCapture.Builder().setCaptureMode(ImageCapture.CAPTURE_MODE_MINIMIZE_LATENCY).build();
+        this.imageAn = new ImageAnalysis.Builder().setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST).build();
+        this.imageAn.setAnalyzer(this.getExecutor(), this);
 
         cameraProvider.bindToLifecycle((LifecycleOwner) this.context, cameraSelector, preview, imageCapt, imageAn);
     }
 
     public void capturePhoto() {
-        //Save in: \Android\data\com.example.sistemidigitali\files + path inside the brackets
-        //See https://developer.android.com/about/versions/11/privacy/storage
-        File photoDir = this.context.getExternalFilesDir("/CameraXPhotos");
-        //File photoDir = this.context.getExternalFilesDir(Environment.DIRECTORY_PICTURES + "/CameraXPhotos");
-        //File photoDir = this.context.getExternalFilesDir(MediaStore.Images.Media.EXTERNAL_CONTENT_URI.getPath() + "/CameraXPhotos");
-
-        if(!photoDir.exists()) {
-            System.out.println("RESET DIR");
-            photoDir.mkdir();
-        }
-
         //Es. SISDIG_2021127_189230.jpg
-        GregorianCalendar calendar = new GregorianCalendar();
-        String photoName = "SISDIG_" +
-                            calendar.get(Calendar.YEAR) +
-                            calendar.get(Calendar.WEEK_OF_MONTH) +
-                            calendar.get(Calendar.DAY_OF_MONTH) + "_" +
-                            calendar.getTimeInMillis() + ".jpg";
-        File photoFile = new File(photoDir.getAbsolutePath() + "/" + photoName);
+        String pictureName = "SISDIG_" + new SimpleDateFormat("yyyyMMdd_HHmmss").format(new Date()) + ".jpeg";
 
         this.imageCapt.takePicture(
-                new ImageCapture.OutputFileOptions.Builder(photoFile).build(),
                 this.getExecutor(),
-                new ImageCapture.OnImageSavedCallback() {
+                new ImageCapture.OnImageCapturedCallback(){
                     @Override
-                    public void onImageSaved(@NonNull ImageCapture.OutputFileResults outputFileResults) {
-                        //Create the picture's metadata
-                        ContentValues newPictureDetails = new ContentValues();
-                        newPictureDetails.put(MediaStore.Images.Media.DISPLAY_NAME, photoName);
-                        newPictureDetails.put(MediaStore.Images.Media.MIME_TYPE, "image/jpg");
-                        newPictureDetails.put(MediaStore.Images.Media.WIDTH, imageCapt.getResolutionInfo().getResolution().getWidth());
-                        newPictureDetails.put(MediaStore.Images.Media.HEIGHT, imageCapt.getResolutionInfo().getResolution().getHeight());
-
-                        //Add picture to MediaStore in order to make it accessible to other apps
-                        //The result of the insert is the handle to the picture inside the MediaStore
+                    public void onCaptureSuccess(ImageProxy image) {
+                        //Sources:
+                        //https://stackoverflow.com/questions/56904485/how-to-save-an-image-in-android-q-using-mediastore
                         //https://developer.android.com/reference/android/content/ContentResolver#insert(android.net.Uri,%20android.content.ContentValues)
                         //https://developer.android.com/training/data-storage/use-cases#share-media-all
-                        context.getContentResolver().insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, newPictureDetails);
+                        //https://developer.android.com/reference/androidx/camera/core/ImageCapture.OnImageCapturedCallback
 
-                        Toast.makeText(context, "Picture taken", Toast.LENGTH_SHORT).show();
+                        //Create the picture's metadata
+                        ContentValues newPictureDetails = new ContentValues();
+                        newPictureDetails.put(MediaStore.Images.Media._ID, pictureName);
+                        newPictureDetails.put(MediaStore.Images.Media.DISPLAY_NAME, pictureName);
+                        newPictureDetails.put(MediaStore.Images.Media.MIME_TYPE, "image/jpeg");
+                        newPictureDetails.put(MediaStore.Images.Media.WIDTH, image.getWidth());
+                        newPictureDetails.put(MediaStore.Images.Media.HEIGHT, image.getHeight());
+                        newPictureDetails.put(MediaStore.Images.Media.RELATIVE_PATH, Environment.DIRECTORY_DCIM + "/SistemiDigitaliM");
+                        OutputStream stream = null;
+
+                        try {
+                            //Add picture to MediaStore in order to make it accessible to other apps
+                            //The result of the insert is the handle to the picture inside the MediaStore
+                            Uri picturePublicUri = context.getContentResolver().insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, newPictureDetails);
+
+                            stream = context.getContentResolver().openOutputStream(picturePublicUri);
+                            Bitmap bitmapImage = convertImageProxyToBitmap(image);
+
+                            if (!bitmapImage.compress(Bitmap.CompressFormat.JPEG, 100, stream)) {
+                                stream.close();
+                                throw new IOException("Failed to save bitmap");
+                            }
+                            stream.close();
+                            Toast.makeText(context, "Picture Taken", Toast.LENGTH_SHORT).show();
+                        } catch (Exception exception) {
+                            exception.printStackTrace();
+                            Toast.makeText(context, "Error saving photo: " + exception.getMessage(), Toast.LENGTH_SHORT).show();
+                        } finally {
+                            try {
+                                image.close();
+                                stream.close();
+                            } catch (Exception exception) {}
+                        }
                     }
 
                     @Override
@@ -123,5 +139,27 @@ public class CameraProvider extends AppCompatActivity implements ImageAnalysis.A
                     }
                 }
         );
+    }
+
+
+    private Executor getExecutor() {
+        return ContextCompat.getMainExecutor(this.context);
+    }
+
+    /**
+     * TODO: check why images are rotated
+     *
+     * Converts the passed ImageProxy to a Bitmap image.
+     * Source: https://stackoverflow.com/questions/56772967/converting-imageproxy-to-bitmap
+     * @param image an ImageProxy
+     * @return the corresponding Bitmap image
+     */
+    private Bitmap convertImageProxyToBitmap(ImageProxy image) {
+        ByteBuffer byteBuffer = image.getPlanes()[0].getBuffer();
+        byteBuffer.rewind();
+        byte[] bytes = new byte[byteBuffer.capacity()];
+        byteBuffer.get(bytes);
+        byte[] clonedBytes = bytes.clone();
+        return BitmapFactory.decodeByteArray(clonedBytes, 0, clonedBytes.length);
     }
 }
