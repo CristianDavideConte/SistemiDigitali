@@ -2,6 +2,7 @@ package com.example.sistemidigitali.model;
 
 import android.content.Context;
 import android.os.Environment;
+import android.provider.MediaStore;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
@@ -71,9 +72,11 @@ public class CameraProvider extends AppCompatActivity implements ImageAnalysis.A
     }
 
     public void capturePhoto() {
-        //Find /CameraXPhotos Directory on the device
-        //Photos are taken but not saved
-        File photoDir = this.context.getExternalFilesDir(Environment.DIRECTORY_PICTURES + "/CameraXPhotos");
+        //Save in: \Android\data\com.example.sistemidigitali\files + path inside the brackets
+        File photoDir = this.context.getExternalFilesDir("/CameraXPhotos");
+        //File photoDir = this.context.getExternalFilesDir(Environment.DIRECTORY_PICTURES + "/CameraXPhotos");
+        //File photoDir = this.context.getExternalFilesDir(Environment.DIRECTORY_DCIM + "/CameraXPhotos");
+        //File photoDir = this.context.getExternalFilesDir(MediaStore.Images.Media.EXTERNAL_CONTENT_URI.getPath() + "/CameraXPhotos");
 
         if(!photoDir.exists()) {
             photoDir.mkdir();
@@ -95,6 +98,7 @@ public class CameraProvider extends AppCompatActivity implements ImageAnalysis.A
 
                     @Override
                     public void onError(@NonNull ImageCaptureException exception) {
+                        exception.printStackTrace();
                         Toast.makeText(context, "Error saving photo" + exception.getMessage(), Toast.LENGTH_SHORT).show();
                     }
                 }

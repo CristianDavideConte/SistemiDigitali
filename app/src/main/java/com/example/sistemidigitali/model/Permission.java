@@ -16,14 +16,30 @@ public class Permission extends AppCompatActivity {
         super();
     }
 
-    public boolean checkPermission(Context context) {
-        return ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED;
+    /**
+     * Checks if the passed context has all the requested permissions
+     * @param context a Context object
+     * @param permissions an array of Strings representing all the permissions
+     * @return true if the passed context has all the requested permission
+     */
+    public boolean checkPermission(Context context, String[] permissions) {
+        for(String permission : permissions) {
+            if(ContextCompat.checkSelfPermission(context, permission) != PackageManager.PERMISSION_GRANTED) {
+                return false;
+            }
+        }
+        return true;
     }
 
-    public void requestPermission(Activity activity, String permission) {
+    /**
+     * Requests all the requested permissions for the passed activity
+     * @param activity
+     * @param permissions
+     */
+    public void requestPermission(Activity activity, String[] permissions) {
         ActivityCompat.requestPermissions(
                 activity,
-                new String[]{permission},
+                permissions,
                 PERMISSION_REQUEST_CODE);
     }
 }
