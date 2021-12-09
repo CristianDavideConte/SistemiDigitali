@@ -5,16 +5,17 @@ import android.content.ContentValues;
 import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
-import android.media.Image;
-import android.media.MediaScannerConnection;
+import android.graphics.ImageFormat;
+import android.graphics.Matrix;
+import android.graphics.Rect;
+import android.graphics.YuvImage;
 import android.net.Uri;
 import android.os.Environment;
 import android.provider.MediaStore;
-import android.view.Surface;
+import android.widget.ImageView;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
-import androidx.appcompat.app.AppCompatActivity;
 import androidx.camera.core.CameraSelector;
 import androidx.camera.core.ImageAnalysis;
 import androidx.camera.core.ImageCapture;
@@ -28,35 +29,29 @@ import androidx.lifecycle.LifecycleOwner;
 
 import com.google.common.util.concurrent.ListenableFuture;
 
-import java.io.ByteArrayInputStream;
-import java.io.File;
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
 import java.text.SimpleDateFormat;
-import java.util.Calendar;
 import java.util.Date;
-import java.util.GregorianCalendar;
 import java.util.concurrent.Executor;
 
-public class CameraProvider extends AppCompatActivity implements ImageAnalysis.Analyzer {
+public class CameraProvider implements ImageAnalysis.Analyzer {
 
     private ListenableFuture<ProcessCameraProvider> provider;
     private PreviewView pview;
+    private ImageView imageView;
     private ImageCapture imageCapt;
     private ImageAnalysis imageAn;
 
     private Context context;
     private ContentProvider contentProvider;
 
-    @Override
-    public void analyze(@NonNull ImageProxy image) {
-
-    }
-
-    public CameraProvider(Context context, PreviewView pview) {
+    public CameraProvider(Context context, PreviewView pview, ImageView imageView) {
         this.context = context;
         this.pview = pview;
+        this.imageView = imageView;
         provider = ProcessCameraProvider.getInstance(this.context);
         provider.addListener(() -> {
             try {
@@ -73,13 +68,13 @@ public class CameraProvider extends AppCompatActivity implements ImageAnalysis.A
         CameraSelector cameraSelector = new CameraSelector.Builder().requireLensFacing(CameraSelector.LENS_FACING_BACK).build(); //backward facing camera
 
         Preview preview = new Preview.Builder().build();
-        preview.setSurfaceProvider(pview.getSurfaceProvider());
+        preview.setSurfaceProvider(this.pview.getSurfaceProvider());
 
         this.imageCapt = new ImageCapture.Builder().setCaptureMode(ImageCapture.CAPTURE_MODE_MINIMIZE_LATENCY).build();
         this.imageAn = new ImageAnalysis.Builder().setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST).build();
         this.imageAn.setAnalyzer(this.getExecutor(), this);
 
-        cameraProvider.bindToLifecycle((LifecycleOwner) this.context, cameraSelector, preview, imageCapt, imageAn);
+        cameraProvider.bindToLifecycle((LifecycleOwner) this.context, cameraSelector, preview, this.imageCapt, this.imageAn);
     }
 
     public void capturePhoto() {
@@ -100,6 +95,7 @@ public class CameraProvider extends AppCompatActivity implements ImageAnalysis.A
                         //Create the picture's metadata
                         ContentValues newPictureDetails = new ContentValues();
                         newPictureDetails.put(MediaStore.Images.Media._ID, pictureName);
+                        newPictureDetails.put(MediaStore.Images.Media.ORIENTATION, String.valueOf(-image.getImageInfo().getRotationDegrees()));
                         newPictureDetails.put(MediaStore.Images.Media.DISPLAY_NAME, pictureName);
                         newPictureDetails.put(MediaStore.Images.Media.MIME_TYPE, "image/jpeg");
                         newPictureDetails.put(MediaStore.Images.Media.WIDTH, image.getWidth());
@@ -119,6 +115,8 @@ public class CameraProvider extends AppCompatActivity implements ImageAnalysis.A
                                 stream.close();
                                 throw new IOException("Failed to save bitmap");
                             }
+                            imageView.setImageBitmap(bitmapImage);
+
                             stream.close();
                             Toast.makeText(context, "Picture Taken", Toast.LENGTH_SHORT).show();
                         } catch (Exception exception) {
@@ -147,8 +145,6 @@ public class CameraProvider extends AppCompatActivity implements ImageAnalysis.A
     }
 
     /**
-     * TODO: check why images are rotated
-     *
      * Converts the passed ImageProxy to a Bitmap image.
      * Source: https://stackoverflow.com/questions/56772967/converting-imageproxy-to-bitmap
      * @param image an ImageProxy
@@ -159,7 +155,22 @@ public class CameraProvider extends AppCompatActivity implements ImageAnalysis.A
         byteBuffer.rewind();
         byte[] bytes = new byte[byteBuffer.capacity()];
         byteBuffer.get(bytes);
-        byte[] clonedBytes = bytes.clone();
-        return BitmapFactory.decodeByteArray(clonedBytes, 0, clonedBytes.length);
+
+        BitmapFactory.decodeByteArray(bytes, 0, bytes.length);
+        Bitmap bitmap = BitmapFactory.decodeByteArray(bytes, 0, bytes.length);
+        Matrix matrix = new Matrix();
+        matrix.postRotate(image.getImageInfo().getRotationDegrees());
+        bitmap = Bitmap.createBitmap(bitmap, 0,0, image.getWidth(), image.getHeight(), matrix, false);
+
+        return bitmap;
+    }
+
+    private void print(Object message) {
+        System.out.println(message);
+    }
+
+    @Override
+    public void analyze(@NonNull ImageProxy image) {
+
     }
 }

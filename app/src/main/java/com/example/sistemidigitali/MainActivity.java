@@ -1,6 +1,12 @@
 package com.example.sistemidigitali;
 
 import android.Manifest;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
+import android.graphics.ImageFormat;
+import android.graphics.Matrix;
+import android.graphics.Rect;
+import android.graphics.YuvImage;
 import android.os.Bundle;
 
 import com.example.sistemidigitali.model.CameraProvider;
@@ -17,7 +23,10 @@ import androidx.camera.core.ImageProxy;
 import android.widget.Button;
 import android.widget.ImageView;
 
-public class MainActivity extends AppCompatActivity implements View.OnClickListener, ImageAnalysis.Analyzer {
+import java.io.ByteArrayOutputStream;
+import java.nio.ByteBuffer;
+
+public class MainActivity extends AppCompatActivity implements View.OnClickListener {
 
     private Permission permission;
     private CameraProvider cameraProvider;
@@ -32,7 +41,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         setContentView(R.layout.activity_main);
 
         permission = new Permission(this);
-        cameraProvider = new CameraProvider(this,  findViewById(R.id.previewView));
+        cameraProvider = new CameraProvider(this,  findViewById(R.id.previewView), findViewById(R.id.imageView));
         picture_bt = findViewById(R.id.picture_bt);
         analysis_bt = findViewById(R.id.analysis_bt);
         imview = findViewById(R.id.imageView);
@@ -48,10 +57,6 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         if(!this.permission.checkPermission(this, permissions)) {
             this.permission.requestPermission(this, permissions);
         }
-    }
-
-    @Override
-    public void analyze(@NonNull ImageProxy image) {
     }
 
     @Override
