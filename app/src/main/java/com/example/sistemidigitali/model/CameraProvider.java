@@ -1,14 +1,12 @@
 package com.example.sistemidigitali.model;
 
+import static com.example.sistemidigitali.debugUtility.Debug.*;
 import android.content.ContentProvider;
 import android.content.ContentValues;
 import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
-import android.graphics.ImageFormat;
 import android.graphics.Matrix;
-import android.graphics.Rect;
-import android.graphics.YuvImage;
 import android.net.Uri;
 import android.os.Environment;
 import android.provider.MediaStore;
@@ -29,7 +27,6 @@ import androidx.lifecycle.LifecycleOwner;
 
 import com.google.common.util.concurrent.ListenableFuture;
 
-import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
@@ -163,10 +160,6 @@ public class CameraProvider implements ImageAnalysis.Analyzer {
         bitmap = Bitmap.createBitmap(bitmap, 0,0, image.getWidth(), image.getHeight(), matrix, false);
 
         return bitmap;
-    }
-
-    private void print(Object message) {
-        System.out.println(message);
     }
 
     @Override
