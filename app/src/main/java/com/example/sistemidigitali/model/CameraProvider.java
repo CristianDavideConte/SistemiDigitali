@@ -6,7 +6,10 @@ import android.content.ContentValues;
 import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
+import android.graphics.Canvas;
 import android.graphics.Matrix;
+import android.graphics.Paint;
+import android.graphics.PointF;
 import android.net.Uri;
 import android.os.Environment;
 import android.provider.MediaStore;
@@ -26,6 +29,7 @@ import androidx.core.content.ContextCompat;
 import androidx.lifecycle.LifecycleOwner;
 
 import com.google.common.util.concurrent.ListenableFuture;
+import com.google.mlkit.vision.pose.PoseLandmark;
 
 import java.io.IOException;
 import java.io.OutputStream;
@@ -108,21 +112,23 @@ public class CameraProvider implements ImageAnalysis.Analyzer {
                             stream = context.getContentResolver().openOutputStream(picturePublicUri);
                             Bitmap bitmapImage = convertImageProxyToBitmap(image);
 
+                            CustomPoseDetector poseDetector = new CustomPoseDetector(imageView, bitmapImage,stream);
+                            poseDetector.analyze(image);
+
                             if (!bitmapImage.compress(Bitmap.CompressFormat.JPEG, 100, stream)) {
                                 stream.close();
                                 throw new IOException("Failed to save bitmap");
                             }
-                            imageView.setImageBitmap(bitmapImage);
 
-                            stream.close();
+                            //stream.close();
                             Toast.makeText(context, "Picture Taken", Toast.LENGTH_SHORT).show();
                         } catch (Exception exception) {
                             exception.printStackTrace();
                             Toast.makeText(context, "Error saving photo: " + exception.getMessage(), Toast.LENGTH_SHORT).show();
                         } finally {
                             try {
-                                image.close();
-                                stream.close();
+                                //image.close();
+                                //stream.close();
                             } catch (Exception exception) {}
                         }
                     }

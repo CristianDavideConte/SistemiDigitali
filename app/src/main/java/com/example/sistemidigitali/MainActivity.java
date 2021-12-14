@@ -9,6 +9,7 @@ import android.graphics.Rect;
 import android.graphics.YuvImage;
 import android.os.Bundle;
 
+import com.example.sistemidigitali.model.Analyzer;
 import com.example.sistemidigitali.model.CameraProvider;
 import com.example.sistemidigitali.model.Permission;
 
@@ -40,11 +41,12 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
+        imview = findViewById(R.id.imageView);
+        imview.setWillNotDraw(false);
         permission = new Permission(this);
-        cameraProvider = new CameraProvider(this,  findViewById(R.id.previewView), findViewById(R.id.imageView));
+        cameraProvider = new CameraProvider(this,  findViewById(R.id.previewView), imview);
         picture_bt = findViewById(R.id.picture_bt);
         analysis_bt = findViewById(R.id.analysis_bt);
-        imview = findViewById(R.id.imageView);
 
         picture_bt.setOnClickListener(this);
         analysis_bt.setOnClickListener((e) -> this.onClickAnalyze());
