@@ -1,40 +1,25 @@
 package com.example.sistemidigitali;
 
 import android.Manifest;
-import android.graphics.Bitmap;
-import android.graphics.BitmapFactory;
-import android.graphics.ImageFormat;
-import android.graphics.Matrix;
-import android.graphics.Rect;
-import android.graphics.YuvImage;
 import android.os.Bundle;
-
-import com.example.sistemidigitali.model.Analyzer;
-import com.example.sistemidigitali.model.CameraProvider;
-import com.example.sistemidigitali.model.Permission;
-
-import androidx.annotation.NonNull;
-import androidx.appcompat.app.AppCompatActivity;
-
 import android.view.View;
-
-import androidx.camera.core.ImageAnalysis;
-import androidx.camera.core.ImageProxy;
-
 import android.widget.Button;
 import android.widget.ImageView;
 
-import java.io.ByteArrayOutputStream;
-import java.nio.ByteBuffer;
+import androidx.appcompat.app.AppCompatActivity;
+
+import com.example.sistemidigitali.model.CameraProvider;
+import com.example.sistemidigitali.model.Permission;
 
 public class MainActivity extends AppCompatActivity implements View.OnClickListener {
+    public static final String ACTIVITY_MESSAGE = "com.example.sistemidigitali.MESSAGE";
+    public static final String ACTIVITY_IMAGE = "com.example.sistemidigitali.IMAGE";
 
     private Permission permission;
     private CameraProvider cameraProvider;
 
     private Button picture_bt, analysis_bt;
     private ImageView imview;
-    private boolean analysis_on;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -50,7 +35,6 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 
         picture_bt.setOnClickListener(this);
         analysis_bt.setOnClickListener((e) -> this.onClickAnalyze());
-        this.analysis_on = false;
 
         //Request all the permissions needed if not already available
         String [] permissions = {Manifest.permission.CAMERA,
@@ -67,6 +51,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     }
 
     public void onClickAnalyze() {
+        findViewById(R.id.analyzeLayout).setVisibility(View.GONE);
         System.out.println("ANALYZE");
     }
 }

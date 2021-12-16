@@ -1,18 +1,15 @@
 package com.example.sistemidigitali.model;
 
-import static com.example.sistemidigitali.debugUtility.Debug.*;
+import android.app.Activity;
 import android.content.ContentProvider;
 import android.content.ContentValues;
-import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
-import android.graphics.Canvas;
 import android.graphics.Matrix;
-import android.graphics.Paint;
-import android.graphics.PointF;
 import android.net.Uri;
 import android.os.Environment;
 import android.provider.MediaStore;
+import android.view.View;
 import android.widget.ImageView;
 import android.widget.Toast;
 
@@ -28,10 +25,9 @@ import androidx.camera.view.PreviewView;
 import androidx.core.content.ContextCompat;
 import androidx.lifecycle.LifecycleOwner;
 
+import com.example.sistemidigitali.R;
 import com.google.common.util.concurrent.ListenableFuture;
-import com.google.mlkit.vision.pose.PoseLandmark;
 
-import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
 import java.text.SimpleDateFormat;
@@ -46,10 +42,10 @@ public class CameraProvider implements ImageAnalysis.Analyzer {
     private ImageCapture imageCapt;
     private ImageAnalysis imageAn;
 
-    private Context context;
+    private Activity context;
     private ContentProvider contentProvider;
 
-    public CameraProvider(Context context, PreviewView pview, ImageView imageView) {
+    public CameraProvider(Activity context, PreviewView pview, ImageView imageView) {
         this.context = context;
         this.pview = pview;
         this.imageView = imageView;
@@ -112,24 +108,15 @@ public class CameraProvider implements ImageAnalysis.Analyzer {
                             stream = context.getContentResolver().openOutputStream(picturePublicUri);
                             Bitmap bitmapImage = convertImageProxyToBitmap(image);
 
-                            CustomPoseDetector poseDetector = new CustomPoseDetector(imageView, bitmapImage,stream);
+                            CustomPoseDetector poseDetector = new CustomPoseDetector(imageView, bitmapImage, stream);
                             poseDetector.analyze(image);
 
-                            if (!bitmapImage.compress(Bitmap.CompressFormat.JPEG, 100, stream)) {
-                                stream.close();
-                                throw new IOException("Failed to save bitmap");
-                            }
-
-                            //stream.close();
                             Toast.makeText(context, "Picture Taken", Toast.LENGTH_SHORT).show();
                         } catch (Exception exception) {
                             exception.printStackTrace();
                             Toast.makeText(context, "Error saving photo: " + exception.getMessage(), Toast.LENGTH_SHORT).show();
                         } finally {
-                            try {
-                                //image.close();
-                                //stream.close();
-                            } catch (Exception exception) {}
+                            context.findViewById(R.id.analyzeLayout).setVisibility(View.VISIBLE);
                         }
                     }
 

@@ -4,50 +4,88 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
+    android:background="#6A6A6A"
     tools:context=".MainActivity">
 
-    <LinearLayout
+    <!-- android:animateLayoutChanges="true" animates the visibility property -->
+
+    <FrameLayout
+        android:id="@+id/cameraLayout"
         android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:orientation="vertical"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent">
+        android:layout_height="match_parent">
 
         <androidx.camera.view.PreviewView
             android:id="@+id/previewView"
             android:layout_width="match_parent"
-            android:layout_height="279dp"
-            android:layout_weight="90"/>
+            android:layout_height="match_parent"
+            android:layout_weight="90">
 
+        </androidx.camera.view.PreviewView>
+
+        <TableRow
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:layout_weight="1"
+            android:gravity="bottom">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_weight="0"
+                android:background="@android:color/transparent"
+                android:gravity="center_horizontal"
+                android:orientation="horizontal">
+
+                <Button
+                    android:id="@+id/picture_bt"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="0"
+                    android:text="Picture" />
+
+            </LinearLayout>
+        </TableRow>
+
+    </FrameLayout>
+
+    <FrameLayout
+        android:id="@+id/analyzeLayout"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="#3A3939"
+        android:hapticFeedbackEnabled="true"
+        android:visibility="gone">
 
         <ImageView
             android:id="@+id/imageView"
             android:layout_width="match_parent"
-            android:layout_height="252dp"
+            android:layout_height="match_parent"
             android:layout_weight="1"
             android:contentDescription="Image taken"
+            android:visibility="visible"
             tools:srcCompat="@tools:sample/backgrounds/scenic" />
 
-        <LinearLayout
+        <TableRow
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="horizontal">
+            android:layout_height="match_parent"
+            android:gravity="bottom">
 
-            <Button
-                android:id="@+id/picture_bt"
-                android:layout_width="wrap_content"
+            <LinearLayout
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:text="Picture" />
+                android:gravity="center_horizontal"
+                android:orientation="horizontal">
 
-            <Button
-                android:id="@+id/analysis_bt"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:text="Analysis" />
-        </LinearLayout>
-    </LinearLayout>
+                <Button
+                    android:id="@+id/analysis_bt"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="0"
+                    android:text="Hide" />
+            </LinearLayout>
+        </TableRow>
+
+    </FrameLayout>
+
 </androidx.coordinatorlayout.widget.CoordinatorLayout>

@@ -2,18 +2,17 @@ package com.example.sistemidigitali.model;
 
 import static com.example.sistemidigitali.debugUtility.Debug.println;
 
-import com.example.sistemidigitali.debugUtility.Debug.*;
 import android.annotation.SuppressLint;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
 import android.graphics.PointF;
-import android.graphics.drawable.BitmapDrawable;
 import android.media.Image;
 import android.widget.ImageView;
 
 import androidx.annotation.NonNull;
+import androidx.appcompat.app.AppCompatActivity;
 import androidx.camera.core.ImageAnalysis;
 import androidx.camera.core.ImageProxy;
 
@@ -29,16 +28,8 @@ import com.google.mlkit.vision.pose.defaults.PoseDetectorOptions;
 
 import java.io.IOException;
 import java.io.OutputStream;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
-import java.util.concurrent.locks.Lock;
-import java.util.concurrent.locks.ReentrantLock;
 
-public class CustomPoseDetector implements ImageAnalysis.Analyzer {
+public class CustomPoseDetector extends AppCompatActivity implements ImageAnalysis.Analyzer {
     private PoseDetector detector; //Google's pose detector
     private Pose detectionResult;
     private ImageView imageView;
@@ -70,15 +61,17 @@ public class CustomPoseDetector implements ImageAnalysis.Analyzer {
                                         new OnSuccessListener<Pose>() {
                                             @Override
                                             public void onSuccess(Pose pose) {
-                                                println("LANDMARKS: " + pose.getAllPoseLandmarks().size());
-                                                println("BOCCA SX: " + pose.getPoseLandmark(PoseLandmark.LEFT_MOUTH).getInFrameLikelihood());
-                                                println("BOCCA DX: " + pose.getPoseLandmark(PoseLandmark.RIGHT_MOUTH).getInFrameLikelihood());
-                                                println("MANO SX: " + pose.getPoseLandmark(PoseLandmark.LEFT_WRIST).getInFrameLikelihood());
-                                                println("MANO DX: " + pose.getPoseLandmark(PoseLandmark.RIGHT_WRIST).getInFrameLikelihood());
-                                                println("OCCHIO DX: " + pose.getPoseLandmark(PoseLandmark.RIGHT_EYE).getInFrameLikelihood());
+                                                if(pose.getAllPoseLandmarks().size() > 0) {
+                                                    println("LANDMARKS: " + pose.getAllPoseLandmarks().size());
+                                                    println("BOCCA SX: " + pose.getPoseLandmark(PoseLandmark.LEFT_MOUTH).getInFrameLikelihood());
+                                                    println("BOCCA DX: " + pose.getPoseLandmark(PoseLandmark.RIGHT_MOUTH).getInFrameLikelihood());
+                                                    println("MANO SX: " + pose.getPoseLandmark(PoseLandmark.LEFT_WRIST).getInFrameLikelihood());
+                                                    println("MANO DX: " + pose.getPoseLandmark(PoseLandmark.RIGHT_WRIST).getInFrameLikelihood());
+                                                    println("OCCHIO DX: " + pose.getPoseLandmark(PoseLandmark.RIGHT_EYE).getInFrameLikelihood());
 
-                                                PointF leftMouth = pose.getPoseLandmark(PoseLandmark.LEFT_MOUTH).getPosition();
-                                                PointF rightMouth = pose.getPoseLandmark(PoseLandmark.RIGHT_MOUTH).getPosition();
+                                                    PointF leftMouth = pose.getPoseLandmark(PoseLandmark.LEFT_MOUTH).getPosition();
+                                                    PointF rightMouth = pose.getPoseLandmark(PoseLandmark.RIGHT_MOUTH).getPosition();
+                                                }
 
 
                                                 imageView.setWillNotDraw(false);
@@ -87,23 +80,23 @@ public class CustomPoseDetector implements ImageAnalysis.Analyzer {
                                                 p.setColor(Color.BLUE);
 
                                                 for(PoseLandmark mark : pose.getAllPoseLandmarks()) {
-                                                    p.setColor(Color.rgb((int)(255 * Math.random()),
-                                                                         (int)(255 * Math.random()),
-                                                                         (int)(255 * Math.random())));
-                                                    canvas.drawCircle(mark.getPosition().x, mark.getPosition().y, 10, p);
+                                                    canvas.drawCircle(mark.getPosition().x, mark.getPosition().y, 20, p);
                                                 }
 
+                                                imageView.setImageResource(0);
+                                                imageView.draw(canvas);
                                                 imageView.setImageBitmap(bitmapImage);
-                                                if(!((BitmapDrawable)imageView.getDrawable()).getBitmap().compress(Bitmap.CompressFormat.JPEG, 100, stream)){
+                                                if(!bitmapImage.compress(Bitmap.CompressFormat.JPEG, 100, stream)){
                                                     println("ERROR SAVING STUFF");
                                                 }
 
-                                                imageProxy.close();
                                                 try {
+                                                    imageProxy.close();
                                                     stream.close();
                                                 } catch (IOException e) {
                                                     e.printStackTrace();
                                                 }
+
                                             }
                                         })
                                 .addOnFailureListener(
@@ -119,20 +112,5 @@ public class CustomPoseDetector implements ImageAnalysis.Analyzer {
             println("ANALYZE FAILED");
             e.printStackTrace();
         }
-    }
-
-    public Pose getDetectionResult() throws InterruptedException {
-        final Lock lock = new ReentrantLock();
-        Thread thread = new Thread(() -> {
-            lock.lock();
-            while(this.detectionResult == null);
-            lock.unlock();
-        });
-        thread.start();
-
-        Thread.sleep(1000);
-        lock.lock();
-        lock.unlock();
-        return this.detectionResult;
     }
 }
