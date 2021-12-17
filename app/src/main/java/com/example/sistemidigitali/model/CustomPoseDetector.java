@@ -4,9 +4,6 @@ import static com.example.sistemidigitali.debugUtility.Debug.println;
 
 import android.annotation.SuppressLint;
 import android.graphics.Bitmap;
-import android.graphics.Canvas;
-import android.graphics.Color;
-import android.graphics.Paint;
 import android.graphics.PointF;
 import android.media.Image;
 import android.widget.ImageView;
@@ -74,18 +71,18 @@ public class CustomPoseDetector extends AppCompatActivity implements ImageAnalys
                                                 }
 
 
-                                                imageView.setWillNotDraw(false);
+                                                /*imageView.setWillNotDraw(false);
                                                 Canvas canvas = new Canvas(bitmapImage);
                                                 Paint p = new Paint(Paint.ANTI_ALIAS_FLAG);
                                                 p.setColor(Color.BLUE);
 
                                                 for(PoseLandmark mark : pose.getAllPoseLandmarks()) {
-                                                    canvas.drawCircle(mark.getPosition().x, mark.getPosition().y, 20, p);
+                                                    canvas.drawCircle(mark.getPosition().x, mark.getPosition().y, 5, p);
                                                 }
 
                                                 imageView.setImageResource(0);
                                                 imageView.draw(canvas);
-                                                imageView.setImageBitmap(bitmapImage);
+                                                imageView.setImageBitmap(bitmapImage);*/
                                                 if(!bitmapImage.compress(Bitmap.CompressFormat.JPEG, 100, stream)){
                                                     println("ERROR SAVING STUFF");
                                                 }

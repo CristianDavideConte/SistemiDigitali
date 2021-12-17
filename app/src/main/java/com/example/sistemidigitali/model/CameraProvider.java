@@ -1,11 +1,17 @@
 package com.example.sistemidigitali.model;
 
+import static com.example.sistemidigitali.debugUtility.Debug.println;
+
 import android.app.Activity;
 import android.content.ContentProvider;
 import android.content.ContentValues;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
+import android.graphics.Canvas;
+import android.graphics.Color;
 import android.graphics.Matrix;
+import android.graphics.Paint;
+import android.graphics.Rect;
 import android.net.Uri;
 import android.os.Environment;
 import android.provider.MediaStore;
@@ -28,10 +34,13 @@ import androidx.lifecycle.LifecycleOwner;
 import com.example.sistemidigitali.R;
 import com.google.common.util.concurrent.ListenableFuture;
 
+import org.tensorflow.lite.task.vision.detector.Detection;
+
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
 import java.text.SimpleDateFormat;
 import java.util.Date;
+import java.util.List;
 import java.util.concurrent.Executor;
 
 public class CameraProvider implements ImageAnalysis.Analyzer {
@@ -107,6 +116,35 @@ public class CameraProvider implements ImageAnalysis.Analyzer {
 
                             stream = context.getContentResolver().openOutputStream(picturePublicUri);
                             Bitmap bitmapImage = convertImageProxyToBitmap(image);
+
+                            CustomObjectDetector objectDetector = new CustomObjectDetector(context);
+                            List<Detection> objs = objectDetector.detect(bitmapImage);
+
+                            imageView.setWillNotDraw(false);
+                            Canvas canvas = new Canvas(bitmapImage);
+                            Paint p = new Paint(Paint.ANTI_ALIAS_FLAG);
+                            p.setColor(Color.BLUE);
+                            p.setTextSize(50);
+                            println("DETECTED OBJS: " + objs.size());
+                            for (Detection obj : objs) {
+                                int top = (int) obj.getBoundingBox().top;
+                                int right = (int) obj.getBoundingBox().right;
+                                int bottom = (int) obj.getBoundingBox().bottom;
+                                int left = (int) obj.getBoundingBox().left;
+
+
+                                canvas.drawRect(new Rect(left, top, right, top + 10), p);
+                                canvas.drawRect(new Rect(right + 10, top, right, bottom), p);
+                                canvas.drawRect(new Rect(left, bottom + 10, right, bottom), p);
+                                canvas.drawRect(new Rect(left, top, left + 10, bottom), p);
+
+                                println("LABEL: " + obj.getCategories().get(0).getLabel());
+                                canvas.drawText(obj.getCategories().get(0).getLabel(), 0.5f * (right + left),top - 50, p);
+                            }
+
+                            imageView.setImageResource(0);
+                            imageView.draw(canvas);
+                            imageView.setImageBitmap(bitmapImage);
 
                             CustomPoseDetector poseDetector = new CustomPoseDetector(imageView, bitmapImage, stream);
                             poseDetector.analyze(image);
