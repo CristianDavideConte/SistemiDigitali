@@ -2,4 +2,5 @@
  Progetto Sistemi Digitali
  
  TODO:
- - Implement ML kit (progetto vero)
+ * Train tensorflowLite for mask/people recognition
+ * Find a way to detect multiple subjects with tfl
