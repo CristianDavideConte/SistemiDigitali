@@ -1,27 +1,18 @@
 package com.example.sistemidigitali.model;
 
-import static com.example.sistemidigitali.debugUtility.Debug.println;
-
 import android.app.Activity;
-import android.content.ContentProvider;
 import android.content.ContentValues;
+import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
-import android.graphics.Canvas;
-import android.graphics.Color;
 import android.graphics.Matrix;
-import android.graphics.Paint;
-import android.graphics.Rect;
 import android.net.Uri;
 import android.os.Environment;
 import android.provider.MediaStore;
-import android.view.View;
-import android.widget.ImageView;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.camera.core.CameraSelector;
-import androidx.camera.core.ImageAnalysis;
 import androidx.camera.core.ImageCapture;
 import androidx.camera.core.ImageCaptureException;
 import androidx.camera.core.ImageProxy;
@@ -31,38 +22,30 @@ import androidx.camera.view.PreviewView;
 import androidx.core.content.ContextCompat;
 import androidx.lifecycle.LifecycleOwner;
 
-import com.example.sistemidigitali.R;
+import com.example.sistemidigitali.MainActivity;
 import com.google.common.util.concurrent.ListenableFuture;
-
-import org.tensorflow.lite.task.vision.detector.Detection;
 
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
 import java.text.SimpleDateFormat;
 import java.util.Date;
-import java.util.List;
 import java.util.concurrent.Executor;
 
-public class CameraProvider implements ImageAnalysis.Analyzer {
+public class CameraProvider {
 
     private ListenableFuture<ProcessCameraProvider> provider;
     private PreviewView pview;
-    private ImageView imageView;
     private ImageCapture imageCapt;
-    private ImageAnalysis imageAn;
 
     private Activity context;
-    private ContentProvider contentProvider;
 
-    public CameraProvider(Activity context, PreviewView pview, ImageView imageView) {
+    public CameraProvider(Activity context, PreviewView pview) {
         this.context = context;
         this.pview = pview;
-        this.imageView = imageView;
         provider = ProcessCameraProvider.getInstance(this.context);
         provider.addListener(() -> {
             try {
-                ProcessCameraProvider cameraProvider = provider.get();
-                startCamera(cameraProvider);
+                this.startCamera(provider.get());
             } catch (Exception e) {
                 e.printStackTrace();
             }
@@ -77,13 +60,11 @@ public class CameraProvider implements ImageAnalysis.Analyzer {
         preview.setSurfaceProvider(this.pview.getSurfaceProvider());
 
         this.imageCapt = new ImageCapture.Builder().setCaptureMode(ImageCapture.CAPTURE_MODE_MINIMIZE_LATENCY).build();
-        this.imageAn = new ImageAnalysis.Builder().setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST).build();
-        this.imageAn.setAnalyzer(this.getExecutor(), this);
 
-        cameraProvider.bindToLifecycle((LifecycleOwner) this.context, cameraSelector, preview, this.imageCapt, this.imageAn);
+        cameraProvider.bindToLifecycle((LifecycleOwner) this.context, cameraSelector, preview, this.imageCapt);
     }
 
-    public void capturePhoto() {
+    public void captureImage() {
         //Es. SISDIG_2021127_189230.jpg
         String pictureName = "SISDIG_" + new SimpleDateFormat("yyyyMMdd_HHmmss").format(new Date()) + ".jpeg";
 
@@ -116,52 +97,27 @@ public class CameraProvider implements ImageAnalysis.Analyzer {
 
                             stream = context.getContentResolver().openOutputStream(picturePublicUri);
                             Bitmap bitmapImage = convertImageProxyToBitmap(image);
-
-                            CustomObjectDetector objectDetector = new CustomObjectDetector(context);
-                            List<Detection> objs = objectDetector.detect(bitmapImage);
-
-                            imageView.setWillNotDraw(false);
-                            Canvas canvas = new Canvas(bitmapImage);
-                            Paint p = new Paint(Paint.ANTI_ALIAS_FLAG);
-                            p.setColor(Color.BLUE);
-                            p.setTextSize(50);
-                            println("DETECTED OBJS: " + objs.size());
-                            for (Detection obj : objs) {
-                                int top = (int) obj.getBoundingBox().top;
-                                int right = (int) obj.getBoundingBox().right;
-                                int bottom = (int) obj.getBoundingBox().bottom;
-                                int left = (int) obj.getBoundingBox().left;
-
-
-                                canvas.drawRect(new Rect(left, top, right, top + 10), p);
-                                canvas.drawRect(new Rect(right + 10, top, right, bottom), p);
-                                canvas.drawRect(new Rect(left, bottom + 10, right, bottom), p);
-                                canvas.drawRect(new Rect(left, top, left + 10, bottom), p);
-
-                                println("LABEL: " + obj.getCategories().get(0).getLabel());
-                                canvas.drawText(obj.getCategories().get(0).getLabel(), 0.5f * (right + left),top - 50, p);
+                            if(!bitmapImage.compress(Bitmap.CompressFormat.JPEG, 100, stream)) {
+                                throw new Exception("Can't save image on disk");
                             }
 
-                            imageView.setImageResource(0);
-                            imageView.draw(canvas);
-                            imageView.setImageBitmap(bitmapImage);
+                            stream.close();
+                            image.close();
 
-                            CustomPoseDetector poseDetector = new CustomPoseDetector(imageView, bitmapImage, stream);
-                            poseDetector.analyze(image);
-
-                            Toast.makeText(context, "Picture Taken", Toast.LENGTH_SHORT).show();
+                            //Open a new activity and pass it the picture's uri
+                            Intent intent = new Intent(context, AnalyzeActivity.class);
+                            intent.putExtra(MainActivity.ACTIVITY_IMAGE, picturePublicUri);
+                            context.startActivity(intent);
                         } catch (Exception exception) {
                             exception.printStackTrace();
                             Toast.makeText(context, "Error saving photo: " + exception.getMessage(), Toast.LENGTH_SHORT).show();
-                        } finally {
-                            context.findViewById(R.id.analyzeLayout).setVisibility(View.VISIBLE);
                         }
                     }
 
                     @Override
                     public void onError(@NonNull ImageCaptureException exception) {
                         exception.printStackTrace();
-                        Toast.makeText(context, "Error saving photo" + exception.getMessage(), Toast.LENGTH_SHORT).show();
+                        Toast.makeText(context, "Error saving picture", Toast.LENGTH_SHORT).show();
                     }
                 }
         );
@@ -185,16 +141,14 @@ public class CameraProvider implements ImageAnalysis.Analyzer {
         byteBuffer.get(bytes);
 
         BitmapFactory.decodeByteArray(bytes, 0, bytes.length);
-        Bitmap bitmap = BitmapFactory.decodeByteArray(bytes, 0, bytes.length);
+        BitmapFactory.Options decodeOptions = new BitmapFactory.Options();
+        decodeOptions.inPreferredConfig = Bitmap.Config.ARGB_8888;
+
+        Bitmap bitmap = BitmapFactory.decodeByteArray(bytes, 0, bytes.length, decodeOptions);
         Matrix matrix = new Matrix();
         matrix.postRotate(image.getImageInfo().getRotationDegrees());
-        bitmap = Bitmap.createBitmap(bitmap, 0,0, image.getWidth(), image.getHeight(), matrix, false);
+        bitmap = Bitmap.createBitmap(bitmap, 0, 0, image.getWidth(), image.getHeight(), matrix, false);
 
         return bitmap;
-    }
-
-    @Override
-    public void analyze(@NonNull ImageProxy image) {
-
     }
 }

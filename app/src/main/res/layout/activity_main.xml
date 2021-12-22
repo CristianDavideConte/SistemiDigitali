@@ -22,69 +22,24 @@
 
         </androidx.camera.view.PreviewView>
 
-        <TableRow
+        <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="match_parent"
-            android:layout_weight="1"
-            android:gravity="bottom">
+            android:gravity="bottom|center_horizontal"
+            android:orientation="horizontal">
 
-            <LinearLayout
-                android:layout_width="match_parent"
+            <com.google.android.material.floatingactionbutton.FloatingActionButton
+                android:id="@+id/shutterButton"
+                android:layout_width="73dp"
                 android:layout_height="wrap_content"
-                android:layout_weight="0"
-                android:background="@android:color/transparent"
-                android:gravity="center_horizontal"
-                android:orientation="horizontal">
-
-                <Button
-                    android:id="@+id/picture_bt"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="0"
-                    android:text="Picture" />
-
-            </LinearLayout>
-        </TableRow>
-
-    </FrameLayout>
-
-    <FrameLayout
-        android:id="@+id/analyzeLayout"
-        android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:background="#3A3939"
-        android:hapticFeedbackEnabled="true"
-        android:visibility="gone">
-
-        <ImageView
-            android:id="@+id/imageView"
-            android:layout_width="match_parent"
-            android:layout_height="match_parent"
-            android:layout_weight="1"
-            android:contentDescription="Image taken"
-            android:visibility="visible"
-            tools:srcCompat="@tools:sample/backgrounds/scenic" />
-
-        <TableRow
-            android:layout_width="match_parent"
-            android:layout_height="match_parent"
-            android:gravity="bottom">
-
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:gravity="center_horizontal"
-                android:orientation="horizontal">
-
-                <Button
-                    android:id="@+id/analysis_bt"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="0"
-                    android:text="Hide" />
-            </LinearLayout>
-        </TableRow>
+                android:clickable="true"
+                android:scaleX="1.5"
+                android:scaleY="1.5"
+                android:translationY="-50dp"
+                app:backgroundTint="#FFFFFF"
+                app:srcCompat="?android:attr/listChoiceIndicatorSingle"
+                tools:ignore="SpeakableTextPresentCheck" />
+        </LinearLayout>
 
     </FrameLayout>
 
