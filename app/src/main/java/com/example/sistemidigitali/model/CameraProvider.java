@@ -1,5 +1,6 @@
 package com.example.sistemidigitali.model;
 
+import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.content.ContentValues;
 import android.content.Intent;
@@ -10,13 +11,19 @@ import android.net.Uri;
 import android.os.Bundle;
 import android.os.Environment;
 import android.provider.MediaStore;
+import android.view.MotionEvent;
+import android.view.ScaleGestureDetector;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
+import androidx.camera.core.Camera;
 import androidx.camera.core.CameraSelector;
+import androidx.camera.core.FocusMeteringAction;
 import androidx.camera.core.ImageCapture;
 import androidx.camera.core.ImageCaptureException;
 import androidx.camera.core.ImageProxy;
+import androidx.camera.core.MeteringPoint;
+import androidx.camera.core.MeteringPointFactory;
 import androidx.camera.core.Preview;
 import androidx.camera.lifecycle.ProcessCameraProvider;
 import androidx.camera.view.PreviewView;
@@ -37,7 +44,7 @@ import java.util.concurrent.Executor;
 public class CameraProvider {
 
     private ListenableFuture<ProcessCameraProvider> provider;
-    private CameraSelector cameraSelector;
+    private Camera camera;
     private int currentLensOrientation;
 
     private PreviewView pview;
@@ -45,10 +52,33 @@ public class CameraProvider {
 
     private Activity context;
 
+    @SuppressLint("ClickableViewAccessibility")
     public CameraProvider(Activity context, PreviewView pview) {
         this.context = context;
         this.pview = pview;
         this.startCamera(CameraSelector.LENS_FACING_BACK);
+
+        //Handler for the pintch-to-zoom gesture
+        ScaleGestureDetector scaleGestureDetector = new ScaleGestureDetector(this.context, new ScaleGestureDetector.SimpleOnScaleGestureListener() {
+            @Override
+            public boolean onScale(ScaleGestureDetector detector) {
+                camera.getCameraControl().setZoomRatio(camera.getCameraInfo().getZoomState().getValue().getZoomRatio() * detector.getScaleFactor());
+                return true;
+            }
+        });
+
+        this.pview.setOnTouchListener((view, motionEvent) -> {
+            scaleGestureDetector.onTouchEvent(motionEvent);
+
+            //Focus on finger-up gesture
+            if(motionEvent.getAction() == MotionEvent.ACTION_UP) {
+                MeteringPointFactory factory = pview.getMeteringPointFactory();
+                MeteringPoint point = factory.createPoint(motionEvent.getX(), motionEvent.getY());
+                camera.getCameraControl().startFocusAndMetering(new FocusMeteringAction.Builder(point).build());
+            }
+
+            return true;
+        });
     }
 
     public void startCamera(int lensOrientation) {
@@ -58,14 +88,14 @@ public class CameraProvider {
                 ProcessCameraProvider cameraProvider = this.provider.get();
                 cameraProvider.unbindAll(); //Clear usecases
                 this.currentLensOrientation = lensOrientation;
-                CameraSelector cameraSelector = new CameraSelector.Builder().requireLensFacing(this.currentLensOrientation).build(); //backward facing camera
+                CameraSelector cameraSelector = new CameraSelector.Builder().requireLensFacing(this.currentLensOrientation).build();
 
                 Preview preview = new Preview.Builder().build();
                 preview.setSurfaceProvider(this.pview.getSurfaceProvider());
 
                 this.imageCapt = new ImageCapture.Builder().setCaptureMode(ImageCapture.CAPTURE_MODE_MINIMIZE_LATENCY).build();
 
-                cameraProvider.bindToLifecycle((LifecycleOwner) this.context, cameraSelector, preview, this.imageCapt);
+                this.camera = cameraProvider.bindToLifecycle((LifecycleOwner) this.context, cameraSelector, preview, this.imageCapt);
             } catch (Exception e) {
                 e.printStackTrace();
             }
