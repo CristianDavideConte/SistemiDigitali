@@ -7,6 +7,7 @@ import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Matrix;
 import android.net.Uri;
+import android.os.Bundle;
 import android.os.Environment;
 import android.provider.MediaStore;
 import android.widget.Toast;
@@ -24,6 +25,8 @@ import androidx.lifecycle.LifecycleOwner;
 
 import com.example.sistemidigitali.MainActivity;
 import com.google.common.util.concurrent.ListenableFuture;
+
+import org.greenrobot.eventbus.EventBus;
 
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
@@ -88,30 +91,35 @@ public class CameraProvider {
                         newPictureDetails.put(MediaStore.Images.Media.WIDTH, image.getWidth());
                         newPictureDetails.put(MediaStore.Images.Media.HEIGHT, image.getHeight());
                         newPictureDetails.put(MediaStore.Images.Media.RELATIVE_PATH, Environment.DIRECTORY_DCIM + "/SistemiDigitaliM");
-                        OutputStream stream = null;
 
-                        try {
-                            //Add picture to MediaStore in order to make it accessible to other apps
-                            //The result of the insert is the handle to the picture inside the MediaStore
-                            Uri picturePublicUri = context.getContentResolver().insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, newPictureDetails);
+                        //Add picture to MediaStore in order to make it accessible to other apps
+                        //The result of the insert is the handle to the picture inside the MediaStore
+                        Uri picturePublicUri = context.getContentResolver().insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, newPictureDetails);
 
-                            stream = context.getContentResolver().openOutputStream(picturePublicUri);
-                            Bitmap bitmapImage = convertImageProxyToBitmap(image);
-                            if(!bitmapImage.compress(Bitmap.CompressFormat.JPEG, 100, stream)) {
-                                throw new Exception("Can't save image on disk");
+                        //Saves the image in the background and post the result on the EventBus
+                        new Thread(() -> {
+                            try {
+                                OutputStream stream = context.getContentResolver().openOutputStream(picturePublicUri);
+
+                                Bitmap bitmapImage = convertImageProxyToBitmap(image);
+                                if (!bitmapImage.compress(Bitmap.CompressFormat.JPEG, 100, stream)) {
+                                    throw new Exception("Image compression failed");
+                                }
+
+                                stream.close();
+                                image.close();
+                                EventBus.getDefault().postSticky(new ImageSavedEvent("success"));
+                            } catch (Exception e) {
+                                e.printStackTrace();
+                                context.getContentResolver().delete(picturePublicUri, new Bundle());
+                                EventBus.getDefault().postSticky(new ImageSavedEvent(e.getMessage()));
                             }
+                        }).start();
 
-                            stream.close();
-                            image.close();
-
-                            //Open a new activity and pass it the picture's uri
-                            Intent intent = new Intent(context, AnalyzeActivity.class);
-                            intent.putExtra(MainActivity.ACTIVITY_IMAGE, picturePublicUri);
-                            context.startActivity(intent);
-                        } catch (Exception exception) {
-                            exception.printStackTrace();
-                            Toast.makeText(context, "Error saving photo: " + exception.getMessage(), Toast.LENGTH_SHORT).show();
-                        }
+                        //Open a new activity and passes it the picture's uri
+                        Intent intent = new Intent(context, AnalyzeActivity.class);
+                        intent.putExtra(MainActivity.ACTIVITY_IMAGE, picturePublicUri);
+                        context.startActivity(intent);
                     }
 
                     @Override

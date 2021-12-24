@@ -4,7 +4,7 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="#6A6A6A"
+    android:background="#FFFFFF"
     tools:context=".MainActivity">
 
     <!-- android:animateLayoutChanges="true" animates the visibility property -->
@@ -25,6 +25,24 @@
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="match_parent"
+            android:gravity="bottom|right"
+            android:orientation="horizontal">
+
+            <ImageButton
+                android:id="@+id/galleryButton"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_weight="0"
+                android:backgroundTint="#FFFFFF"
+                android:translationX="-25dp"
+                android:translationY="-50dp"
+                app:srcCompat="@android:drawable/ic_menu_gallery"
+                tools:ignore="SpeakableTextPresentCheck" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
             android:gravity="bottom|center_horizontal"
             android:orientation="horizontal">
 
@@ -33,12 +51,14 @@
                 android:layout_width="73dp"
                 android:layout_height="wrap_content"
                 android:clickable="true"
+                android:hapticFeedbackEnabled="true"
                 android:scaleX="1.5"
                 android:scaleY="1.5"
                 android:translationY="-50dp"
                 app:backgroundTint="#FFFFFF"
                 app:srcCompat="?android:attr/listChoiceIndicatorSingle"
                 tools:ignore="SpeakableTextPresentCheck" />
+
         </LinearLayout>
 
     </FrameLayout>

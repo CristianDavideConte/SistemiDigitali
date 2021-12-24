@@ -13,12 +13,16 @@ import android.net.Uri;
 import android.os.Bundle;
 import android.widget.Button;
 import android.widget.ImageView;
+import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
 
 import com.example.sistemidigitali.MainActivity;
 import com.example.sistemidigitali.R;
 
+import org.greenrobot.eventbus.EventBus;
+import org.greenrobot.eventbus.Subscribe;
+import org.greenrobot.eventbus.ThreadMode;
 import org.tensorflow.lite.task.vision.detector.Detection;
 
 import java.io.IOException;
@@ -26,12 +30,13 @@ import java.util.List;
 
 public class AnalyzeActivity extends AppCompatActivity {
 
-    Bitmap originalImage;
+    private Uri imageUri;
+    private Bitmap originalImage;
 
-    ImageView analyzeView;
-    Button clearButton;
-    Button analyzeButton;
-    CustomObjectDetector objectDetector;
+    private ImageView analyzeView;
+    private Button clearButton;
+    private Button analyzeButton;
+    private CustomObjectDetector objectDetector;
 
 
     @Override
@@ -45,37 +50,52 @@ public class AnalyzeActivity extends AppCompatActivity {
 
         //Get input informations
         Intent intent = getIntent();
-        Uri imageUri = intent.getParcelableExtra(MainActivity.ACTIVITY_IMAGE);
-
-        ImageDecoder.Source source = ImageDecoder.createSource(this.getContentResolver(), imageUri);
-        new Thread(
-                () -> {
-                    try {
-                        Bitmap bitmapImage = ImageDecoder.decodeBitmap(source);
-                        runOnUiThread(() -> {
-                            try {
-                                this.originalImage = bitmapImage.copy(Bitmap.Config.ARGB_8888, true);
-                                objectDetector = new CustomObjectDetector(this);
-
-                                analyzeView.setImageBitmap(bitmapImage);
-                                clearButton.setOnClickListener((view) -> {
-                                    this.originalImage = bitmapImage.copy(Bitmap.Config.ARGB_8888, true);
-                                    this.analyzeView.setImageBitmap(this.originalImage);
-                                });
-                                analyzeButton.setOnClickListener((view) -> {
-                                    this.originalImage = bitmapImage.copy(Bitmap.Config.ARGB_8888, true);
-                                    this.detectObjects(this.originalImage);
-                                });
-                            } catch (IOException e) {
-                                e.printStackTrace();
-                            }
-                        });
-                    } catch (IOException e) {
-                        e.printStackTrace();
-                    }
-                }
-        ).start();
+        this.imageUri = intent.getParcelableExtra(MainActivity.ACTIVITY_IMAGE);
     }
+
+    @Override
+    public void onStart() {
+        super.onStart();
+        EventBus.getDefault().register(this);
+    }
+
+    @Override
+    public void onStop() {
+        EventBus.getDefault().unregister(this);
+        super.onStop();
+    }
+
+    @Subscribe(sticky = true, threadMode = ThreadMode.ASYNC)
+    public void onPictureUriAvailable(ImageSavedEvent event) {
+        //If the picture is not available, go back to previous activity
+        if(!event.getError().equals("success")) {
+            runOnUiThread(() -> {
+                Toast.makeText(this, event.getError(), Toast.LENGTH_SHORT).show();
+                this.finish();
+            });
+            return;
+        }
+
+        try {
+            ImageDecoder.Source source = ImageDecoder.createSource(this.getContentResolver(), this.imageUri);
+            Bitmap bitmapImage = ImageDecoder.decodeBitmap(source);
+            this.originalImage = bitmapImage.copy(Bitmap.Config.ARGB_8888, true);
+            this.objectDetector = new CustomObjectDetector(this);
+            this.clearButton.setOnClickListener((view) -> {
+                this.originalImage = bitmapImage.copy(Bitmap.Config.ARGB_8888, true);
+                this.analyzeView.setImageBitmap(this.originalImage);
+            });
+            this.analyzeButton.setOnClickListener((view) -> {
+                this.originalImage = bitmapImage.copy(Bitmap.Config.ARGB_8888, true);
+                this.detectObjects(this.originalImage);
+            });
+
+            runOnUiThread(() -> this.analyzeView.setImageBitmap(bitmapImage));
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
 
     private void detectObjects(Bitmap bitmapImage) {
         new Thread(
