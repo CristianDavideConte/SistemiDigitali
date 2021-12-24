@@ -37,6 +37,9 @@ import java.util.concurrent.Executor;
 public class CameraProvider {
 
     private ListenableFuture<ProcessCameraProvider> provider;
+    private CameraSelector cameraSelector;
+    private int currentLensOrientation;
+
     private PreviewView pview;
     private ImageCapture imageCapt;
 
@@ -45,26 +48,33 @@ public class CameraProvider {
     public CameraProvider(Activity context, PreviewView pview) {
         this.context = context;
         this.pview = pview;
-        provider = ProcessCameraProvider.getInstance(this.context);
-        provider.addListener(() -> {
+        this.startCamera(CameraSelector.LENS_FACING_BACK);
+    }
+
+    public void startCamera(int lensOrientation) {
+        this.provider = ProcessCameraProvider.getInstance(this.context);
+        this.provider.addListener(() -> {
             try {
-                this.startCamera(provider.get());
+                ProcessCameraProvider cameraProvider = this.provider.get();
+                cameraProvider.unbindAll(); //Clear usecases
+                this.currentLensOrientation = lensOrientation;
+                CameraSelector cameraSelector = new CameraSelector.Builder().requireLensFacing(this.currentLensOrientation).build(); //backward facing camera
+
+                Preview preview = new Preview.Builder().build();
+                preview.setSurfaceProvider(this.pview.getSurfaceProvider());
+
+                this.imageCapt = new ImageCapture.Builder().setCaptureMode(ImageCapture.CAPTURE_MODE_MINIMIZE_LATENCY).build();
+
+                cameraProvider.bindToLifecycle((LifecycleOwner) this.context, cameraSelector, preview, this.imageCapt);
             } catch (Exception e) {
                 e.printStackTrace();
             }
         }, this.getExecutor());
     }
 
-    public void startCamera(ProcessCameraProvider cameraProvider) {
-        cameraProvider.unbindAll(); //Clear usecases
-        CameraSelector cameraSelector = new CameraSelector.Builder().requireLensFacing(CameraSelector.LENS_FACING_BACK).build(); //backward facing camera
-
-        Preview preview = new Preview.Builder().build();
-        preview.setSurfaceProvider(this.pview.getSurfaceProvider());
-
-        this.imageCapt = new ImageCapture.Builder().setCaptureMode(ImageCapture.CAPTURE_MODE_MINIMIZE_LATENCY).build();
-
-        cameraProvider.bindToLifecycle((LifecycleOwner) this.context, cameraSelector, preview, this.imageCapt);
+    public void switchCamera() {
+        int newLensOrientation = this.currentLensOrientation == CameraSelector.LENS_FACING_BACK ? CameraSelector.LENS_FACING_FRONT : CameraSelector.LENS_FACING_BACK;
+        this.startCamera(newLensOrientation);
     }
 
     public void captureImage() {
@@ -131,7 +141,6 @@ public class CameraProvider {
                 }
         );
     }
-
 
     private Executor getExecutor() {
         return ContextCompat.getMainExecutor(this.context);

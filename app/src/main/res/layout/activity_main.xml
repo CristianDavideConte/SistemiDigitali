@@ -25,19 +25,39 @@
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="match_parent"
+            android:gravity="bottom"
+            android:orientation="horizontal">
+
+            <com.google.android.material.floatingactionbutton.FloatingActionButton
+                android:id="@+id/switchCameraButton"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:clickable="true"
+                android:translationX="25dp"
+                android:translationY="-50dp"
+                app:backgroundTint="#FFFFFF"
+                app:srcCompat="@android:drawable/stat_notify_sync" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
             android:gravity="bottom|right"
             android:orientation="horizontal">
 
-            <ImageButton
+            <com.google.android.material.floatingactionbutton.FloatingActionButton
                 android:id="@+id/galleryButton"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_weight="0"
-                android:backgroundTint="#FFFFFF"
+                android:clickable="true"
                 android:translationX="-25dp"
                 android:translationY="-50dp"
+                app:backgroundTint="#FFFFFF"
                 app:srcCompat="@android:drawable/ic_menu_gallery"
                 tools:ignore="SpeakableTextPresentCheck" />
+
         </LinearLayout>
 
         <LinearLayout

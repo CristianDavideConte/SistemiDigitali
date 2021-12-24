@@ -4,7 +4,6 @@ import android.Manifest;
 import android.content.Intent;
 import android.net.Uri;
 import android.os.Bundle;
-import android.widget.ImageButton;
 
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
@@ -25,7 +24,8 @@ public class MainActivity extends AppCompatActivity {
     private Permission permission;
     private CameraProvider cameraProvider;
 
-    private ImageButton galleryButton;
+    private FloatingActionButton switchCameraButton;
+    private FloatingActionButton galleryButton;
     private FloatingActionButton shutterButton;
 
     @Override
@@ -35,12 +35,15 @@ public class MainActivity extends AppCompatActivity {
 
         this.permission = new Permission(this);
         this.cameraProvider = new CameraProvider(this,  findViewById(R.id.previewView));
+        this.switchCameraButton = findViewById(R.id.switchCameraButton);
         this.galleryButton = findViewById(R.id.galleryButton);
         this.shutterButton = findViewById(R.id.shutterButton);
 
         ActivityResultLauncher<String> mGetContent = registerForActivityResult(new ActivityResultContracts.GetContent(), (uri) -> {
             this.showAnalyzeActivity(uri); //If the file picked is an image the analyze activity is launched
         });
+
+        this.switchCameraButton.setOnClickListener((view) -> this.cameraProvider.switchCamera());
         this.galleryButton.setOnClickListener((view) -> mGetContent.launch("image/*")); //Shows the file picker
         this.shutterButton.setOnClickListener((view) -> this.cameraProvider.captureImage());
 
