@@ -111,6 +111,7 @@ public class CameraProvider {
                                 EventBus.getDefault().postSticky(new ImageSavedEvent("success"));
                             } catch (Exception e) {
                                 e.printStackTrace();
+                                //Remove the allocated space in the MediaStore if the picture can't be saved
                                 context.getContentResolver().delete(picturePublicUri, new Bundle());
                                 EventBus.getDefault().postSticky(new ImageSavedEvent(e.getMessage()));
                             }

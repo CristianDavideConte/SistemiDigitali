@@ -19,6 +19,7 @@ import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import org.greenrobot.eventbus.EventBus;
 
 public class MainActivity extends AppCompatActivity {
+
     public static final String ACTIVITY_IMAGE = "com.example.sistemidigitali.IMAGE";
 
     private Permission permission;

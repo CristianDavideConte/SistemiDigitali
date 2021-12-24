@@ -27,6 +27,7 @@ import java.io.IOException;
 import java.io.OutputStream;
 
 public class CustomPoseDetector extends AppCompatActivity implements ImageAnalysis.Analyzer {
+
     private PoseDetector detector; //Google's pose detector
     private Pose detectionResult;
     private ImageView imageView;

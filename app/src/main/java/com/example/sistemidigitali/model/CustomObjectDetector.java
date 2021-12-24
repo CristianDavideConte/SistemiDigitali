@@ -13,6 +13,7 @@ import java.io.IOException;
 import java.util.List;
 
 public class CustomObjectDetector {
+
     private final String MODEL_FILE ="lite-model_ssd_mobilenet_v1_1_metadata_2.tflite";
 
     private ObjectDetector detector;

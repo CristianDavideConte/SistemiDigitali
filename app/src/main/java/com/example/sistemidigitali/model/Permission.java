@@ -9,6 +9,7 @@ import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 
 public class Permission extends AppCompatActivity {
+
     final static int PERMISSION_REQUEST_CODE = 100; //Arbitrary code for camera
 
     public Permission(Context context) {
