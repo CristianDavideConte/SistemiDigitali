@@ -32,6 +32,11 @@ public class CustomObjectDetector {
         this.detector = ObjectDetector.createFromFileAndOptions(this.context, MODEL_FILE, options);
     }
 
+    /**
+     * Given a Bitmap image returns a list of all the object detected in it.
+     * @param image The image to analyze.
+     * @return A list of Detection containing all informations about every detected object.
+     */
     public List<Detection> detect(Bitmap image) {
         return this.detector.detect(TensorImage.fromBitmap(image));
     }

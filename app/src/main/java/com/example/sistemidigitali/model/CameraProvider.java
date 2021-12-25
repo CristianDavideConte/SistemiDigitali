@@ -72,15 +72,20 @@ public class CameraProvider {
 
             //Focus on finger-up gesture
             if(motionEvent.getAction() == MotionEvent.ACTION_UP) {
-                MeteringPointFactory factory = pview.getMeteringPointFactory();
+                MeteringPointFactory factory = this.pview.getMeteringPointFactory();
                 MeteringPoint point = factory.createPoint(motionEvent.getX(), motionEvent.getY());
-                camera.getCameraControl().startFocusAndMetering(new FocusMeteringAction.Builder(point).build());
+                this.camera.getCameraControl().startFocusAndMetering(new FocusMeteringAction.Builder(point).build());
             }
 
             return true;
         });
     }
 
+    /**
+     * Create a new CameraX instance with the specified lens orientation,
+     * unbinding all the previous use cases.
+     * @param lensOrientation An int that indicates the lens orientation.
+     */
     public void startCamera(int lensOrientation) {
         this.provider = ProcessCameraProvider.getInstance(this.context);
         this.provider.addListener(() -> {
@@ -102,11 +107,23 @@ public class CameraProvider {
         }, this.getExecutor());
     }
 
+    /**
+     * Switches the current camera lens orientation.
+     * If the current lens is the backward facing one, then the front facing lens is selected.
+     * Otherwise the backward facing lens is selected.
+     */
     public void switchCamera() {
         int newLensOrientation = this.currentLensOrientation == CameraSelector.LENS_FACING_BACK ? CameraSelector.LENS_FACING_FRONT : CameraSelector.LENS_FACING_BACK;
         this.startCamera(newLensOrientation);
     }
 
+    /**
+     * Take a picture of the current preview view frame and
+     * saves it to the phone gallery.
+     * If the saving is successful an AnalyzeActivity is started by
+     * asynchronously passing it the picture's uri.
+     */
+    @SuppressLint("SimpleDateFormat")
     public void captureImage() {
         //Es. SISDIG_2021127_189230.jpg
         String pictureName = "SISDIG_" + new SimpleDateFormat("yyyyMMdd_HHmmss").format(new Date()) + ".jpeg";
@@ -141,7 +158,7 @@ public class CameraProvider {
                             try {
                                 OutputStream stream = context.getContentResolver().openOutputStream(picturePublicUri);
 
-                                Bitmap bitmapImage = convertImageProxyToBitmap(image);
+                                Bitmap bitmapImage = convertImageProxyToBitmap(image, currentLensOrientation == CameraSelector.LENS_FACING_FRONT);
                                 if (!bitmapImage.compress(Bitmap.CompressFormat.JPEG, 100, stream)) {
                                     throw new Exception("Image compression failed");
                                 }
@@ -172,6 +189,9 @@ public class CameraProvider {
         );
     }
 
+    /**
+     * @return The current context's main executor
+     */
     private Executor getExecutor() {
         return ContextCompat.getMainExecutor(this.context);
     }
@@ -179,10 +199,11 @@ public class CameraProvider {
     /**
      * Converts the passed ImageProxy to a Bitmap image.
      * Source: https://stackoverflow.com/questions/56772967/converting-imageproxy-to-bitmap
-     * @param image an ImageProxy
-     * @return the corresponding Bitmap image
+     * @param image An ImageProxy
+     * @param flipNeeded True if image needs to be mirrored on the y-axis, false otherwise.
+     * @return The corresponding Bitmap image
      */
-    private Bitmap convertImageProxyToBitmap(ImageProxy image) {
+    private Bitmap convertImageProxyToBitmap(ImageProxy image, boolean flipNeeded) {
         ByteBuffer byteBuffer = image.getPlanes()[0].getBuffer();
         byteBuffer.rewind();
         byte[] bytes = new byte[byteBuffer.capacity()];
@@ -195,8 +216,9 @@ public class CameraProvider {
         Bitmap bitmap = BitmapFactory.decodeByteArray(bytes, 0, bytes.length, decodeOptions);
         Matrix matrix = new Matrix();
         matrix.postRotate(image.getImageInfo().getRotationDegrees());
-        bitmap = Bitmap.createBitmap(bitmap, 0, 0, image.getWidth(), image.getHeight(), matrix, false);
+        if(flipNeeded) matrix.preScale(1.0f, -1.0f); //flip the image on the y-axis
 
+        bitmap = Bitmap.createBitmap(bitmap, 0, 0, image.getWidth(), image.getHeight(), matrix, flipNeeded);
         return bitmap;
     }
 }

@@ -2,7 +2,7 @@ package com.example.sistemidigitali.model;
 
 import static com.example.sistemidigitali.debugUtility.Debug.println;
 
-import android.content.Intent;
+import android.annotation.SuppressLint;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.graphics.Color;
@@ -17,6 +17,7 @@ import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
 
+import com.bogdwellers.pinchtozoom.ImageMatrixTouchHandler;
 import com.example.sistemidigitali.MainActivity;
 import com.example.sistemidigitali.R;
 
@@ -49,22 +50,37 @@ public class AnalyzeActivity extends AppCompatActivity {
         this.analyzeButton = findViewById(R.id.analyzeButton);
 
         //Get input informations
-        Intent intent = getIntent();
-        this.imageUri = intent.getParcelableExtra(MainActivity.ACTIVITY_IMAGE);
+        this.imageUri = this.getIntent().getParcelableExtra(MainActivity.ACTIVITY_IMAGE);
     }
 
+    /**
+     * Registers this instance of AnalyzeActivity on the EventBus,
+     * so that it can receive async messages from other activities.
+     */
     @Override
     public void onStart() {
         super.onStart();
         EventBus.getDefault().register(this);
     }
 
+    /**
+     * Unregisters this instance of AnalyzeActivity on the EventBus,
+     * so that it can no longer receive async messages from other activities.
+     */
     @Override
     public void onStop() {
         EventBus.getDefault().unregister(this);
         super.onStop();
     }
 
+    /**
+     * Function that is invoked by the EventBus (that's why it's public)
+     * whenever a ImageSavedEvent is published by other activities.
+     * It is used to asynchronously load an image into the
+     * preview view of this AnalyzeActivity.
+     * @param event An ImageSavedEvent that contains the result of the image saving operation.
+     */
+    @SuppressLint("ClickableViewAccessibility")
     @Subscribe(sticky = true, threadMode = ThreadMode.ASYNC)
     public void onPictureUriAvailable(ImageSavedEvent event) {
         //If the picture is not available, go back to previous activity
@@ -81,6 +97,7 @@ public class AnalyzeActivity extends AppCompatActivity {
             Bitmap bitmapImage = ImageDecoder.decodeBitmap(source);
             this.originalImage = bitmapImage.copy(Bitmap.Config.ARGB_8888, true);
             this.objectDetector = new CustomObjectDetector(this);
+
             this.clearButton.setOnClickListener((view) -> {
                 this.originalImage = bitmapImage.copy(Bitmap.Config.ARGB_8888, true);
                 this.analyzeView.setImageBitmap(this.originalImage);
@@ -90,13 +107,20 @@ public class AnalyzeActivity extends AppCompatActivity {
                 this.detectObjects(this.originalImage);
             });
 
-            runOnUiThread(() -> this.analyzeView.setImageBitmap(bitmapImage));
+            runOnUiThread(() -> {
+                this.analyzeView.setOnTouchListener(new ImageMatrixTouchHandler(this)); //Handles pitch-to-zoom on image views
+                this.analyzeView.setImageBitmap(bitmapImage);
+            });
         } catch (IOException e) {
             e.printStackTrace();
         }
     }
 
-
+    /**
+     * Uses this AnalyzeActivity's objectDetector to analyze the given Bitmap image and
+     * draws a rectangle around each detected object labeling it.
+     * @param bitmapImage The Bitmap image to analyze.
+     */
     private void detectObjects(Bitmap bitmapImage) {
         new Thread(
                 () -> {
@@ -112,9 +136,9 @@ public class AnalyzeActivity extends AppCompatActivity {
                         for (Detection obj : objs) {
                             println("LABEL: " + obj.getCategories().get(0).getLabel());
                             p.setColor(Color.rgb(
-                                      (int) (Math.random() * 255),
-                                    (int) (Math.random() * 255),
-                                     (int) (Math.random() * 255)
+                                (int) (Math.random() * 255),
+                                (int) (Math.random() * 255),
+                                (int) (Math.random() * 255)
                             ));
 
                             int top = (int) obj.getBoundingBox().top;
@@ -124,9 +148,9 @@ public class AnalyzeActivity extends AppCompatActivity {
                             int linesWidth = 10;
 
                             canvas.drawRect(new Rect(left,                   top,                 right,      top + linesWidth), p); //Top line
-                            canvas.drawRect(new Rect(left,                   top,            left + linesWidth, bottom), p);           //Left line
-                            canvas.drawRect(new Rect(left,               bottom - linesWidth, right,             bottom), p);           //Bottom line
-                            canvas.drawRect(new Rect(right - linesWidth, top,                 right,             bottom), p);           //Right line
+                            canvas.drawRect(new Rect(left,                   top,            left + linesWidth, bottom),           p); //Left line
+                            canvas.drawRect(new Rect(left,               bottom - linesWidth, right,             bottom),           p); //Bottom line
+                            canvas.drawRect(new Rect(right - linesWidth, top,                 right,             bottom),           p); //Right line
 
                             canvas.drawText(obj.getCategories().get(0).getLabel(), 0.5f * (right + left),0.5f * (top  + bottom), p);
                         }

@@ -8,6 +8,10 @@ public class ImageSavedEvent {
         this.error = error;
     }
 
+    /**
+     * The result of the image saving operation.
+     * @return "success" if the image has been successfully saved, the error message otherwise.
+     */
     public String getError() {
         return error;
     }

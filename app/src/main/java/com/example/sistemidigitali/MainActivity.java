@@ -33,7 +33,7 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        this.permission = new Permission(this);
+        this.permission = new Permission();
         this.cameraProvider = new CameraProvider(this,  findViewById(R.id.previewView));
         this.switchCameraButton = findViewById(R.id.switchCameraButton);
         this.galleryButton = findViewById(R.id.galleryButton);
@@ -44,7 +44,7 @@ public class MainActivity extends AppCompatActivity {
         });
 
         this.switchCameraButton.setOnClickListener((view) -> this.cameraProvider.switchCamera());
-        this.galleryButton.setOnClickListener((view) -> mGetContent.launch("image/*")); //Shows the file picker
+        this.galleryButton.setOnClickListener((view) -> mGetContent.launch("image/*")); //Shows the file picker for images only
         this.shutterButton.setOnClickListener((view) -> this.cameraProvider.captureImage());
 
         //Request all the permissions needed if not already available
@@ -56,6 +56,11 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
+    /**
+     * Starts a new instance of AnalyzeActivity and passes it
+     * the given picture's uri if valid.
+     * @param picturePublicUri A picture's Uri.
+     */
     private void showAnalyzeActivity(Uri picturePublicUri) {
         if(picturePublicUri == null) return;
 

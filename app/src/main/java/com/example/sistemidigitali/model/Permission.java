@@ -12,15 +12,15 @@ public class Permission extends AppCompatActivity {
 
     final static int PERMISSION_REQUEST_CODE = 100; //Arbitrary code for camera
 
-    public Permission(Context context) {
+    public Permission() {
         super();
     }
 
     /**
      * Checks if the passed context has all the requested permissions
-     * @param context a Context object
-     * @param permissions an array of Strings representing all the permissions
-     * @return true if the passed context has all the requested permission
+     * @param context The Context that all the permissions should be checked for.
+     * @param permissions An array of Strings representing all the permissions.
+     * @return True if the passed context has all the requested permission, false otherwise.
      */
     public boolean checkPermission(Context context, String[] permissions) {
         for(String permission : permissions) {
@@ -32,9 +32,9 @@ public class Permission extends AppCompatActivity {
     }
 
     /**
-     * Requests all the requested permissions for the passed activity
-     * @param activity
-     * @param permissions
+     * Requests all the given permissions for the passed activity.
+     * @param activity The Activity that all the permissions should be checked for.
+     * @param permissions An array of Strings representing all the permissions.
      */
     public void requestPermission(Activity activity, String[] permissions) {
         ActivityCompat.requestPermissions(
