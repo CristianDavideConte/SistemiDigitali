@@ -3,4 +3,3 @@
  
  TODO:
  * Train tensorflowLite for mask/people recognition
- * Add "switch camera" feature
