@@ -9,6 +9,7 @@ import android.graphics.Color;
 import android.graphics.ImageDecoder;
 import android.graphics.Paint;
 import android.graphics.Rect;
+import android.graphics.RectF;
 import android.net.Uri;
 import android.os.Bundle;
 import android.widget.Button;
@@ -24,6 +25,7 @@ import com.example.sistemidigitali.R;
 import org.greenrobot.eventbus.EventBus;
 import org.greenrobot.eventbus.Subscribe;
 import org.greenrobot.eventbus.ThreadMode;
+import org.tensorflow.lite.support.image.TensorImage;
 import org.tensorflow.lite.task.vision.detector.Detection;
 
 import java.io.IOException;
@@ -33,6 +35,7 @@ public class AnalyzeActivity extends AppCompatActivity {
 
     private Uri imageUri;
     private Bitmap originalImage;
+    private TensorImage originalImageTensor;
 
     private ImageView analyzeView;
     private Button clearButton;
@@ -96,6 +99,7 @@ public class AnalyzeActivity extends AppCompatActivity {
             ImageDecoder.Source source = ImageDecoder.createSource(this.getContentResolver(), this.imageUri);
             Bitmap bitmapImage = ImageDecoder.decodeBitmap(source);
             this.originalImage = bitmapImage.copy(Bitmap.Config.ARGB_8888, true);
+            this.originalImageTensor = TensorImage.fromBitmap(originalImage);
             this.objectDetector = new CustomObjectDetector(this);
 
             this.clearButton.setOnClickListener((view) -> {
@@ -124,7 +128,7 @@ public class AnalyzeActivity extends AppCompatActivity {
     private void detectObjects(Bitmap bitmapImage) {
         new Thread(
                 () -> {
-                    List<Detection> objs = this.objectDetector.detect(bitmapImage);
+                    List<Detection> objs = this.objectDetector.detect(this.originalImageTensor);
 
                     runOnUiThread(() -> {
                         Canvas canvas = new Canvas(bitmapImage);
@@ -132,6 +136,8 @@ public class AnalyzeActivity extends AppCompatActivity {
                         p.setTextSize(70);
 
                         println("DETECTED OBJS: " + objs.size());
+
+                        int linesWidth = 10;
 
                         for (Detection obj : objs) {
                             println("LABEL: " + obj.getCategories().get(0).getLabel());
@@ -141,11 +147,11 @@ public class AnalyzeActivity extends AppCompatActivity {
                                 (int) (Math.random() * 255)
                             ));
 
-                            int top = (int) obj.getBoundingBox().top;
-                            int right = (int) obj.getBoundingBox().right;
-                            int bottom = (int) obj.getBoundingBox().bottom;
-                            int left = (int) obj.getBoundingBox().left;
-                            int linesWidth = 10;
+                            RectF boundingBox = obj.getBoundingBox();
+                            int top = (int) boundingBox.top;
+                            int right = (int) boundingBox.right;
+                            int bottom = (int) boundingBox.bottom;
+                            int left = (int) boundingBox.left;
 
                             canvas.drawRect(new Rect(left,                   top,                 right,      top + linesWidth), p); //Top line
                             canvas.drawRect(new Rect(left,                   top,            left + linesWidth, bottom),           p); //Left line
