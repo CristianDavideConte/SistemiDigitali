@@ -13,7 +13,6 @@ import java.util.List;
 
 public class CustomObjectDetector {
 
-    private final String MODEL_FILE ="lite-model_ssd_mobilenet_v1_1_metadata_2.tflite";
     private final String METADATA_FILE = "model.tflite";
 
     private ObjectDetector detector;
@@ -30,7 +29,6 @@ public class CustomObjectDetector {
                         //.setMaxResults(10)
                         .build();
 
-        //this.detector = ObjectDetector.createFromFileAndOptions(this.context, MODEL_FILE, options);
         this.detector = ObjectDetector.createFromFileAndOptions(this.context, METADATA_FILE, options);
     }
 

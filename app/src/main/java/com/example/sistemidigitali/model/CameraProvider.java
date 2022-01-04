@@ -11,6 +11,7 @@ import android.net.Uri;
 import android.os.Bundle;
 import android.os.Environment;
 import android.provider.MediaStore;
+import android.util.Size;
 import android.view.MotionEvent;
 import android.view.ScaleGestureDetector;
 import android.widget.Toast;
@@ -19,6 +20,7 @@ import androidx.annotation.NonNull;
 import androidx.camera.core.Camera;
 import androidx.camera.core.CameraSelector;
 import androidx.camera.core.FocusMeteringAction;
+import androidx.camera.core.ImageAnalysis;
 import androidx.camera.core.ImageCapture;
 import androidx.camera.core.ImageCaptureException;
 import androidx.camera.core.ImageProxy;
@@ -34,11 +36,15 @@ import com.example.sistemidigitali.MainActivity;
 import com.google.common.util.concurrent.ListenableFuture;
 
 import org.greenrobot.eventbus.EventBus;
+import org.tensorflow.lite.support.image.TensorImage;
+import org.tensorflow.lite.task.vision.detector.Detection;
 
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
 import java.util.Date;
+import java.util.List;
 import java.util.concurrent.Executor;
 
 public class CameraProvider {
@@ -49,6 +55,9 @@ public class CameraProvider {
 
     private PreviewView pview;
     private ImageCapture imageCapt;
+    private ImageAnalysis imageAnalysis;
+    private CustomObjectDetector objectDetector;
+    private boolean liveDetection;
 
     private Activity context;
 
@@ -56,6 +65,7 @@ public class CameraProvider {
     public CameraProvider(Activity context, PreviewView pview) {
         this.context = context;
         this.pview = pview;
+        this.liveDetection = false;
         this.startCamera(CameraSelector.LENS_FACING_BACK);
 
         //Handler for the pintch-to-zoom gesture
@@ -99,8 +109,15 @@ public class CameraProvider {
                 preview.setSurfaceProvider(this.pview.getSurfaceProvider());
 
                 this.imageCapt = new ImageCapture.Builder().setCaptureMode(ImageCapture.CAPTURE_MODE_MINIMIZE_LATENCY).build();
+                this.imageAnalysis = new ImageAnalysis.Builder()
+                                // enable the following line if RGBA output is needed.
+                                //.setOutputImageFormat(ImageAnalysis.OUTPUT_IMAGE_FORMAT_RGBA_8888)
+                                .setTargetResolution(new Size(1280, 720))
+                                .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
+                                .build();
 
-                this.camera = cameraProvider.bindToLifecycle((LifecycleOwner) this.context, cameraSelector, preview, this.imageCapt);
+                this.imageAnalysis.setAnalyzer(this.getExecutor(), (proxy) -> this.analyze(proxy));
+                this.camera = cameraProvider.bindToLifecycle((LifecycleOwner) this.context, cameraSelector, this.imageAnalysis, preview, this.imageCapt);
             } catch (Exception e) {
                 e.printStackTrace();
             }
@@ -190,6 +207,61 @@ public class CameraProvider {
     }
 
     /**
+     *
+     * @param imageProxy
+     */
+    @SuppressLint("UnsafeOptInUsageError")
+    public List<Detection> analyze(@NonNull ImageProxy imageProxy) {
+        List<Detection> detections = new ArrayList<>();
+        //Trova un modo per disegnare i rettangoli in live
+        if(this.objectDetector != null && this.liveDetection) {
+            TensorImage tensorImage = new TensorImage();
+            tensorImage.load(imageProxy.getImage());
+            detections = this.objectDetector.detect(tensorImage);
+        }
+        imageProxy.close();
+
+        /*Canvas canvas = new Canvas(image);
+        Paint boxPaint = new Paint();
+        Paint textPaint = new Paint();
+        boxPaint.setStyle(Paint.Style.STROKE);
+        boxPaint.setStrokeWidth(10);
+        textPaint.setTextSize(70);
+
+        detections.parallelStream().forEach((obj) -> {
+            int color = Color.rgb(
+                    (int) (Math.random() * 255),
+                    (int) (Math.random() * 255),
+                    (int) (Math.random() * 255)
+            );
+            boxPaint.setColor(color);
+            textPaint.setColor(color);
+
+            RectF boundingBox = obj.getBoundingBox();
+            int top = (int) boundingBox.top;
+            int right = (int) boundingBox.right;
+            int bottom = (int) boundingBox.bottom;
+            int left = (int) boundingBox.left;
+
+            canvas.drawRect(left, top, right, bottom, boxPaint);
+            canvas.drawText(obj.getCategories().get(0).getLabel(), 0.5f * (right + left), 0.5f * (top + bottom), textPaint);
+        });
+
+        //this.pview.setImageResource(0);
+        this.pview.draw(canvas);
+        //this.pview.setImageBitmap(bitmapImage);*/
+        return detections;
+    }
+
+    public void setLiveDetection(boolean liveDetection) {
+        this.liveDetection = liveDetection;
+    }
+
+    public void setObjectDetector(CustomObjectDetector objectDetector) {
+        this.objectDetector = objectDetector;
+    }
+
+    /**
      * @return The current context's main executor
      */
     private Executor getExecutor() {
@@ -203,7 +275,7 @@ public class CameraProvider {
      * @param flipNeeded True if image needs to be mirrored on the y-axis, false otherwise.
      * @return The corresponding Bitmap image
      */
-    private Bitmap convertImageProxyToBitmap(ImageProxy image, boolean flipNeeded) {
+    private Bitmap convertImageProxyToBitmap(@NonNull ImageProxy image, boolean flipNeeded) {
         ByteBuffer byteBuffer = image.getPlanes()[0].getBuffer();
         byteBuffer.rewind();
         byte[] bytes = new byte[byteBuffer.capacity()];

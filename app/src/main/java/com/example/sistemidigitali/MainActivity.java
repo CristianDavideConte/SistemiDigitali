@@ -2,28 +2,38 @@ package com.example.sistemidigitali;
 
 import android.Manifest;
 import android.content.Intent;
+import android.content.res.ColorStateList;
+import android.graphics.Color;
 import android.net.Uri;
 import android.os.Bundle;
 
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
+import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.camera.core.ImageAnalysis;
+import androidx.camera.core.ImageProxy;
 
 import com.example.sistemidigitali.model.AnalyzeActivity;
 import com.example.sistemidigitali.model.CameraProvider;
+import com.example.sistemidigitali.model.CustomObjectDetector;
 import com.example.sistemidigitali.model.ImageSavedEvent;
 import com.example.sistemidigitali.model.Permission;
+import com.google.android.material.chip.Chip;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 
 import org.greenrobot.eventbus.EventBus;
 
-public class MainActivity extends AppCompatActivity {
+import java.io.IOException;
+
+public class MainActivity extends AppCompatActivity implements ImageAnalysis.Analyzer {
 
     public static final String ACTIVITY_IMAGE = "com.example.sistemidigitali.IMAGE";
 
     private Permission permission;
     private CameraProvider cameraProvider;
 
+    private Chip liveDetectionSwitch;
     private FloatingActionButton switchCameraButton;
     private FloatingActionButton galleryButton;
     private FloatingActionButton shutterButton;
@@ -35,13 +45,38 @@ public class MainActivity extends AppCompatActivity {
 
         this.permission = new Permission();
         this.cameraProvider = new CameraProvider(this,  findViewById(R.id.previewView));
+        this.liveDetectionSwitch = findViewById(R.id.liveDetectionSwitch);
         this.switchCameraButton = findViewById(R.id.switchCameraButton);
         this.galleryButton = findViewById(R.id.galleryButton);
         this.shutterButton = findViewById(R.id.shutterButton);
+        try {
+            this.cameraProvider.setObjectDetector(new CustomObjectDetector(this));
+            this.liveDetectionSwitch.setOnCheckedChangeListener((view, isChecked) -> {
+                this.cameraProvider.setLiveDetection(isChecked);
+            });
+        } catch (IOException e) {
+            this.liveDetectionSwitch.setCheckable(false);
+            this.liveDetectionSwitch.setTextColor(Color.WHITE);
+            int[][] states = new int[][] {
+                    new int[] { android.R.attr.state_enabled}, // enabled
+                    new int[] {-android.R.attr.state_enabled}, // disabled
+                    new int[] {-android.R.attr.state_checked}, // unchecked
+                    new int[] { android.R.attr.state_pressed}  // pressed
+            };
+
+            int[] colors = new int[] {
+                    Color.RED,
+                    Color.RED,
+                    Color.RED,
+                    Color.RED
+            };
+            this.liveDetectionSwitch.setChipBackgroundColor(new ColorStateList(states, colors));
+        }
 
         ActivityResultLauncher<String> mGetContent = registerForActivityResult(new ActivityResultContracts.GetContent(), (uri) -> {
             this.showAnalyzeActivity(uri); //If the file picked is an image the analyze activity is launched
         });
+
 
         this.switchCameraButton.setOnClickListener((view) -> this.cameraProvider.switchCamera());
         this.galleryButton.setOnClickListener((view) -> mGetContent.launch("image/*")); //Shows the file picker for images only
@@ -69,5 +104,10 @@ public class MainActivity extends AppCompatActivity {
         Intent intent = new Intent(this, AnalyzeActivity.class);
         intent.putExtra(MainActivity.ACTIVITY_IMAGE, picturePublicUri);
         this.startActivity(intent);
+    }
+
+    @Override
+    public void analyze(@NonNull ImageProxy image) {
+
     }
 }

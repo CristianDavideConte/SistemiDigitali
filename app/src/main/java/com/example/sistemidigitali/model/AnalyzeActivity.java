@@ -8,7 +8,6 @@ import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.ImageDecoder;
 import android.graphics.Paint;
-import android.graphics.Rect;
 import android.graphics.RectF;
 import android.net.Uri;
 import android.os.Bundle;
@@ -129,23 +128,24 @@ public class AnalyzeActivity extends AppCompatActivity {
         new Thread(
                 () -> {
                     List<Detection> objs = this.objectDetector.detect(this.originalImageTensor);
+                    Canvas canvas = new Canvas(bitmapImage);
+                    Paint boxPaint = new Paint();
+                    Paint textPaint = new Paint();
+                    boxPaint.setStyle(Paint.Style.STROKE);
+                    boxPaint.setStrokeWidth(10);
+                    textPaint.setTextSize(70);
 
                     runOnUiThread(() -> {
-                        Canvas canvas = new Canvas(bitmapImage);
-                        Paint p = new Paint(Paint.ANTI_ALIAS_FLAG);
-                        p.setTextSize(70);
-
                         println("DETECTED OBJS: " + objs.size());
-
-                        int linesWidth = 10;
-
-                        for (Detection obj : objs) {
+                        /*objs.parallelStream().forEach((obj) -> {
                             println("LABEL: " + obj.getCategories().get(0).getLabel());
-                            p.setColor(Color.rgb(
-                                (int) (Math.random() * 255),
-                                (int) (Math.random() * 255),
-                                (int) (Math.random() * 255)
-                            ));
+                            int color = Color.rgb(
+                                    (int) (Math.random() * 255),
+                                    (int) (Math.random() * 255),
+                                    (int) (Math.random() * 255)
+                            );
+                            boxPaint.setColor(color);
+                            textPaint.setColor(color);
 
                             RectF boundingBox = obj.getBoundingBox();
                             int top = (int) boundingBox.top;
@@ -153,12 +153,28 @@ public class AnalyzeActivity extends AppCompatActivity {
                             int bottom = (int) boundingBox.bottom;
                             int left = (int) boundingBox.left;
 
-                            canvas.drawRect(new Rect(left,                   top,                 right,      top + linesWidth), p); //Top line
-                            canvas.drawRect(new Rect(left,                   top,            left + linesWidth, bottom),           p); //Left line
-                            canvas.drawRect(new Rect(left,               bottom - linesWidth, right,             bottom),           p); //Bottom line
-                            canvas.drawRect(new Rect(right - linesWidth, top,                 right,             bottom),           p); //Right line
+                            canvas.drawRect(left, top, right, bottom, boxPaint);
+                            canvas.drawText(obj.getCategories().get(0).getLabel(), 0.5f * (right + left), 0.5f * (top + bottom), textPaint);
+                        });*/
 
-                            canvas.drawText(obj.getCategories().get(0).getLabel(), 0.5f * (right + left),0.5f * (top  + bottom), p);
+                        for (Detection obj : objs) {
+                            println("LABEL: " + obj.getCategories().get(0).getLabel());
+                            int color = Color.rgb(
+                                    (int) (Math.random() * 255),
+                                    (int) (Math.random() * 255),
+                                    (int) (Math.random() * 255)
+                            );
+                            boxPaint.setColor(color);
+                            textPaint.setColor(color);
+
+                            RectF boundingBox = obj.getBoundingBox();
+                            int top = (int) boundingBox.top;
+                            int right = (int) boundingBox.right;
+                            int bottom = (int) boundingBox.bottom;
+                            int left = (int) boundingBox.left;
+
+                            canvas.drawRect(left, top, right, bottom, boxPaint);
+                            canvas.drawText(obj.getCategories().get(0).getLabel(), 0.5f * (right + left),0.5f * (top  + bottom), textPaint);
                         }
 
                         this.analyzeView.setImageResource(0);
