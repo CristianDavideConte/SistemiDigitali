@@ -1,5 +1,7 @@
 package com.example.sistemidigitali.model;
 
+import static com.example.sistemidigitali.debugUtility.Debug.println;
+
 import android.annotation.SuppressLint;
 import android.content.ContentValues;
 import android.content.Intent;
@@ -41,6 +43,7 @@ import org.tensorflow.lite.task.vision.detector.Detection;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 import java.util.concurrent.Executor;
@@ -216,19 +219,23 @@ public class CameraProvider {
         this.analyzerThread = new Thread(() -> {
             if (this.objectDetector != null && this.liveDetection) {
                 TensorImage tensorImage = new TensorImage();
-                tensorImage.load(imageProxy.getImage());
+                tensorImage.load(imageProxy.getImage()); //Probabilmente sta conversione o l'immagine sono sbagliati (rettangolo viene in alto)
                 List<Detection> detections = this.objectDetector.detect(tensorImage);
-                if(!this.analyzerThread.isInterrupted()) {
+                if(!this.analyzerThread.isInterrupted()){
                     this.context.drawDetectionRects(detections);
                 }
             }
+            println("Closed");
             imageProxy.close();
         });
         this.analyzerThread.start();
     }
 
     public void setLiveDetection(boolean liveDetection) {
-        if(!liveDetection) this.analyzerThread.interrupt();
+        if(!liveDetection) {
+            this.analyzerThread.interrupt();
+            this.context.drawDetectionRects(new ArrayList<>());
+        }
         this.liveDetection = liveDetection;
     }
 

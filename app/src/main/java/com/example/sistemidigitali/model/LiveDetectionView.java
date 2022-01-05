@@ -1,7 +1,8 @@
 package com.example.sistemidigitali.model;
 
+import static com.example.sistemidigitali.debugUtility.Debug.println;
+
 import android.content.Context;
-import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
@@ -58,8 +59,11 @@ public class LiveDetectionView extends View {
     public void onDraw(Canvas canvas) {
         super.onDraw(canvas);
 
+        //Capisci perchè i rettangoli (delle detection) sono disegnati solo
+        //nella parte alta della view
         this.detections.parallelStream().forEach((obj) -> {
             RectF boundingBox = obj.getBoundingBox();
+            println(obj.getCategories().get(0).getScore());
             canvas.drawRect(boundingBox, boxPaint);
 
             //Calculates the right font size
@@ -78,12 +82,5 @@ public class LiveDetectionView extends View {
                     boundingBox.top + tagSize.height() * 1F, this.textPaint
             );
         });
-    }
-
-    //Trova un modo per far sparire i rettangoli
-    public void clear() {
-        Bitmap bitmap = Bitmap.createBitmap(this.getWidth(), this.getHeight(), Bitmap.Config.ARGB_8888);
-        this.detections.clear();
-        this.draw(new Canvas(bitmap));
     }
 }

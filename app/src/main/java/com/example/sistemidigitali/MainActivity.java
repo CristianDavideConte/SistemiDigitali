@@ -54,12 +54,7 @@ public class MainActivity extends AppCompatActivity {
         try {
             this.cameraProvider.setObjectDetector(new CustomObjectDetector(this));
             this.liveDetectionSwitch.setOnCheckedChangeListener((view, isChecked) -> {
-                if(isChecked) {
-                    this.liveDetectionSwitch.setTextColor(Color.WHITE);
-                } else {
-                    this.liveDetectionSwitch.setTextColor(Color.BLACK);
-                    this.liveDetectionView.clear();
-                }
+                this.liveDetectionSwitch.setTextColor(isChecked ? Color.WHITE : Color.BLACK);
                 this.cameraProvider.setLiveDetection(isChecked);
             });
         } catch (IOException e) {
