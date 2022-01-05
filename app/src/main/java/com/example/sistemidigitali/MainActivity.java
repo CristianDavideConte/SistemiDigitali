@@ -9,30 +9,31 @@ import android.os.Bundle;
 
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
-import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
-import androidx.camera.core.ImageAnalysis;
-import androidx.camera.core.ImageProxy;
 
 import com.example.sistemidigitali.model.AnalyzeActivity;
 import com.example.sistemidigitali.model.CameraProvider;
 import com.example.sistemidigitali.model.CustomObjectDetector;
 import com.example.sistemidigitali.model.ImageSavedEvent;
+import com.example.sistemidigitali.model.LiveDetectionView;
 import com.example.sistemidigitali.model.Permission;
 import com.google.android.material.chip.Chip;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 
 import org.greenrobot.eventbus.EventBus;
+import org.tensorflow.lite.task.vision.detector.Detection;
 
 import java.io.IOException;
+import java.util.List;
 
-public class MainActivity extends AppCompatActivity implements ImageAnalysis.Analyzer {
+public class MainActivity extends AppCompatActivity {
 
     public static final String ACTIVITY_IMAGE = "com.example.sistemidigitali.IMAGE";
 
     private Permission permission;
     private CameraProvider cameraProvider;
 
+    private LiveDetectionView liveDetectionView;
     private Chip liveDetectionSwitch;
     private FloatingActionButton switchCameraButton;
     private FloatingActionButton galleryButton;
@@ -45,6 +46,7 @@ public class MainActivity extends AppCompatActivity implements ImageAnalysis.Ana
 
         this.permission = new Permission();
         this.cameraProvider = new CameraProvider(this,  findViewById(R.id.previewView));
+        this.liveDetectionView = findViewById(R.id.liveDetectionView);
         this.liveDetectionSwitch = findViewById(R.id.liveDetectionSwitch);
         this.switchCameraButton = findViewById(R.id.switchCameraButton);
         this.galleryButton = findViewById(R.id.galleryButton);
@@ -52,6 +54,12 @@ public class MainActivity extends AppCompatActivity implements ImageAnalysis.Ana
         try {
             this.cameraProvider.setObjectDetector(new CustomObjectDetector(this));
             this.liveDetectionSwitch.setOnCheckedChangeListener((view, isChecked) -> {
+                if(isChecked) {
+                    this.liveDetectionSwitch.setTextColor(Color.WHITE);
+                } else {
+                    this.liveDetectionSwitch.setTextColor(Color.BLACK);
+                    this.liveDetectionView.clear();
+                }
                 this.cameraProvider.setLiveDetection(isChecked);
             });
         } catch (IOException e) {
@@ -64,12 +72,7 @@ public class MainActivity extends AppCompatActivity implements ImageAnalysis.Ana
                     new int[] { android.R.attr.state_pressed}  // pressed
             };
 
-            int[] colors = new int[] {
-                    Color.RED,
-                    Color.RED,
-                    Color.RED,
-                    Color.RED
-            };
+            int[] colors = new int[] { Color.RED, Color.RED, Color.RED, Color.RED };
             this.liveDetectionSwitch.setChipBackgroundColor(new ColorStateList(states, colors));
         }
 
@@ -106,8 +109,8 @@ public class MainActivity extends AppCompatActivity implements ImageAnalysis.Ana
         this.startActivity(intent);
     }
 
-    @Override
-    public void analyze(@NonNull ImageProxy image) {
-
+    public void drawDetectionRects(List<Detection> detections) {
+        this.liveDetectionView.setDetections(detections);
+        this.liveDetectionView.invalidate();
     }
 }

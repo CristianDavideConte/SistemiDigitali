@@ -1,7 +1,6 @@
 package com.example.sistemidigitali.model;
 
 import android.annotation.SuppressLint;
-import android.app.Activity;
 import android.content.ContentValues;
 import android.content.Intent;
 import android.graphics.Bitmap;
@@ -42,7 +41,6 @@ import org.tensorflow.lite.task.vision.detector.Detection;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
 import java.text.SimpleDateFormat;
-import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 import java.util.concurrent.Executor;
@@ -59,10 +57,11 @@ public class CameraProvider {
     private CustomObjectDetector objectDetector;
     private boolean liveDetection;
 
-    private Activity context;
+    private MainActivity context;
+    private Thread analyzerThread;
 
     @SuppressLint("ClickableViewAccessibility")
-    public CameraProvider(Activity context, PreviewView pview) {
+    public CameraProvider(MainActivity context, PreviewView pview) {
         this.context = context;
         this.pview = pview;
         this.liveDetection = false;
@@ -207,53 +206,29 @@ public class CameraProvider {
     }
 
     /**
-     *
-     * @param imageProxy
+     * Analyzes the given an imageProxy, and update the main view associated
+     * with this cameraProvider by drawing all the detections' rectangles on it.
+     * The next analysis will be executed only after the current one closes the imageProxy.
+     * @param imageProxy The imageProxy of the image to analyze
      */
     @SuppressLint("UnsafeOptInUsageError")
-    public List<Detection> analyze(@NonNull ImageProxy imageProxy) {
-        List<Detection> detections = new ArrayList<>();
-        //Trova un modo per disegnare i rettangoli in live
-        if(this.objectDetector != null && this.liveDetection) {
-            TensorImage tensorImage = new TensorImage();
-            tensorImage.load(imageProxy.getImage());
-            detections = this.objectDetector.detect(tensorImage);
-        }
-        imageProxy.close();
-
-        /*Canvas canvas = new Canvas(image);
-        Paint boxPaint = new Paint();
-        Paint textPaint = new Paint();
-        boxPaint.setStyle(Paint.Style.STROKE);
-        boxPaint.setStrokeWidth(10);
-        textPaint.setTextSize(70);
-
-        detections.parallelStream().forEach((obj) -> {
-            int color = Color.rgb(
-                    (int) (Math.random() * 255),
-                    (int) (Math.random() * 255),
-                    (int) (Math.random() * 255)
-            );
-            boxPaint.setColor(color);
-            textPaint.setColor(color);
-
-            RectF boundingBox = obj.getBoundingBox();
-            int top = (int) boundingBox.top;
-            int right = (int) boundingBox.right;
-            int bottom = (int) boundingBox.bottom;
-            int left = (int) boundingBox.left;
-
-            canvas.drawRect(left, top, right, bottom, boxPaint);
-            canvas.drawText(obj.getCategories().get(0).getLabel(), 0.5f * (right + left), 0.5f * (top + bottom), textPaint);
+    public void analyze(@NonNull ImageProxy imageProxy) {
+        this.analyzerThread = new Thread(() -> {
+            if (this.objectDetector != null && this.liveDetection) {
+                TensorImage tensorImage = new TensorImage();
+                tensorImage.load(imageProxy.getImage());
+                List<Detection> detections = this.objectDetector.detect(tensorImage);
+                if(!this.analyzerThread.isInterrupted()) {
+                    this.context.drawDetectionRects(detections);
+                }
+            }
+            imageProxy.close();
         });
-
-        //this.pview.setImageResource(0);
-        this.pview.draw(canvas);
-        //this.pview.setImageBitmap(bitmapImage);*/
-        return detections;
+        this.analyzerThread.start();
     }
 
     public void setLiveDetection(boolean liveDetection) {
+        if(!liveDetection) this.analyzerThread.interrupt();
         this.liveDetection = liveDetection;
     }
 

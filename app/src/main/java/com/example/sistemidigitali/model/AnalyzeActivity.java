@@ -137,25 +137,6 @@ public class AnalyzeActivity extends AppCompatActivity {
 
                     runOnUiThread(() -> {
                         println("DETECTED OBJS: " + objs.size());
-                        /*objs.parallelStream().forEach((obj) -> {
-                            println("LABEL: " + obj.getCategories().get(0).getLabel());
-                            int color = Color.rgb(
-                                    (int) (Math.random() * 255),
-                                    (int) (Math.random() * 255),
-                                    (int) (Math.random() * 255)
-                            );
-                            boxPaint.setColor(color);
-                            textPaint.setColor(color);
-
-                            RectF boundingBox = obj.getBoundingBox();
-                            int top = (int) boundingBox.top;
-                            int right = (int) boundingBox.right;
-                            int bottom = (int) boundingBox.bottom;
-                            int left = (int) boundingBox.left;
-
-                            canvas.drawRect(left, top, right, bottom, boxPaint);
-                            canvas.drawText(obj.getCategories().get(0).getLabel(), 0.5f * (right + left), 0.5f * (top + bottom), textPaint);
-                        });*/
 
                         for (Detection obj : objs) {
                             println("LABEL: " + obj.getCategories().get(0).getLabel());

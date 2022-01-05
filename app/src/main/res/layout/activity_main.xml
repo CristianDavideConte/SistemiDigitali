@@ -22,6 +22,11 @@
 
         </androidx.camera.view.PreviewView>
 
+        <com.example.sistemidigitali.model.LiveDetectionView
+            android:id="@+id/liveDetectionView"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent" />
+
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="match_parent"
@@ -90,10 +95,12 @@
             <com.google.android.material.chip.Chip
                 android:id="@+id/liveDetectionSwitch"
                 android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
+                android:layout_height="65dp"
                 android:layout_weight="0"
                 android:checkable="true"
                 android:text="Live Detection"
+                android:textColor="#000000"
+                android:translationY="15dp"
                 app:checkedIconVisible="false"
                 app:chipBackgroundColor="@color/chip_bg_states"
                 app:chipIconVisible="false"
