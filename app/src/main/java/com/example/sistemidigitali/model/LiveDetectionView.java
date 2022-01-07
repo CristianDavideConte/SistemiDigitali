@@ -3,6 +3,7 @@ package com.example.sistemidigitali.model;
 import static com.example.sistemidigitali.debugUtility.Debug.println;
 
 import android.content.Context;
+import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
@@ -64,8 +65,8 @@ public class LiveDetectionView extends View {
         this.detections.parallelStream().forEach((obj) -> {
             RectF boundingBox = obj.getBoundingBox();
             println(obj.getCategories().get(0).getScore());
-            canvas.drawRect(boundingBox, boxPaint);
 
+            canvas.drawRect(boundingBox, boxPaint);
             //Calculates the right font size
             RectF tagSize = new RectF(0, 0, 0, 0);
             String text = obj.getCategories().get(0).getLabel();
@@ -82,5 +83,10 @@ public class LiveDetectionView extends View {
                     boundingBox.top + tagSize.height() * 1F, this.textPaint
             );
         });
+    }
+
+    public void debug(Bitmap image){
+        Canvas canvas = new Canvas(image);
+        this.draw(canvas);
     }
 }

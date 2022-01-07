@@ -8,6 +8,7 @@ import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Matrix;
+import android.media.Image;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.Environment;
@@ -31,7 +32,6 @@ import androidx.camera.core.Preview;
 import androidx.camera.lifecycle.ProcessCameraProvider;
 import androidx.camera.view.PreviewView;
 import androidx.core.content.ContextCompat;
-import androidx.lifecycle.LifecycleOwner;
 
 import com.example.sistemidigitali.MainActivity;
 import com.google.common.util.concurrent.ListenableFuture;
@@ -110,16 +110,19 @@ public class CameraProvider {
                 Preview preview = new Preview.Builder().build();
                 preview.setSurfaceProvider(this.pview.getSurfaceProvider());
 
-                this.imageCapt = new ImageCapture.Builder().setCaptureMode(ImageCapture.CAPTURE_MODE_MINIMIZE_LATENCY).build();
+                this.imageCapt = new ImageCapture.Builder()
+                                .setCaptureMode(ImageCapture.CAPTURE_MODE_MINIMIZE_LATENCY)
+                                .build();
                 this.imageAnalysis = new ImageAnalysis.Builder()
                                 // enable the following line if RGBA output is needed.
                                 //.setOutputImageFormat(ImageAnalysis.OUTPUT_IMAGE_FORMAT_RGBA_8888)
                                 .setTargetResolution(new Size(1280, 720))
                                 .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
+                                .setOutputImageRotationEnabled(true)
                                 .build();
 
                 this.imageAnalysis.setAnalyzer(this.getExecutor(), (proxy) -> this.analyze(proxy));
-                this.camera = cameraProvider.bindToLifecycle((LifecycleOwner) this.context, cameraSelector, this.imageAnalysis, preview, this.imageCapt);
+                this.camera = cameraProvider.bindToLifecycle(this.context, cameraSelector, this.imageAnalysis, preview, this.imageCapt);
             } catch (Exception e) {
                 e.printStackTrace();
             }
@@ -218,14 +221,17 @@ public class CameraProvider {
     public void analyze(@NonNull ImageProxy imageProxy) {
         this.analyzerThread = new Thread(() -> {
             if (this.objectDetector != null && this.liveDetection) {
+                int rotationDegree = imageProxy.getImageInfo().getRotationDegrees();
+                println(rotationDegree + " " + this.context.getDisplay().getRotation());
                 TensorImage tensorImage = new TensorImage();
-                tensorImage.load(imageProxy.getImage()); //Probabilmente sta conversione o l'immagine sono sbagliati (rettangolo viene in alto)
+                tensorImage.load(imageProxy.getImage());
+
                 List<Detection> detections = this.objectDetector.detect(tensorImage);
                 if(!this.analyzerThread.isInterrupted()){
+                    //this.context.debug(bitmap);
                     this.context.drawDetectionRects(detections);
                 }
             }
-            println("Closed");
             imageProxy.close();
         });
         this.analyzerThread.start();
@@ -257,7 +263,12 @@ public class CameraProvider {
      * @param flipNeeded True if image needs to be mirrored on the y-axis, false otherwise.
      * @return The corresponding Bitmap image
      */
+    @SuppressLint("UnsafeOptInUsageError")
     private Bitmap convertImageProxyToBitmap(@NonNull ImageProxy image, boolean flipNeeded) {
+        return convertImageToBitmap(image.getImage(), image.getImageInfo().getRotationDegrees(), flipNeeded);
+    }
+
+    private Bitmap convertImageToBitmap(@NonNull Image image, int rotationDegree, boolean flipNeeded) {
         ByteBuffer byteBuffer = image.getPlanes()[0].getBuffer();
         byteBuffer.rewind();
         byte[] bytes = new byte[byteBuffer.capacity()];
@@ -269,7 +280,7 @@ public class CameraProvider {
 
         Bitmap bitmap = BitmapFactory.decodeByteArray(bytes, 0, bytes.length, decodeOptions);
         Matrix matrix = new Matrix();
-        matrix.postRotate(image.getImageInfo().getRotationDegrees());
+        matrix.postRotate(rotationDegree);
         if(flipNeeded) matrix.preScale(1.0f, -1.0f); //flip the image on the y-axis
 
         bitmap = Bitmap.createBitmap(bitmap, 0, 0, image.getWidth(), image.getHeight(), matrix, flipNeeded);
