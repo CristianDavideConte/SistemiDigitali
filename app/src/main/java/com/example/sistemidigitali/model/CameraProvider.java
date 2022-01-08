@@ -1,7 +1,5 @@
 package com.example.sistemidigitali.model;
 
-import static com.example.sistemidigitali.debugUtility.Debug.println;
-
 import android.annotation.SuppressLint;
 import android.content.ContentValues;
 import android.content.Intent;
@@ -13,7 +11,6 @@ import android.net.Uri;
 import android.os.Bundle;
 import android.os.Environment;
 import android.provider.MediaStore;
-import android.util.Size;
 import android.view.MotionEvent;
 import android.view.ScaleGestureDetector;
 import android.widget.Toast;
@@ -116,7 +113,6 @@ public class CameraProvider {
                 this.imageAnalysis = new ImageAnalysis.Builder()
                                 // enable the following line if RGBA output is needed.
                                 //.setOutputImageFormat(ImageAnalysis.OUTPUT_IMAGE_FORMAT_RGBA_8888)
-                                .setTargetResolution(new Size(1280, 720))
                                 .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
                                 .setOutputImageRotationEnabled(true)
                                 .build();
@@ -221,15 +217,15 @@ public class CameraProvider {
     public void analyze(@NonNull ImageProxy imageProxy) {
         this.analyzerThread = new Thread(() -> {
             if (this.objectDetector != null && this.liveDetection) {
-                int rotationDegree = imageProxy.getImageInfo().getRotationDegrees();
-                println(rotationDegree + " " + this.context.getDisplay().getRotation());
+                int rectsWidth = imageProxy.getWidth();
+                int rectsHeight = imageProxy.getHeight();
+
                 TensorImage tensorImage = new TensorImage();
                 tensorImage.load(imageProxy.getImage());
 
                 List<Detection> detections = this.objectDetector.detect(tensorImage);
                 if(!this.analyzerThread.isInterrupted()){
-                    //this.context.debug(bitmap);
-                    this.context.drawDetectionRects(detections);
+                    this.context.drawDetectionRects(detections, rectsWidth, rectsHeight);
                 }
             }
             imageProxy.close();
@@ -240,7 +236,7 @@ public class CameraProvider {
     public void setLiveDetection(boolean liveDetection) {
         if(!liveDetection) {
             this.analyzerThread.interrupt();
-            this.context.drawDetectionRects(new ArrayList<>());
+            this.context.drawDetectionRects(new ArrayList<>(), 1,1);
         }
         this.liveDetection = liveDetection;
     }

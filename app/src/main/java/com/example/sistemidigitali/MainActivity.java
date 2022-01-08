@@ -3,7 +3,6 @@ package com.example.sistemidigitali;
 import android.Manifest;
 import android.content.Intent;
 import android.content.res.ColorStateList;
-import android.graphics.Bitmap;
 import android.graphics.Color;
 import android.net.Uri;
 import android.os.Bundle;
@@ -105,12 +104,8 @@ public class MainActivity extends AppCompatActivity {
         this.startActivity(intent);
     }
 
-    public void drawDetectionRects(List<Detection> detections) {
-        this.liveDetectionView.setDetections(detections);
+    public void drawDetectionRects(List<Detection> detections, float rectsWidth, float rectsHeight) {
+        this.liveDetectionView.setDetections(detections, rectsWidth, rectsHeight);
         this.liveDetectionView.invalidate();
-    }
-
-    public void debug(Bitmap image) {
-        this.liveDetectionView.debug(image);
     }
 }

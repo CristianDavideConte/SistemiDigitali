@@ -1,11 +1,9 @@
 package com.example.sistemidigitali.model;
 
-import static com.example.sistemidigitali.debugUtility.Debug.println;
-
 import android.content.Context;
-import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.graphics.Color;
+import android.graphics.Matrix;
 import android.graphics.Paint;
 import android.graphics.RectF;
 import android.util.AttributeSet;
@@ -20,6 +18,9 @@ public class LiveDetectionView extends View {
     private float MAX_FONT_SIZE = 96F;
 
     private List<Detection> detections;
+    private float rectsWidth;
+    private float rectsHeight;
+
     private Paint boxPaint;
     private Paint textPaint;
 
@@ -38,8 +39,10 @@ public class LiveDetectionView extends View {
         init();
     }
 
-    public void setDetections(List<Detection> detections) {
+    public void setDetections(List<Detection> detections, float rectsWidth, float rectsHeight) {
         this.detections = detections;
+        this.rectsWidth = rectsWidth;
+        this.rectsHeight = rectsHeight;
     }
 
     public void init() {
@@ -59,12 +62,16 @@ public class LiveDetectionView extends View {
     @Override
     public void onDraw(Canvas canvas) {
         super.onDraw(canvas);
+        float scaleX = canvas.getWidth() / this.rectsWidth;
+        float scaleY = canvas.getHeight() / this.rectsHeight;
 
-        //Capisci perchè i rettangoli (delle detection) sono disegnati solo
-        //nella parte alta della view
         this.detections.parallelStream().forEach((obj) -> {
             RectF boundingBox = obj.getBoundingBox();
-            println(obj.getCategories().get(0).getScore());
+
+            //Scale the bounding rectangles if necessary
+            Matrix matrix = new Matrix();
+            matrix.preScale(scaleX, scaleY);
+            matrix.mapRect(boundingBox);
 
             canvas.drawRect(boundingBox, boxPaint);
             //Calculates the right font size
@@ -83,10 +90,5 @@ public class LiveDetectionView extends View {
                     boundingBox.top + tagSize.height() * 1F, this.textPaint
             );
         });
-    }
-
-    public void debug(Bitmap image){
-        Canvas canvas = new Canvas(image);
-        this.draw(canvas);
     }
 }
