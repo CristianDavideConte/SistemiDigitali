@@ -3,6 +3,7 @@ package com.example.sistemidigitali.model;
 import static com.example.sistemidigitali.debugUtility.Debug.println;
 
 import android.annotation.SuppressLint;
+import android.content.res.ColorStateList;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.graphics.Color;
@@ -11,7 +12,6 @@ import android.graphics.Paint;
 import android.graphics.RectF;
 import android.net.Uri;
 import android.os.Bundle;
-import android.widget.Button;
 import android.widget.ImageView;
 import android.widget.Toast;
 
@@ -20,6 +20,7 @@ import androidx.appcompat.app.AppCompatActivity;
 import com.bogdwellers.pinchtozoom.ImageMatrixTouchHandler;
 import com.example.sistemidigitali.MainActivity;
 import com.example.sistemidigitali.R;
+import com.google.android.material.chip.Chip;
 
 import org.greenrobot.eventbus.EventBus;
 import org.greenrobot.eventbus.Subscribe;
@@ -37,8 +38,7 @@ public class AnalyzeActivity extends AppCompatActivity {
     private TensorImage originalImageTensor;
 
     private ImageView analyzeView;
-    private Button clearButton;
-    private Button analyzeButton;
+    private Chip analyzeButton;
     private CustomObjectDetector objectDetector;
 
 
@@ -48,7 +48,6 @@ public class AnalyzeActivity extends AppCompatActivity {
         setContentView(R.layout.activity_analyze);
 
         this.analyzeView = findViewById(R.id.analyzeView);
-        this.clearButton = findViewById(R.id.buttonclearAnalysysButton);
         this.analyzeButton = findViewById(R.id.analyzeButton);
 
         //Get input informations
@@ -101,14 +100,31 @@ public class AnalyzeActivity extends AppCompatActivity {
             this.originalImageTensor = TensorImage.fromBitmap(originalImage);
             this.objectDetector = new CustomObjectDetector(this);
 
-            this.clearButton.setOnClickListener((view) -> {
-                this.originalImage = bitmapImage.copy(Bitmap.Config.ARGB_8888, true);
-                this.analyzeView.setImageBitmap(this.originalImage);
-            });
-            this.analyzeButton.setOnClickListener((view) -> {
-                this.originalImage = bitmapImage.copy(Bitmap.Config.ARGB_8888, true);
-                this.detectObjects(this.originalImage);
-            });
+            try {
+                this.analyzeButton.setOnCheckedChangeListener((view, isChecked) -> {
+                    this.originalImage = bitmapImage.copy(Bitmap.Config.ARGB_8888, true);
+                    if(isChecked) {
+                        this.analyzeButton.setCheckable(false);
+                        this.analyzeButton.setText("Clear");
+                        this.detectObjects(this.originalImage);
+                    } else {
+                        this.analyzeButton.setText("Analyze");
+                        this.analyzeView.setImageBitmap(this.originalImage);
+                    }
+                });
+            } catch (Exception e) {
+                this.analyzeButton.setCheckable(false);
+                this.analyzeButton.setTextColor(Color.WHITE);
+                int[][] states = new int[][] {
+                        new int[] { android.R.attr.state_enabled}, // enabled
+                        new int[] {-android.R.attr.state_enabled}, // disabled
+                        new int[] {-android.R.attr.state_checked}, // unchecked
+                        new int[] { android.R.attr.state_pressed}  // pressed
+                };
+
+                int[] colors = new int[] { Color.RED, Color.RED, Color.RED, Color.RED };
+                this.analyzeButton.setChipBackgroundColor(new ColorStateList(states, colors));
+            }
 
             runOnUiThread(() -> {
                 this.analyzeView.setOnTouchListener(new ImageMatrixTouchHandler(this)); //Handles pitch-to-zoom on image views
@@ -161,6 +177,7 @@ public class AnalyzeActivity extends AppCompatActivity {
                         this.analyzeView.setImageResource(0);
                         this.analyzeView.draw(canvas);
                         this.analyzeView.setImageBitmap(bitmapImage);
+                        this.analyzeButton.setCheckable(true);
                     });
                 }
         ).start();

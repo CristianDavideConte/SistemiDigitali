@@ -53,10 +53,7 @@ public class MainActivity extends AppCompatActivity {
         this.shutterButton = findViewById(R.id.shutterButton);
         try {
             this.cameraProvider.setObjectDetector(new CustomObjectDetector(this));
-            this.liveDetectionSwitch.setOnCheckedChangeListener((view, isChecked) -> {
-                this.liveDetectionSwitch.setTextColor(isChecked ? Color.WHITE : Color.BLACK);
-                this.cameraProvider.setLiveDetection(isChecked);
-            });
+            this.liveDetectionSwitch.setOnCheckedChangeListener((view, isChecked) -> this.cameraProvider.setLiveDetection(isChecked));
         } catch (IOException e) {
             this.liveDetectionSwitch.setCheckable(false);
             this.liveDetectionSwitch.setTextColor(Color.WHITE);
