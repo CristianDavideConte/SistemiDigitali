@@ -25,8 +25,8 @@ public class CustomObjectDetector {
         ObjectDetectorOptions options =
                 ObjectDetectorOptions.builder()
                         .setBaseOptions(BaseOptions.builder().useNnapi().build())
-                        //.setScoreThreshold(0.3f) //1% sicurezza sulla predizione
-                        .setMaxResults(1)
+                        .setScoreThreshold(0.3f) //30% sicurezza sulla predizione
+                        .setMaxResults(10)
                         .build();
 
         this.detector = ObjectDetector.createFromFileAndOptions(this.context, METADATA_FILE, options);

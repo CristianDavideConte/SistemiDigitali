@@ -155,7 +155,7 @@ public class AnalyzeActivity extends AppCompatActivity {
                         println("DETECTED OBJS: " + objs.size());
 
                         for (Detection obj : objs) {
-                            println("LABEL: " + obj.getCategories().get(0).getLabel());
+                            println("LABEL: " + obj.getCategories().get(0).getLabel() + "\nACCURACY: " + obj.getCategories().get(0).getScore());
                             int color = Color.rgb(
                                     (int) (Math.random() * 255),
                                     (int) (Math.random() * 255),

@@ -9,13 +9,14 @@ import android.graphics.RectF;
 import android.util.AttributeSet;
 import android.view.View;
 
+import org.tensorflow.lite.support.label.Category;
 import org.tensorflow.lite.task.vision.detector.Detection;
 
 import java.util.ArrayList;
 import java.util.List;
 
 public class LiveDetectionView extends View {
-    private float MAX_FONT_SIZE = 96F;
+    private float MAX_FONT_SIZE = 70F;
 
     private List<Detection> detections;
     private float rectsWidth;
@@ -74,20 +75,14 @@ public class LiveDetectionView extends View {
             matrix.mapRect(boundingBox);
 
             canvas.drawRect(boundingBox, boxPaint);
-            //Calculates the right font size
-            RectF tagSize = new RectF(0, 0, 0, 0);
-            String text = obj.getCategories().get(0).getLabel();
+            Category category = obj.getCategories().get(0);
+            String accuracy = String.format("%.2f", category.getScore() * 100);
+            String label = category.getLabel();
+
             this.textPaint.setTextSize(MAX_FONT_SIZE);
-            float fontSize = this.textPaint.getTextSize() * boundingBox.width() / tagSize.width();
-
-            //Adjusts the font size so texts are inside the bounding box
-            if (fontSize < this.textPaint.getTextSize()) this.textPaint.setTextSize(fontSize);
-
-            float margin = (boundingBox.width() - tagSize.width()) / 2.0F;
-            if (margin < 0F) margin = 0F;
             canvas.drawText(
-                    text, boundingBox.left + margin,
-                    boundingBox.top + tagSize.height() * 1F, this.textPaint
+                     accuracy + "% " + label, boundingBox.left,
+                    boundingBox.top, this.textPaint
             );
         });
     }
