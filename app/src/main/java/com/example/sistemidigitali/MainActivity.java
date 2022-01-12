@@ -101,8 +101,8 @@ public class MainActivity extends AppCompatActivity {
         this.startActivity(intent);
     }
 
-    public void drawDetectionRects(List<Detection> detections, float rectsWidth, float rectsHeight) {
-        this.liveDetectionView.setDetections(detections, rectsWidth, rectsHeight);
+    public void drawDetectionRects(List<Detection> detections, float rectsWidth, float rectsHeight, boolean flipNeeded) {
+        this.liveDetectionView.setDetections(detections, rectsWidth, rectsHeight, flipNeeded);
         this.liveDetectionView.invalidate();
     }
 }

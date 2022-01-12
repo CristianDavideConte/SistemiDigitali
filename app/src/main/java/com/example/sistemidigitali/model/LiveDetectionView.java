@@ -19,10 +19,13 @@ import java.util.List;
 
 public class LiveDetectionView extends View {
     private float MAX_FONT_SIZE = 70F;
+    private float CANVAS_CENTER_DEFAULT_VALUE = -1.0F;
 
     private List<Detection> detections;
     private float rectsWidth;
     private float rectsHeight;
+    private float canvasCenter;
+    private boolean flipNeeded;
 
     private Paint boxPaint;
     private Paint textPaint;
@@ -42,14 +45,17 @@ public class LiveDetectionView extends View {
         init();
     }
 
-    public void setDetections(List<Detection> detections, float rectsWidth, float rectsHeight) {
+    public void setDetections(List<Detection> detections, float rectsWidth, float rectsHeight, boolean flipNeeded) {
         this.detections = detections;
         this.rectsWidth = rectsWidth;
         this.rectsHeight = rectsHeight;
+        this.flipNeeded = flipNeeded;
     }
 
     public void init() {
         this.detections = new ArrayList<>();
+        this.canvasCenter = CANVAS_CENTER_DEFAULT_VALUE;
+        this.flipNeeded = false;
         this.boxPaint = new Paint();
         this.textPaint = new Paint();
 
@@ -67,18 +73,21 @@ public class LiveDetectionView extends View {
         super.onDraw(canvas);
         float scaleX = canvas.getWidth() / this.rectsWidth;
         float scaleY = canvas.getHeight() / this.rectsHeight;
+        if(this.canvasCenter == CANVAS_CENTER_DEFAULT_VALUE) this.canvasCenter = canvas.getWidth() / 2;
 
         println(canvas.getWidth() + " " + canvas.getHeight());
         this.detections.parallelStream().forEach((obj) -> {
             RectF boundingBox = obj.getBoundingBox();
 
-            println("BEFORE " + ( boundingBox.right - boundingBox.left) + " " + (boundingBox.bottom - boundingBox.top));
-            //Scale the bounding rectangles if necessary
+            //Scale the bounding rectangles and flip on y-axis if necessary
             Matrix matrix = new Matrix();
-            matrix.postScale(scaleX, scaleY);
+            matrix.preScale(scaleX, scaleY);
             matrix.mapRect(boundingBox);
+            if(this.flipNeeded) {
+                float left = 2 * this.canvasCenter - boundingBox.right;
+                boundingBox.set(left, boundingBox.top, left + boundingBox.width(), boundingBox.bottom);
+            }
 
-            println("AFTER " + ( boundingBox.right - boundingBox.left) + " " + (boundingBox.bottom - boundingBox.top));
             canvas.drawRect(boundingBox, boxPaint);
             Category category = obj.getCategories().get(0);
             String accuracy = String.format("%.2f", category.getScore() * 100);

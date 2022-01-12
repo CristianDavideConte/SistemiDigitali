@@ -1,7 +1,5 @@
 package com.example.sistemidigitali.model;
 
-import static com.example.sistemidigitali.debugUtility.Debug.println;
-
 import android.annotation.SuppressLint;
 import android.content.ContentValues;
 import android.content.Intent;
@@ -117,6 +115,7 @@ public class CameraProvider {
                                 //.setOutputImageFormat(ImageAnalysis.OUTPUT_IMAGE_FORMAT_RGBA_8888)
                                 .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
                                 .setOutputImageRotationEnabled(true)
+
                                 .build();
 
                 this.imageAnalysis.setAnalyzer(this.getExecutor(), (proxy) -> this.analyze(proxy));
@@ -222,13 +221,12 @@ public class CameraProvider {
                 int rectsWidth = imageProxy.getWidth();
                 int rectsHeight = imageProxy.getHeight();
 
-                println(rectsWidth + " " + rectsHeight+" "+ this.context.getDisplay().getWidth() + " " + this.context.getDisplay().getHeight());
                 TensorImage tensorImage = new TensorImage();
                 tensorImage.load(imageProxy.getImage());
 
                 List<Detection> detections = this.objectDetector.detect(tensorImage);
                 if(!this.analyzerThread.isInterrupted()){
-                    this.context.drawDetectionRects(detections, rectsWidth, rectsHeight);
+                    this.context.drawDetectionRects(detections, rectsWidth, rectsHeight, currentLensOrientation == CameraSelector.LENS_FACING_FRONT);
                 }
             }
             imageProxy.close();
@@ -239,7 +237,7 @@ public class CameraProvider {
     public void setLiveDetection(boolean liveDetection) {
         if(!liveDetection) {
             this.analyzerThread.interrupt();
-            this.context.drawDetectionRects(new ArrayList<>(), 1,1);
+            this.context.drawDetectionRects(new ArrayList<>(), 1,1, false);
         }
         this.liveDetection = liveDetection;
     }
