@@ -1,5 +1,7 @@
 package com.example.sistemidigitali.model;
 
+import static com.example.sistemidigitali.debugUtility.Debug.println;
+
 import android.annotation.SuppressLint;
 import android.content.ContentValues;
 import android.content.Intent;
@@ -220,6 +222,7 @@ public class CameraProvider {
                 int rectsWidth = imageProxy.getWidth();
                 int rectsHeight = imageProxy.getHeight();
 
+                println(rectsWidth + " " + rectsHeight+" "+ this.context.getDisplay().getWidth() + " " + this.context.getDisplay().getHeight());
                 TensorImage tensorImage = new TensorImage();
                 tensorImage.load(imageProxy.getImage());
 
@@ -279,7 +282,9 @@ public class CameraProvider {
         matrix.postRotate(rotationDegree);
         if(flipNeeded) matrix.preScale(1.0f, -1.0f); //flip the image on the y-axis
 
-        bitmap = Bitmap.createBitmap(bitmap, 0, 0, image.getWidth(), image.getHeight(), matrix, flipNeeded);
+        int width = Math.min(image.getWidth(), bitmap.getWidth());
+        int height = Math.min(image.getHeight(), bitmap.getHeight());
+        bitmap = Bitmap.createBitmap(bitmap, 0, 0, width, height, matrix, flipNeeded);
         return bitmap;
     }
 }

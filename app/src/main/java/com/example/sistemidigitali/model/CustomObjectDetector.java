@@ -13,7 +13,8 @@ import java.util.List;
 
 public class CustomObjectDetector {
 
-    private final String METADATA_FILE = "model.tflite";
+    //private final String METADATA_FILE = "model.tflite";
+    private final String MODEL_FILE = "model_light.tflite";
 
     private ObjectDetector detector;
     private Context context;
@@ -29,7 +30,7 @@ public class CustomObjectDetector {
                         .setMaxResults(10)
                         .build();
 
-        this.detector = ObjectDetector.createFromFileAndOptions(this.context, METADATA_FILE, options);
+        this.detector = ObjectDetector.createFromFileAndOptions(this.context, MODEL_FILE, options);
     }
 
     /**

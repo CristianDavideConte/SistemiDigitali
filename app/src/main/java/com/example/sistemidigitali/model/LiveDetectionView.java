@@ -1,5 +1,7 @@
 package com.example.sistemidigitali.model;
 
+import static com.example.sistemidigitali.debugUtility.Debug.println;
+
 import android.content.Context;
 import android.graphics.Canvas;
 import android.graphics.Color;
@@ -66,14 +68,17 @@ public class LiveDetectionView extends View {
         float scaleX = canvas.getWidth() / this.rectsWidth;
         float scaleY = canvas.getHeight() / this.rectsHeight;
 
+        println(canvas.getWidth() + " " + canvas.getHeight());
         this.detections.parallelStream().forEach((obj) -> {
             RectF boundingBox = obj.getBoundingBox();
 
+            println("BEFORE " + ( boundingBox.right - boundingBox.left) + " " + (boundingBox.bottom - boundingBox.top));
             //Scale the bounding rectangles if necessary
             Matrix matrix = new Matrix();
-            matrix.preScale(scaleX, scaleY);
+            matrix.postScale(scaleX, scaleY);
             matrix.mapRect(boundingBox);
 
+            println("AFTER " + ( boundingBox.right - boundingBox.left) + " " + (boundingBox.bottom - boundingBox.top));
             canvas.drawRect(boundingBox, boxPaint);
             Category category = obj.getCategories().get(0);
             String accuracy = String.format("%.2f", category.getScore() * 100);
