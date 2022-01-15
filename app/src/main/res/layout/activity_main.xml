@@ -23,15 +23,72 @@
         </androidx.camera.view.PreviewView>
 
         <com.example.sistemidigitali.model.LiveDetectionView
-            android:id="@+id/liveDetectionView"
+            android:id="@+id/liveDetectionViewMain"
             android:layout_width="match_parent"
             android:layout_height="match_parent" />
 
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="match_parent"
+            android:gravity="center_horizontal|top"
+            android:orientation="horizontal"
+            android:animateLayoutChanges="true">
+
+            <com.google.android.material.chip.Chip
+                android:id="@+id/liveDetectionSwitch"
+                android:layout_width="wrap_content"
+                android:layout_height="73dp"
+                android:layout_margin="0dp"
+                android:layout_marginHorizontal="0dp"
+                android:layout_marginVertical="0dp"
+                android:layout_marginStart="0dp"
+                android:layout_marginLeft="0dp"
+                android:layout_marginTop="0dp"
+                android:layout_marginEnd="0dp"
+                android:layout_marginRight="0dp"
+                android:layout_marginBottom="0dp"
+                android:layout_weight="0"
+                android:checkable="true"
+                android:text="Live Detection"
+                android:textColor="#FFFFFF"
+                android:textSize="16sp"
+                android:translationY="15dp"
+                app:checkedIconVisible="false"
+                app:chipBackgroundColor="@color/chip_bg_states"
+                app:chipEndPadding="10dp"
+                app:chipIconVisible="false"
+                app:chipStartPadding="10dp"
+                app:chipSurfaceColor="#FFFFFF"
+                app:closeIconVisible="false" />
+
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:gravity="right|top"
+            android:orientation="horizontal"
+            android:animateLayoutChanges="true">
+
+            <com.google.android.material.floatingactionbutton.FloatingActionButton
+                android:id="@+id/hideUIButton"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_weight="0"
+                android:clickable="true"
+                android:translationX="-25dp"
+                android:translationY="24dp"
+                app:backgroundTint="#FFFFFF"
+                app:srcCompat="?android:attr/fingerprintAuthDrawable" />
+
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
             android:gravity="bottom"
-            android:orientation="horizontal">
+            android:orientation="horizontal"
+            android:animateLayoutChanges="true">
 
             <com.google.android.material.floatingactionbutton.FloatingActionButton
                 android:id="@+id/switchCameraButton"
@@ -49,7 +106,8 @@
             android:layout_width="match_parent"
             android:layout_height="match_parent"
             android:gravity="bottom|right"
-            android:orientation="horizontal">
+            android:orientation="horizontal"
+            android:animateLayoutChanges="true">
 
             <com.google.android.material.floatingactionbutton.FloatingActionButton
                 android:id="@+id/galleryButton"
@@ -69,7 +127,8 @@
             android:layout_width="match_parent"
             android:layout_height="match_parent"
             android:gravity="bottom|center_horizontal"
-            android:orientation="horizontal">
+            android:orientation="horizontal"
+            android:animateLayoutChanges="true">
 
             <com.google.android.material.floatingactionbutton.FloatingActionButton
                 android:id="@+id/shutterButton"
@@ -83,29 +142,6 @@
                 app:backgroundTint="#FFFFFF"
                 app:srcCompat="?android:attr/listChoiceIndicatorSingle"
                 tools:ignore="SpeakableTextPresentCheck" />
-
-        </LinearLayout>
-
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="match_parent"
-            android:gravity="center_horizontal|top"
-            android:orientation="horizontal">
-
-            <com.google.android.material.chip.Chip
-                android:id="@+id/liveDetectionSwitch"
-                android:layout_width="wrap_content"
-                android:layout_height="65dp"
-                android:layout_weight="0"
-                android:checkable="true"
-                android:text="Live Detection"
-                android:textColor="#FFFFFF"
-                android:translationY="15dp"
-                app:checkedIconVisible="false"
-                app:chipBackgroundColor="@color/chip_bg_states"
-                app:chipIconVisible="false"
-                app:chipSurfaceColor="#FFFFFF"
-                app:closeIconVisible="false" />
 
         </LinearLayout>
 

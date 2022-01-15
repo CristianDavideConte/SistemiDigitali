@@ -1,7 +1,5 @@
 package com.example.sistemidigitali.model;
 
-import static com.example.sistemidigitali.debugUtility.Debug.println;
-
 import android.annotation.SuppressLint;
 import android.content.res.ColorStateList;
 import android.graphics.Bitmap;
@@ -26,18 +24,21 @@ import org.greenrobot.eventbus.EventBus;
 import org.greenrobot.eventbus.Subscribe;
 import org.greenrobot.eventbus.ThreadMode;
 import org.tensorflow.lite.support.image.TensorImage;
+import org.tensorflow.lite.support.label.Category;
 import org.tensorflow.lite.task.vision.detector.Detection;
 
 import java.io.IOException;
 import java.util.List;
 
 public class AnalyzeActivity extends AppCompatActivity {
+    private float MAX_FONT_SIZE = 70F;
 
     private Uri imageUri;
     private Bitmap originalImage;
     private TensorImage originalImageTensor;
 
     private ImageView analyzeView;
+    private LiveDetectionView liveDetectionViewAnalyze;
     private Chip analyzeButton;
     private CustomObjectDetector objectDetector;
 
@@ -48,6 +49,7 @@ public class AnalyzeActivity extends AppCompatActivity {
         setContentView(R.layout.activity_analyze);
 
         this.analyzeView = findViewById(R.id.analyzeView);
+        this.liveDetectionViewAnalyze = findViewById(R.id.liveDetectionViewAnalyze);
         this.analyzeButton = findViewById(R.id.analyzeButton);
 
         //Get input informations
@@ -107,9 +109,14 @@ public class AnalyzeActivity extends AppCompatActivity {
                         this.analyzeButton.setCheckable(false);
                         this.analyzeButton.setText("Clear");
                         this.detectObjects(this.originalImage);
+                        //this.detectObjects();
                     } else {
                         this.analyzeButton.setText("Analyze");
                         this.analyzeView.setImageBitmap(this.originalImage);
+                        /*
+                        this.liveDetectionViewAnalyze.setDetections(new ArrayList<>(), 1, 1, false);
+                        this.liveDetectionViewAnalyze.invalidate();
+                        */
                     }
                 });
             } catch (Exception e) {
@@ -143,42 +150,50 @@ public class AnalyzeActivity extends AppCompatActivity {
     private void detectObjects(Bitmap bitmapImage) {
         new Thread(
                 () -> {
-                    List<Detection> objs = this.objectDetector.detect(this.originalImageTensor);
+                    List<Detection> detections = this.objectDetector.detect(this.originalImageTensor);
                     Canvas canvas = new Canvas(bitmapImage);
                     Paint boxPaint = new Paint();
                     Paint textPaint = new Paint();
                     boxPaint.setStyle(Paint.Style.STROKE);
+                    textPaint.setStyle(Paint.Style.FILL_AND_STROKE);
                     boxPaint.setStrokeWidth(10);
-                    textPaint.setTextSize(70);
+                    textPaint.setStrokeWidth(2F);
+                    textPaint.setTextSize(MAX_FONT_SIZE);
+                    boxPaint.setColor(Color.RED);
+                    textPaint.setColor(Color.GREEN);
 
                     runOnUiThread(() -> {
-                        println("DETECTED OBJS: " + objs.size());
-
-                        for (Detection obj : objs) {
-                            println("LABEL: " + obj.getCategories().get(0).getLabel() + "\nACCURACY: " + obj.getCategories().get(0).getScore());
-                            int color = Color.rgb(
-                                    (int) (Math.random() * 255),
-                                    (int) (Math.random() * 255),
-                                    (int) (Math.random() * 255)
-                            );
-                            boxPaint.setColor(color);
-                            textPaint.setColor(color);
-
+                        detections.parallelStream().forEach((obj) -> {
                             RectF boundingBox = obj.getBoundingBox();
-                            int top = (int) boundingBox.top;
-                            int right = (int) boundingBox.right;
-                            int bottom = (int) boundingBox.bottom;
-                            int left = (int) boundingBox.left;
 
-                            canvas.drawRect(left, top, right, bottom, boxPaint);
-                            canvas.drawText(obj.getCategories().get(0).getLabel(), 0.5f * (right + left),0.5f * (top  + bottom), textPaint);
-                        }
+                            canvas.drawRect(boundingBox, boxPaint);
+                            Category category = obj.getCategories().get(0);
+                            String accuracy = String.format("%.2f", category.getScore() * 100);
+                            String label = category.getLabel();
+
+                            canvas.drawText(accuracy + "% " + label, boundingBox.left, boundingBox.top, textPaint);
+                        });
 
                         this.analyzeView.setImageResource(0);
                         this.analyzeView.draw(canvas);
                         this.analyzeView.setImageBitmap(bitmapImage);
                         this.analyzeButton.setCheckable(true);
                     });
+                }
+        ).start();
+    }
+
+
+    private void detectObjects2() {
+        new Thread(
+                () -> {
+                    float scaleX = this.originalImage.getWidth() / this.analyzeView.getWidth();
+                    float scaleY = this.originalImage.getHeight() / this.analyzeView.getHeight();
+
+                    List<Detection> detections = this.objectDetector.detect(this.originalImageTensor);
+                    this.liveDetectionViewAnalyze.setDetections(detections, this.originalImage.getWidth(), this.originalImage.getHeight(), false);
+                    this.liveDetectionViewAnalyze.invalidate();
+                    this.analyzeButton.setCheckable(true);
                 }
         ).start();
     }

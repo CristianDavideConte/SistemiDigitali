@@ -6,6 +6,7 @@ import android.content.res.ColorStateList;
 import android.graphics.Color;
 import android.net.Uri;
 import android.os.Bundle;
+import android.view.View;
 
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
@@ -33,11 +34,16 @@ public class MainActivity extends AppCompatActivity {
     private Permission permission;
     private CameraProvider cameraProvider;
 
-    private LiveDetectionView liveDetectionView;
+    private LiveDetectionView liveDetectionViewMain;
+
     private Chip liveDetectionSwitch;
+    private FloatingActionButton hideUIButton;
+
     private FloatingActionButton switchCameraButton;
     private FloatingActionButton galleryButton;
     private FloatingActionButton shutterButton;
+
+    private int isUIVisible;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -46,11 +52,13 @@ public class MainActivity extends AppCompatActivity {
 
         this.permission = new Permission();
         this.cameraProvider = new CameraProvider(this,  findViewById(R.id.previewView));
-        this.liveDetectionView = findViewById(R.id.liveDetectionView);
+        this.liveDetectionViewMain = findViewById(R.id.liveDetectionViewMain);
         this.liveDetectionSwitch = findViewById(R.id.liveDetectionSwitch);
+        this.hideUIButton = findViewById(R.id.hideUIButton);
         this.switchCameraButton = findViewById(R.id.switchCameraButton);
         this.galleryButton = findViewById(R.id.galleryButton);
         this.shutterButton = findViewById(R.id.shutterButton);
+
         try {
             this.cameraProvider.setObjectDetector(new CustomObjectDetector(this));
             this.liveDetectionSwitch.setOnCheckedChangeListener((view, isChecked) -> this.cameraProvider.setLiveDetection(isChecked));
@@ -72,7 +80,7 @@ public class MainActivity extends AppCompatActivity {
             this.showAnalyzeActivity(uri); //If the file picked is an image the analyze activity is launched
         });
 
-
+        this.hideUIButton.setOnClickListener((view) -> this.changeUIVisibility());
         this.switchCameraButton.setOnClickListener((view) -> this.cameraProvider.switchCamera());
         this.galleryButton.setOnClickListener((view) -> mGetContent.launch("image/*")); //Shows the file picker for images only
         this.shutterButton.setOnClickListener((view) -> this.cameraProvider.captureImage());
@@ -101,8 +109,16 @@ public class MainActivity extends AppCompatActivity {
         this.startActivity(intent);
     }
 
+    private void changeUIVisibility() {
+        this.isUIVisible = this.isUIVisible == View.VISIBLE ? View.GONE : View.VISIBLE;
+        this.liveDetectionSwitch.setVisibility(this.isUIVisible);
+        this.switchCameraButton.setVisibility(this.isUIVisible);
+        this.shutterButton.setVisibility(this.isUIVisible);
+        this.galleryButton.setVisibility(this.isUIVisible);
+    }
+
     public void drawDetectionRects(List<Detection> detections, float rectsWidth, float rectsHeight, boolean flipNeeded) {
-        this.liveDetectionView.setDetections(detections, rectsWidth, rectsHeight, flipNeeded);
-        this.liveDetectionView.invalidate();
+        this.liveDetectionViewMain.setDetections(detections, rectsWidth, rectsHeight, flipNeeded);
+        this.liveDetectionViewMain.invalidate();
     }
 }

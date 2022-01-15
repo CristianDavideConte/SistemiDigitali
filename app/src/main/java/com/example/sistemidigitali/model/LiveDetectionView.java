@@ -1,7 +1,5 @@
 package com.example.sistemidigitali.model;
 
-import static com.example.sistemidigitali.debugUtility.Debug.println;
-
 import android.content.Context;
 import android.graphics.Canvas;
 import android.graphics.Color;
@@ -22,8 +20,8 @@ public class LiveDetectionView extends View {
     private float CANVAS_CENTER_DEFAULT_VALUE = -1.0F;
 
     private List<Detection> detections;
-    private float rectsWidth;
-    private float rectsHeight;
+    private float scaleX;
+    private float scaleY;
     private float canvasCenter;
     private boolean flipNeeded;
 
@@ -47,8 +45,8 @@ public class LiveDetectionView extends View {
 
     public void setDetections(List<Detection> detections, float rectsWidth, float rectsHeight, boolean flipNeeded) {
         this.detections = detections;
-        this.rectsWidth = rectsWidth;
-        this.rectsHeight = rectsHeight;
+        this.scaleX = this.getWidth()  / rectsWidth;
+        this.scaleY = this.getHeight() / rectsHeight;
         this.flipNeeded = flipNeeded;
     }
 
@@ -63,7 +61,7 @@ public class LiveDetectionView extends View {
         this.textPaint.setStyle(Paint.Style.FILL_AND_STROKE);
         this.boxPaint.setStrokeWidth(10);
         this.textPaint.setStrokeWidth(2F);
-        this.textPaint.setTextSize(70);
+        this.textPaint.setTextSize(MAX_FONT_SIZE);
         this.boxPaint.setColor(Color.RED);
         this.textPaint.setColor(Color.GREEN);
     }
@@ -71,33 +69,23 @@ public class LiveDetectionView extends View {
     @Override
     public void onDraw(Canvas canvas) {
         super.onDraw(canvas);
-        float scaleX = canvas.getWidth() / this.rectsWidth;
-        float scaleY = canvas.getHeight() / this.rectsHeight;
-        if(this.canvasCenter == CANVAS_CENTER_DEFAULT_VALUE) this.canvasCenter = canvas.getWidth() / 2;
+        if(this.canvasCenter == CANVAS_CENTER_DEFAULT_VALUE) this.canvasCenter = this.getWidth() / 2.0F;
 
-        println(canvas.getWidth() + " " + canvas.getHeight());
         this.detections.parallelStream().forEach((obj) -> {
             RectF boundingBox = obj.getBoundingBox();
 
             //Scale the bounding rectangles and flip on y-axis if necessary
             Matrix matrix = new Matrix();
             matrix.preScale(scaleX, scaleY);
+            if(this.flipNeeded) matrix.postTranslate(2 * this.canvasCenter - scaleX * (boundingBox.right + boundingBox.left), 0);
             matrix.mapRect(boundingBox);
-            if(this.flipNeeded) {
-                float left = 2 * this.canvasCenter - boundingBox.right;
-                boundingBox.set(left, boundingBox.top, left + boundingBox.width(), boundingBox.bottom);
-            }
 
             canvas.drawRect(boundingBox, boxPaint);
             Category category = obj.getCategories().get(0);
             String accuracy = String.format("%.2f", category.getScore() * 100);
             String label = category.getLabel();
 
-            this.textPaint.setTextSize(MAX_FONT_SIZE);
-            canvas.drawText(
-                     accuracy + "% " + label, boundingBox.left,
-                    boundingBox.top, this.textPaint
-            );
+            canvas.drawText(accuracy + "% " + label, boundingBox.left, boundingBox.top, this.textPaint);
         });
     }
 }

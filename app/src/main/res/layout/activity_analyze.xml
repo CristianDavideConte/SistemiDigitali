@@ -21,6 +21,11 @@
             android:layout_height="match_parent"
             tools:srcCompat="@tools:sample/avatars" />
 
+        <com.example.sistemidigitali.model.LiveDetectionView
+            android:id="@+id/liveDetectionViewAnalyze"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content" />
+
         <LinearLayout
             android:id="@+id/linearLayout"
             android:layout_width="match_parent"
@@ -32,18 +37,29 @@
             <com.google.android.material.chip.Chip
                 android:id="@+id/analyzeButton"
                 android:layout_width="100dp"
-                android:layout_height="65dp"
+                android:layout_height="73dp"
+                android:layout_margin="0dp"
+                android:layout_marginHorizontal="0dp"
+                android:layout_marginVertical="0dp"
+                android:layout_marginStart="0dp"
+                android:layout_marginLeft="0dp"
+                android:layout_marginTop="0dp"
+                android:layout_marginEnd="0dp"
+                android:layout_marginRight="0dp"
+                android:layout_marginBottom="0dp"
                 android:layout_weight="0"
                 android:checkable="true"
                 android:elevation="6dp"
                 android:text="Analyze"
                 android:textAlignment="center"
                 android:textColor="#FFFFFF"
-                android:textStyle="bold"
+                android:textSize="18sp"
                 android:translationY="-20dp"
                 app:checkedIconVisible="false"
                 app:chipBackgroundColor="@color/chip_bg_states_alt"
+                app:chipEndPadding="10dp"
                 app:chipIconVisible="false"
+                app:chipStartPadding="10dp"
                 app:chipSurfaceColor="#FFFFFF" />
 
         </LinearLayout>
