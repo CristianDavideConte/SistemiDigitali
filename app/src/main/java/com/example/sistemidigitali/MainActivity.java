@@ -17,6 +17,7 @@ import com.example.sistemidigitali.model.CameraProvider;
 import com.example.sistemidigitali.model.CustomObjectDetector;
 import com.example.sistemidigitali.model.ImageSavedEvent;
 import com.example.sistemidigitali.model.LiveDetectionView;
+import com.example.sistemidigitali.model.MaskTypeEnum;
 import com.example.sistemidigitali.model.Permission;
 import com.google.android.material.chip.Chip;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
@@ -50,6 +51,11 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
+        try {
+            System.out.println(MaskTypeEnum.valueOf("SRGM").getFullName());
+        } catch(Exception e) {
+            e.printStackTrace();
+        }
         this.permission = new Permission();
         this.cameraProvider = new CameraProvider(this,  findViewById(R.id.previewView));
         this.liveDetectionViewMain = findViewById(R.id.liveDetectionViewMain);
