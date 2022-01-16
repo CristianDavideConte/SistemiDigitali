@@ -16,8 +16,8 @@ import android.widget.Toast;
 import androidx.appcompat.app.AppCompatActivity;
 
 import com.bogdwellers.pinchtozoom.ImageMatrixTouchHandler;
-import com.example.sistemidigitali.MainActivity;
 import com.example.sistemidigitali.R;
+import com.example.sistemidigitali.views.MainActivity;
 import com.google.android.material.chip.Chip;
 
 import org.greenrobot.eventbus.EventBus;
