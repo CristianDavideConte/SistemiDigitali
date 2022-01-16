@@ -4,7 +4,7 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    tools:context=".model.AnalyzeActivity"
+    tools:context=".views.AnalyzeActivity"
     tools:layout_editor_absoluteY="81dp">
 
     <FrameLayout
@@ -21,7 +21,7 @@
             android:layout_height="match_parent"
             tools:srcCompat="@tools:sample/avatars" />
 
-        <com.example.sistemidigitali.model.LiveDetectionView
+        <com.example.sistemidigitali.views.LiveDetectionView
             android:id="@+id/liveDetectionViewAnalyze"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content" />

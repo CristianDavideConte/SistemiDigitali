@@ -6,7 +6,7 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="@drawable/pop_up_bg"
-    tools:context=".PopUpActivity">
+    tools:context=".views.PopUpActivity">
 
     <LinearLayout
         android:id="@+id/popUpView"

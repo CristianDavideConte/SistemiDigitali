@@ -30,7 +30,8 @@ import androidx.camera.lifecycle.ProcessCameraProvider;
 import androidx.camera.view.PreviewView;
 import androidx.core.content.ContextCompat;
 
-import com.example.sistemidigitali.MainActivity;
+import com.example.sistemidigitali.views.AnalyzeActivity;
+import com.example.sistemidigitali.views.MainActivity;
 import com.google.common.util.concurrent.ListenableFuture;
 
 import org.greenrobot.eventbus.EventBus;
@@ -45,7 +46,7 @@ import java.util.Date;
 import java.util.List;
 import java.util.concurrent.Executor;
 
-import CustomEvents.ImageSavedEvent;
+import com.example.sistemidigitali.customEvents.ImageSavedEvent;
 
 public class CameraProvider {
 

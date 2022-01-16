@@ -5,14 +5,15 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="#FFFFFF"
-    tools:context=".MainActivity">
+    tools:context=".views.MainActivity">
 
     <!-- android:animateLayoutChanges="true" animates the visibility property -->
 
     <FrameLayout
         android:id="@+id/cameraLayout"
         android:layout_width="match_parent"
-        android:layout_height="match_parent">
+        android:layout_height="match_parent"
+        android:animateLayoutChanges="true">
 
         <androidx.camera.view.PreviewView
             android:id="@+id/previewView"
@@ -22,7 +23,7 @@
 
         </androidx.camera.view.PreviewView>
 
-        <com.example.sistemidigitali.model.LiveDetectionView
+        <com.example.sistemidigitali.views.LiveDetectionView
             android:id="@+id/liveDetectionViewMain"
             android:layout_width="match_parent"
             android:layout_height="match_parent" />
@@ -144,6 +145,14 @@
                 tools:ignore="SpeakableTextPresentCheck" />
 
         </LinearLayout>
+
+        <View
+            android:id="@+id/backgroundOverlayMain"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:background="#99000000"
+            android:visibility="gone"
+            tools:visibility="gone" />
 
     </FrameLayout>
 
