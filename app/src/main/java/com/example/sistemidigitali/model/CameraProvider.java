@@ -45,6 +45,8 @@ import java.util.Date;
 import java.util.List;
 import java.util.concurrent.Executor;
 
+import CustomEvents.ImageSavedEvent;
+
 public class CameraProvider {
 
     private ListenableFuture<ProcessCameraProvider> provider;
@@ -81,9 +83,13 @@ public class CameraProvider {
 
             //Focus on finger-up gesture
             if(motionEvent.getAction() == MotionEvent.ACTION_UP) {
-                MeteringPointFactory factory = this.pview.getMeteringPointFactory();
-                MeteringPoint point = factory.createPoint(motionEvent.getX(), motionEvent.getY());
-                this.camera.getCameraControl().startFocusAndMetering(new FocusMeteringAction.Builder(point).build());
+                if(liveDetection) {
+                    this.context.showPopDetails(view, motionEvent);
+                } else {
+                    MeteringPointFactory factory = this.pview.getMeteringPointFactory();
+                    MeteringPoint point = factory.createPoint(motionEvent.getX(), motionEvent.getY());
+                    this.camera.getCameraControl().startFocusAndMetering(new FocusMeteringAction.Builder(point).build());
+                }
             }
 
             return true;
@@ -266,6 +272,7 @@ public class CameraProvider {
     }
 
     private Bitmap convertImageToBitmap(@NonNull Image image, int rotationDegree, boolean flipNeeded) {
+        //rotationDegree = 180; //Fix per simo
         ByteBuffer byteBuffer = image.getPlanes()[0].getBuffer();
         byteBuffer.rewind();
         byte[] bytes = new byte[byteBuffer.capacity()];

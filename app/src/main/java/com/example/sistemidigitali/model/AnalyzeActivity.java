@@ -30,6 +30,8 @@ import org.tensorflow.lite.task.vision.detector.Detection;
 import java.io.IOException;
 import java.util.List;
 
+import CustomEvents.ImageSavedEvent;
+
 public class AnalyzeActivity extends AppCompatActivity {
     private float MAX_FONT_SIZE = 70F;
 

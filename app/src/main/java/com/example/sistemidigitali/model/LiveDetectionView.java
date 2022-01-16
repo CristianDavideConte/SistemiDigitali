@@ -1,13 +1,17 @@
 package com.example.sistemidigitali.model;
 
 import android.content.Context;
+import android.content.Intent;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Matrix;
 import android.graphics.Paint;
 import android.graphics.RectF;
 import android.util.AttributeSet;
+import android.view.MotionEvent;
 import android.view.View;
+
+import com.example.sistemidigitali.PopUpActivity;
 
 import org.tensorflow.lite.support.label.Category;
 import org.tensorflow.lite.task.vision.detector.Detection;
@@ -16,7 +20,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class LiveDetectionView extends View {
-    private float MAX_FONT_SIZE = 70F;
+    private float MAX_FONT_SIZE = 50F;
     private float CANVAS_CENTER_DEFAULT_VALUE = -1.0F;
 
     private List<Detection> detections;
@@ -50,6 +54,10 @@ public class LiveDetectionView extends View {
         this.flipNeeded = flipNeeded;
     }
 
+    public boolean isEnabled() {
+        return !this.detections.isEmpty();
+    }
+
     public void init() {
         this.detections = new ArrayList<>();
         this.canvasCenter = CANVAS_CENTER_DEFAULT_VALUE;
@@ -71,8 +79,11 @@ public class LiveDetectionView extends View {
         super.onDraw(canvas);
         if(this.canvasCenter == CANVAS_CENTER_DEFAULT_VALUE) this.canvasCenter = this.getWidth() / 2.0F;
 
-        this.detections.parallelStream().forEach((obj) -> {
-            RectF boundingBox = obj.getBoundingBox();
+        this.detections.parallelStream().forEach((detection) -> {
+            String labelParts [] = detection.getCategories().get(0).getLabel().split("_");
+            WearingModeEnum wearingModeEnum = WearingModeEnum.valueOf(labelParts[0]);
+
+            RectF boundingBox = detection.getBoundingBox();
 
             //Scale the bounding rectangles and flip on y-axis if necessary
             Matrix matrix = new Matrix();
@@ -80,12 +91,32 @@ public class LiveDetectionView extends View {
             if(this.flipNeeded) matrix.postTranslate(2 * this.canvasCenter - scaleX * (boundingBox.right + boundingBox.left), 0);
             matrix.mapRect(boundingBox);
 
+            this.boxPaint.setColor(wearingModeEnum.getBackgroundColor());
             canvas.drawRect(boundingBox, boxPaint);
-            Category category = obj.getCategories().get(0);
-            String accuracy = String.format("%.2f", category.getScore() * 100);
-            String label = category.getLabel();
-
-            canvas.drawText(accuracy + "% " + label, boundingBox.left, boundingBox.top, this.textPaint);
         });
+    }
+
+    public void showPopDetails(View view, MotionEvent motionEvent) {
+        for(Detection detection : this.detections) {
+            if(detection.getBoundingBox().contains(motionEvent.getX(), motionEvent.getY())) {
+                Category category = detection.getCategories().get(0);
+                String labelParts [] = category.getLabel().split("_");
+                WearingModeEnum wearingModeEnum = WearingModeEnum.valueOf(labelParts[0]);
+
+                String wearingMode = wearingModeEnum.getFullName();
+                String maskType = wearingModeEnum != WearingModeEnum.MRNW ? MaskTypeEnum.valueOf(labelParts[1]).getFullName() : "";
+                String accuracy = String.format("%.2f", category.getScore() * 100) + "%";
+
+
+                Intent intent = new Intent(this.getContext(), PopUpActivity.class);
+                intent.putExtra(PopUpActivity.POP_UP_TEXT_1, wearingMode);
+                intent.putExtra(PopUpActivity.POP_UP_TEXT_2, maskType);
+                intent.putExtra(PopUpActivity.POP_UP_TEXT_3, accuracy);
+                intent.putExtra(PopUpActivity.POP_UP_BACKGROUND_COLOR, String.valueOf(wearingModeEnum.getBackgroundColor()));
+                intent.putExtra(PopUpActivity.POP_UP_TEXT_COLOR, String.valueOf(wearingModeEnum.getTextColor()));
+                this.getContext().startActivity(intent);
+                break;
+            }
+        }
     }
 }

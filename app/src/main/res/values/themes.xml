@@ -21,5 +21,11 @@
 
     <style name="Theme.SistemiDigitali.AppBarOverlay" parent="ThemeOverlay.AppCompat.Dark.ActionBar" />
 
-    <style name="Theme.SistemiDigitali.PopupOverlay" parent="ThemeOverlay.AppCompat.Light" />
+    <style name="Theme.SistemiDigitali.PopupOverlay">
+        <item name="windowActionBar">false</item>
+        <item name="windowNoTitle">true</item>
+        <item name="android:windowIsTranslucent">true</item>
+        <item name="android:windowCloseOnTouchOutside">true</item>
+        <item name="android:windowBackground">@android:color/transparent</item>
+    </style>
 </resources>

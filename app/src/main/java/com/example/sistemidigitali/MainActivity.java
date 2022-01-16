@@ -6,6 +6,7 @@ import android.content.res.ColorStateList;
 import android.graphics.Color;
 import android.net.Uri;
 import android.os.Bundle;
+import android.view.MotionEvent;
 import android.view.View;
 
 import androidx.activity.result.ActivityResultLauncher;
@@ -15,9 +16,7 @@ import androidx.appcompat.app.AppCompatActivity;
 import com.example.sistemidigitali.model.AnalyzeActivity;
 import com.example.sistemidigitali.model.CameraProvider;
 import com.example.sistemidigitali.model.CustomObjectDetector;
-import com.example.sistemidigitali.model.ImageSavedEvent;
 import com.example.sistemidigitali.model.LiveDetectionView;
-import com.example.sistemidigitali.model.MaskTypeEnum;
 import com.example.sistemidigitali.model.Permission;
 import com.google.android.material.chip.Chip;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
@@ -27,6 +26,8 @@ import org.tensorflow.lite.task.vision.detector.Detection;
 
 import java.io.IOException;
 import java.util.List;
+
+import CustomEvents.ImageSavedEvent;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -51,11 +52,6 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        try {
-            System.out.println(MaskTypeEnum.valueOf("SRGM").getFullName());
-        } catch(Exception e) {
-            e.printStackTrace();
-        }
         this.permission = new Permission();
         this.cameraProvider = new CameraProvider(this,  findViewById(R.id.previewView));
         this.liveDetectionViewMain = findViewById(R.id.liveDetectionViewMain);
@@ -126,5 +122,9 @@ public class MainActivity extends AppCompatActivity {
     public void drawDetectionRects(List<Detection> detections, float rectsWidth, float rectsHeight, boolean flipNeeded) {
         this.liveDetectionViewMain.setDetections(detections, rectsWidth, rectsHeight, flipNeeded);
         this.liveDetectionViewMain.invalidate();
+    }
+
+    public void showPopDetails(View view, MotionEvent motionEvent) {
+        this.liveDetectionViewMain.showPopDetails(view, motionEvent);
     }
 }
