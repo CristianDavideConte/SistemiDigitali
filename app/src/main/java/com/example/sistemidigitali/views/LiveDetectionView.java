@@ -123,7 +123,7 @@ public class LiveDetectionView extends View {
     }
 
     @Subscribe(sticky = true, threadMode = ThreadMode.ASYNC)
-    public void onTap(MotionEvent motionEvent) {
+    public boolean onTap(MotionEvent motionEvent) {
         for(Detection detection : this.detections) {
             if(detection.getBoundingBox().contains(motionEvent.getX(), motionEvent.getY())) {
                 Category category = detection.getCategories().get(0);
@@ -134,7 +134,6 @@ public class LiveDetectionView extends View {
                 String maskType = wearingModeEnum != WearingModeEnum.MRNW ? MaskTypeEnum.valueOf(labelParts[1]).getFullName() : "";
                 String accuracy = String.format("%.2f", category.getScore() * 100) + "%";
 
-
                 Intent intent = new Intent(this.getContext(), PopUpActivity.class);
                 intent.putExtra(PopUpActivity.POP_UP_TEXT_1, wearingMode);
                 intent.putExtra(PopUpActivity.POP_UP_TEXT_2, maskType);
@@ -142,8 +141,9 @@ public class LiveDetectionView extends View {
                 intent.putExtra(PopUpActivity.POP_UP_BACKGROUND_COLOR, String.valueOf(wearingModeEnum.getBackgroundColor()));
                 intent.putExtra(PopUpActivity.POP_UP_TEXT_COLOR, String.valueOf(wearingModeEnum.getTextColor()));
                 this.getContext().startActivity(intent);
-                break;
+                return true;
             }
         }
+        return false;
     }
 }

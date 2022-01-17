@@ -6,14 +6,14 @@ import com.example.sistemidigitali.enums.ColorsEnum;
 
 public enum WearingModeEnum {
 
-    MRNW("Mask Not Worn", ColorsEnum.RED.getColor(), Color.WHITE),
+    MRNW("Mask not Worn", ColorsEnum.RED.getColor(), Color.WHITE),
     MRCW("Mask Correctly Worn", ColorsEnum.GREEN.getColor(), Color.WHITE),
-    MSFC("Mask Folded Above The Chin", ColorsEnum.YELLOW.getColor(), Color.BLACK),
-    MRHN("Mask Hanging From An Ear", ColorsEnum.YELLOW.getColor(), Color.BLACK),
-    MRFH("Mask On The Forehead", ColorsEnum.YELLOW.getColor(), Color.BLACK),
-    MRTN("Mask On The Tip Of The Nose", ColorsEnum.YELLOW.getColor(), Color.BLACK),
-    MRNC("Mask Under The Chin", ColorsEnum.YELLOW.getColor(), Color.BLACK),
-    MRNN("Mask Under The Nose", ColorsEnum.YELLOW.getColor(), Color.BLACK);
+    MSFC("Mask Folded above the Chin", ColorsEnum.YELLOW.getColor(), Color.BLACK),
+    MRHN("Mask Hanging from an Ear", ColorsEnum.YELLOW.getColor(), Color.BLACK),
+    MRFH("Mask on the Forehead", ColorsEnum.YELLOW.getColor(), Color.BLACK),
+    MRTN("Mask on the Tip of the Nose", ColorsEnum.YELLOW.getColor(), Color.BLACK),
+    MRNC("Mask Under the Chin", ColorsEnum.YELLOW.getColor(), Color.BLACK),
+    MRNN("Mask Under the Nose", ColorsEnum.YELLOW.getColor(), Color.BLACK);
 
     private String name;
     private int backgroundColor;

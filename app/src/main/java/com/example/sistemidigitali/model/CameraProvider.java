@@ -70,12 +70,14 @@ public class CameraProvider {
 
     private MainActivity context;
     private Thread analyzerThread;
+    private CustomGestureDetector customGestureDetector;
 
     @SuppressLint("ClickableViewAccessibility")
-    public CameraProvider(MainActivity context, PreviewView pview) {
+    public CameraProvider(MainActivity context, PreviewView pview, CustomGestureDetector customGestureDetector) {
         this.context = context;
         this.pview = pview;
         this.liveDetection = false;
+        this.customGestureDetector = customGestureDetector;
         this.startCamera(CameraSelector.LENS_FACING_BACK);
 
         //Handler for the pintch-to-zoom gesture
@@ -89,17 +91,14 @@ public class CameraProvider {
 
         this.pview.setOnTouchListener((view, motionEvent) -> {
             scaleGestureDetector.onTouchEvent(motionEvent);
+            this.customGestureDetector.update(motionEvent);
 
             //Focus on finger-up gesture
-            if(motionEvent.getAction() == MotionEvent.ACTION_UP) {
+            if(motionEvent.getAction() == MotionEvent.ACTION_UP && !this.liveDetection) {
                 //If liveDetection is enabled, the tap-to-focus gesture is disabled.
-                if(liveDetection) {
-                    EventBus.getDefault().postSticky(motionEvent);
-                } else {
-                    MeteringPointFactory factory = this.pview.getMeteringPointFactory();
-                    MeteringPoint point = factory.createPoint(motionEvent.getX(), motionEvent.getY());
-                    this.camera.getCameraControl().startFocusAndMetering(new FocusMeteringAction.Builder(point).build());
-                }
+                MeteringPointFactory factory = this.pview.getMeteringPointFactory();
+                MeteringPoint point = factory.createPoint(motionEvent.getX(), motionEvent.getY());
+                this.camera.getCameraControl().startFocusAndMetering(new FocusMeteringAction.Builder(point).build());
             }
 
             return true;

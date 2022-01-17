@@ -3,9 +3,9 @@ package com.example.sistemidigitali.enums;
 public enum MaskTypeEnum {
 
     SRGM("Surgical Mask"),
-    NMDM("Non Medical Mask"),
-    DRWV("Disposable Respirator With Valve"),
-    DRNV("Disposable Respirator Without Valve");
+    NMDM("Non-Medical Mask"),
+    DRWV("Disposable Respirator with Valve"),
+    DRNV("Disposable Respirator without Valve");
 
     private String name;
 

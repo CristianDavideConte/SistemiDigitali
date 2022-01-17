@@ -1,24 +1,24 @@
 package com.example.sistemidigitali.views;
 
-import static com.example.sistemidigitali.debugUtility.Debug.println;
-
 import android.annotation.SuppressLint;
-import android.content.res.ColorStateList;
 import android.graphics.Bitmap;
-import android.graphics.Color;
 import android.graphics.ImageDecoder;
-import android.net.Uri;
 import android.os.Bundle;
+import android.view.View;
 import android.widget.ImageView;
 import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
 
 import com.bogdwellers.pinchtozoom.ImageMatrixTouchHandler;
-import com.example.sistemidigitali.customEvents.AllowUpdatePolicyChangeEvent;
-import com.example.sistemidigitali.customEvents.UpdateDetectionsRectsEvent;
-import com.example.sistemidigitali.model.CustomObjectDetector;
 import com.example.sistemidigitali.R;
+import com.example.sistemidigitali.customEvents.AllowUpdatePolicyChangeEvent;
+import com.example.sistemidigitali.customEvents.EndOfGestureEvent;
+import com.example.sistemidigitali.customEvents.ImageSavedEvent;
+import com.example.sistemidigitali.customEvents.OverlayVisibilityChangeEvent;
+import com.example.sistemidigitali.customEvents.UpdateDetectionsRectsEvent;
+import com.example.sistemidigitali.model.CustomGestureDetector;
+import com.example.sistemidigitali.model.CustomObjectDetector;
 import com.google.android.material.chip.Chip;
 
 import org.greenrobot.eventbus.EventBus;
@@ -30,14 +30,11 @@ import org.tensorflow.lite.task.vision.detector.Detection;
 import java.io.IOException;
 import java.util.List;
 
-import com.example.sistemidigitali.customEvents.ImageSavedEvent;
-
 public class AnalyzeActivity extends AppCompatActivity {
-    private float MAX_FONT_SIZE = 70F;
-
     private Bitmap originalImage;
     private TensorImage originalImageTensor;
 
+    private View backgroundOverlayAnalyze;
     private ImageView analyzeView;
     private LiveDetectionView liveDetectionViewAnalyze;
     private Chip analyzeButton;
@@ -47,14 +44,19 @@ public class AnalyzeActivity extends AppCompatActivity {
     private ImageMatrixTouchHandler zoomHandler;
     private Thread analyzerThread;
 
+    private CustomGestureDetector customGestureDetector;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_analyze);
 
+        this.backgroundOverlayAnalyze = findViewById(R.id.backgroundOverlayAnalyze);
         this.analyzeView = findViewById(R.id.analyzeView);
         this.liveDetectionViewAnalyze = findViewById(R.id.liveDetectionViewAnalyze);
         this.analyzeButton = findViewById(R.id.analyzeButton);
+
+        this.customGestureDetector = new CustomGestureDetector();
 
         EventBus.getDefault().postSticky(new AllowUpdatePolicyChangeEvent(false));
     }
@@ -68,6 +70,7 @@ public class AnalyzeActivity extends AppCompatActivity {
         super.onStart();
         EventBus.getDefault().register(this);
         EventBus.getDefault().register(this.liveDetectionViewAnalyze);
+        EventBus.getDefault().register(this.customGestureDetector);
     }
 
     /**
@@ -78,6 +81,7 @@ public class AnalyzeActivity extends AppCompatActivity {
     public void onStop() {
         EventBus.getDefault().unregister(this);
         EventBus.getDefault().unregister(this.liveDetectionViewAnalyze);
+        EventBus.getDefault().unregister(this.customGestureDetector);
         super.onStop();
     }
 
@@ -117,8 +121,10 @@ public class AnalyzeActivity extends AppCompatActivity {
 
             this.zoomHandler = new ImageMatrixTouchHandler(this);
             this.analyzeView.setOnTouchListener((view, motionEvent) -> {
+                if(!this.customGestureDetector.shouldListenToTouchEvents()) return true;
+
                 if(this.analyzeButton.isChecked()) {
-                    this.detectObjects();
+                    customGestureDetector.update(motionEvent);
                 }
                 return zoomHandler.onTouch(view, motionEvent);
             });
@@ -129,14 +135,24 @@ public class AnalyzeActivity extends AppCompatActivity {
         }
     }
 
+
+    @SuppressLint("WrongConstant")
+    @Subscribe(sticky = true, threadMode = ThreadMode.MAIN)
+    public void onOverlayVisibilityChange(OverlayVisibilityChangeEvent event) {
+        int visibility = event.getVisibility();
+        this.backgroundOverlayAnalyze.setVisibility(visibility);
+    }
+
+    @Subscribe(sticky = true, threadMode = ThreadMode.ASYNC)
+    public void onEndOfGesture(EndOfGestureEvent event) {
+        this.detectObjects();
+    }
+
     private void detectObjects() {
-        if(this.analyzerThread != null) return;
         this.analyzerThread = new Thread(() -> {
-            while(zoomHandler.isAnimating()) continue;
             this.detections = this.objectDetector.detect(this.originalImageTensor);
             EventBus.getDefault().postSticky(new AllowUpdatePolicyChangeEvent(true));
             EventBus.getDefault().post(new UpdateDetectionsRectsEvent(detections, 0, 0, false, this.analyzeView.getImageMatrix()));
-            this.analyzerThread = null;
 
             if(!this.analyzeButton.isCheckable()) {
                 runOnUiThread(() -> {

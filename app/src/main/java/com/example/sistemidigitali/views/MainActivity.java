@@ -18,6 +18,7 @@ import com.example.sistemidigitali.R;
 import com.example.sistemidigitali.customEvents.ImageSavedEvent;
 import com.example.sistemidigitali.customEvents.OverlayVisibilityChangeEvent;
 import com.example.sistemidigitali.model.CameraProvider;
+import com.example.sistemidigitali.model.CustomGestureDetector;
 import com.example.sistemidigitali.model.CustomObjectDetector;
 import com.example.sistemidigitali.model.Permission;
 import com.google.android.material.chip.Chip;
@@ -46,6 +47,7 @@ public class MainActivity extends AppCompatActivity {
     private FloatingActionButton shutterButton;
 
     private int isUIVisible;
+    private CustomGestureDetector customGestureDetector;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -53,7 +55,8 @@ public class MainActivity extends AppCompatActivity {
         setContentView(R.layout.activity_main);
 
         this.permission = new Permission();
-        this.cameraProvider = new CameraProvider(this,  findViewById(R.id.previewView));
+        this.customGestureDetector = new CustomGestureDetector();
+        this.cameraProvider = new CameraProvider(this,  findViewById(R.id.previewView), customGestureDetector);
         this.backgroundOverlayMain = findViewById(R.id.backgroundOverlayMain);
         this.liveDetectionViewMain = findViewById(R.id.liveDetectionViewMain);
         this.liveDetectionSwitch = findViewById(R.id.liveDetectionSwitch);
@@ -106,6 +109,7 @@ public class MainActivity extends AppCompatActivity {
         super.onStart();
         EventBus.getDefault().register(this);
         EventBus.getDefault().register(this.liveDetectionViewMain);
+        EventBus.getDefault().register(this.customGestureDetector);
     }
 
     /**
@@ -116,6 +120,7 @@ public class MainActivity extends AppCompatActivity {
     public void onStop() {
         EventBus.getDefault().unregister(this);
         EventBus.getDefault().unregister(this.liveDetectionViewMain);
+        EventBus.getDefault().unregister(this.customGestureDetector);
         super.onStop();
     }
 
