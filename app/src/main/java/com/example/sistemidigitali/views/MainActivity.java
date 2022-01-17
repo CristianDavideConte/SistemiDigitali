@@ -32,9 +32,6 @@ import java.io.IOException;
 import java.util.List;
 
 public class MainActivity extends AppCompatActivity {
-
-    public static final String ACTIVITY_IMAGE = "com.example.sistemidigitali.IMAGE";
-
     private Permission permission;
     private CameraProvider cameraProvider;
 
@@ -99,6 +96,7 @@ public class MainActivity extends AppCompatActivity {
             this.permission.requestPermission(this, permissions);
         }
     }
+
     /**
      * Registers this instance of MainActivity on the EventBus,
      * so that it can receive async messages from other activities.
@@ -134,9 +132,8 @@ public class MainActivity extends AppCompatActivity {
         if(picturePublicUri == null) return;
 
         //Open a new activity and passes it the picture's uri
-        EventBus.getDefault().postSticky(new ImageSavedEvent("success"));
+        EventBus.getDefault().postSticky(new ImageSavedEvent("success", picturePublicUri));
         Intent intent = new Intent(this, AnalyzeActivity.class);
-        intent.putExtra(MainActivity.ACTIVITY_IMAGE, picturePublicUri);
         this.startActivity(intent);
     }
 
@@ -146,14 +143,5 @@ public class MainActivity extends AppCompatActivity {
         this.switchCameraButton.setVisibility(this.isUIVisible);
         this.shutterButton.setVisibility(this.isUIVisible);
         this.galleryButton.setVisibility(this.isUIVisible);
-    }
-
-    public void drawDetectionRects(List<Detection> detections, float rectsWidth, float rectsHeight, boolean flipNeeded) {
-        this.liveDetectionViewMain.setDetections(detections, rectsWidth, rectsHeight, flipNeeded);
-        this.liveDetectionViewMain.invalidate();
-    }
-
-    public void showPopDetails(View view, MotionEvent motionEvent) {
-        this.liveDetectionViewMain.showPopDetails(view, motionEvent);
     }
 }

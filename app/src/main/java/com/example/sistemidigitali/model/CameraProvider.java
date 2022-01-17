@@ -7,6 +7,7 @@ import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Matrix;
 import android.media.Image;
+import android.media.metrics.Event;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.Environment;
@@ -30,6 +31,8 @@ import androidx.camera.lifecycle.ProcessCameraProvider;
 import androidx.camera.view.PreviewView;
 import androidx.core.content.ContextCompat;
 
+import com.example.sistemidigitali.customEvents.AllowUpdatePolicyChangeEvent;
+import com.example.sistemidigitali.customEvents.UpdateDetectionsRectsEvent;
 import com.example.sistemidigitali.views.AnalyzeActivity;
 import com.example.sistemidigitali.views.MainActivity;
 import com.google.common.util.concurrent.ListenableFuture;
@@ -85,7 +88,7 @@ public class CameraProvider {
             //Focus on finger-up gesture
             if(motionEvent.getAction() == MotionEvent.ACTION_UP) {
                 if(liveDetection) {
-                    this.context.showPopDetails(view, motionEvent);
+                    EventBus.getDefault().postSticky(motionEvent);
                 } else {
                     MeteringPointFactory factory = this.pview.getMeteringPointFactory();
                     MeteringPoint point = factory.createPoint(motionEvent.getX(), motionEvent.getY());
@@ -95,6 +98,22 @@ public class CameraProvider {
 
             return true;
         });
+    }
+
+    public void setObjectDetector(CustomObjectDetector objectDetector) {
+        this.objectDetector = objectDetector;
+    }
+
+    public void setLiveDetection(boolean liveDetection) {
+        EventBus.getDefault().postSticky(new AllowUpdatePolicyChangeEvent(liveDetection));
+        this.liveDetection = liveDetection;
+    }
+
+    /**
+     * @return The current context's main executor
+     */
+    private Executor getExecutor() {
+        return ContextCompat.getMainExecutor(this.context);
     }
 
     /**
@@ -191,18 +210,18 @@ public class CameraProvider {
 
                                 stream.close();
                                 image.close();
-                                EventBus.getDefault().postSticky(new ImageSavedEvent("success"));
+                                EventBus.getDefault().postSticky(new ImageSavedEvent("success", picturePublicUri));
                             } catch (Exception e) {
                                 e.printStackTrace();
+
                                 //Remove the allocated space in the MediaStore if the picture can't be saved
                                 context.getContentResolver().delete(picturePublicUri, new Bundle());
-                                EventBus.getDefault().postSticky(new ImageSavedEvent(e.getMessage()));
+                                EventBus.getDefault().postSticky(new ImageSavedEvent(e.getMessage(), picturePublicUri));
                             }
                         }).start();
 
                         //Open a new activity and passes it the picture's uri
                         Intent intent = new Intent(context, AnalyzeActivity.class);
-                        intent.putExtra(MainActivity.ACTIVITY_IMAGE, picturePublicUri);
                         context.startActivity(intent);
                     }
 
@@ -232,32 +251,11 @@ public class CameraProvider {
                 tensorImage.load(imageProxy.getImage());
 
                 List<Detection> detections = this.objectDetector.detect(tensorImage);
-                if(!this.analyzerThread.isInterrupted()){
-                    this.context.drawDetectionRects(detections, rectsWidth, rectsHeight, currentLensOrientation == CameraSelector.LENS_FACING_FRONT);
-                }
+                EventBus.getDefault().post(new UpdateDetectionsRectsEvent(detections, rectsWidth, rectsHeight, currentLensOrientation == CameraSelector.LENS_FACING_FRONT));
             }
             imageProxy.close();
         });
         this.analyzerThread.start();
-    }
-
-    public void setLiveDetection(boolean liveDetection) {
-        if(!liveDetection) {
-            this.analyzerThread.interrupt();
-            this.context.drawDetectionRects(new ArrayList<>(), 1,1, false);
-        }
-        this.liveDetection = liveDetection;
-    }
-
-    public void setObjectDetector(CustomObjectDetector objectDetector) {
-        this.objectDetector = objectDetector;
-    }
-
-    /**
-     * @return The current context's main executor
-     */
-    private Executor getExecutor() {
-        return ContextCompat.getMainExecutor(this.context);
     }
 
     /**

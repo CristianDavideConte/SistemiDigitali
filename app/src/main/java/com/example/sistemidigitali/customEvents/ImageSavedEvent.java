@@ -1,11 +1,15 @@
 package com.example.sistemidigitali.customEvents;
 
+import android.net.Uri;
+
 public class ImageSavedEvent {
 
     private String error;
+    private Uri uri;
 
-    public ImageSavedEvent(String error) {
+    public ImageSavedEvent(String error, Uri uri) {
         this.error = error;
+        this.uri = uri;
     }
 
     /**
@@ -14,5 +18,9 @@ public class ImageSavedEvent {
      */
     public String getError() {
         return error;
+    }
+
+    public Uri getUri() {
+        return uri;
     }
 }

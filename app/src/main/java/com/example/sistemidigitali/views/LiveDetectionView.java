@@ -11,10 +11,14 @@ import android.util.AttributeSet;
 import android.view.MotionEvent;
 import android.view.View;
 
+import com.example.sistemidigitali.customEvents.UpdateDetectionsRectsEvent;
+import com.example.sistemidigitali.customEvents.AllowUpdatePolicyChangeEvent;
 import com.example.sistemidigitali.enums.MaskTypeEnum;
 import com.example.sistemidigitali.enums.WearingModeEnum;
-import com.example.sistemidigitali.views.PopUpActivity;
 
+import org.greenrobot.eventbus.EventBus;
+import org.greenrobot.eventbus.Subscribe;
+import org.greenrobot.eventbus.ThreadMode;
 import org.tensorflow.lite.support.label.Category;
 import org.tensorflow.lite.task.vision.detector.Detection;
 
@@ -24,6 +28,8 @@ import java.util.List;
 public class LiveDetectionView extends View {
     private float MAX_FONT_SIZE = 50F;
     private float CANVAS_CENTER_DEFAULT_VALUE = -1.0F;
+
+    private boolean allowUpdate;
 
     private List<Detection> detections;
     private float scaleX;
@@ -49,18 +55,13 @@ public class LiveDetectionView extends View {
         init();
     }
 
-    public void setDetections(List<Detection> detections, float rectsWidth, float rectsHeight, boolean flipNeeded) {
-        this.detections = detections;
-        this.scaleX = this.getWidth()  / rectsWidth;
-        this.scaleY = this.getHeight() / rectsHeight;
-        this.flipNeeded = flipNeeded;
-    }
-
     public boolean isEnabled() {
         return !this.detections.isEmpty();
     }
 
     public void init() {
+        this.allowUpdate = true;
+
         this.detections = new ArrayList<>();
         this.canvasCenter = CANVAS_CENTER_DEFAULT_VALUE;
         this.flipNeeded = false;
@@ -74,11 +75,29 @@ public class LiveDetectionView extends View {
         this.textPaint.setTextSize(MAX_FONT_SIZE);
         this.boxPaint.setColor(Color.RED);
         this.textPaint.setColor(Color.GREEN);
+
+        EventBus.getDefault().register(this);
+    }
+
+    @Subscribe(threadMode = ThreadMode.ASYNC)
+    public void onUpdateDetectionsRects(UpdateDetectionsRectsEvent event) {
+        this.detections = event.getDetections();
+        this.scaleX = this.getWidth()  / event.getRectsWidth();
+        this.scaleY = this.getHeight() / event.getRectsHeight();
+        this.flipNeeded = event.isFlipNeeded();
+        this.invalidate();
+    }
+
+    @Subscribe(sticky = true, threadMode = ThreadMode.ASYNC)
+    public void onAllowUpdatePolicyChange(AllowUpdatePolicyChangeEvent event) {
+        this.allowUpdate = event.isAllowUpdatePolicyChange();
+        this.invalidate();
     }
 
     @Override
     public void onDraw(Canvas canvas) {
         super.onDraw(canvas);
+        if(!this.allowUpdate) return;
         if(this.canvasCenter == CANVAS_CENTER_DEFAULT_VALUE) this.canvasCenter = this.getWidth() / 2.0F;
 
         this.detections.parallelStream().forEach((detection) -> {
@@ -98,7 +117,8 @@ public class LiveDetectionView extends View {
         });
     }
 
-    public void showPopDetails(View view, MotionEvent motionEvent) {
+    @Subscribe(sticky = true, threadMode = ThreadMode.ASYNC)
+    public void showPopDetails(MotionEvent motionEvent) {
         for(Detection detection : this.detections) {
             if(detection.getBoundingBox().contains(motionEvent.getX(), motionEvent.getY())) {
                 Category category = detection.getCategories().get(0);

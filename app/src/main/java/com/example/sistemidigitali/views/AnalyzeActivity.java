@@ -16,6 +16,7 @@ import android.widget.Toast;
 import androidx.appcompat.app.AppCompatActivity;
 
 import com.bogdwellers.pinchtozoom.ImageMatrixTouchHandler;
+import com.example.sistemidigitali.customEvents.UpdateDetectionsRectsEvent;
 import com.example.sistemidigitali.model.CustomObjectDetector;
 import com.example.sistemidigitali.R;
 import com.google.android.material.chip.Chip;
@@ -53,9 +54,6 @@ public class AnalyzeActivity extends AppCompatActivity {
         this.analyzeView = findViewById(R.id.analyzeView);
         this.liveDetectionViewAnalyze = findViewById(R.id.liveDetectionViewAnalyze);
         this.analyzeButton = findViewById(R.id.analyzeButton);
-
-        //Get input informations
-        this.imageUri = this.getIntent().getParcelableExtra(MainActivity.ACTIVITY_IMAGE);
     }
 
     /**
@@ -86,18 +84,17 @@ public class AnalyzeActivity extends AppCompatActivity {
      * @param event An ImageSavedEvent that contains the result of the image saving operation.
      */
     @SuppressLint("ClickableViewAccessibility")
-    @Subscribe(sticky = true, threadMode = ThreadMode.ASYNC)
+    @Subscribe(sticky = true, threadMode = ThreadMode.MAIN)
     public void onPictureUriAvailable(ImageSavedEvent event) {
         //If the picture is not available, go back to previous activity
         if(!event.getError().equals("success")) {
-            runOnUiThread(() -> {
-                Toast.makeText(this, event.getError(), Toast.LENGTH_SHORT).show();
-                this.finish();
-            });
+            Toast.makeText(this, event.getError(), Toast.LENGTH_SHORT).show();
+            this.finish();
             return;
         }
 
         try {
+            this.imageUri = event.getUri();
             ImageDecoder.Source source = ImageDecoder.createSource(this.getContentResolver(), this.imageUri);
             Bitmap bitmapImage = ImageDecoder.decodeBitmap(source);
             this.originalImage = bitmapImage.copy(Bitmap.Config.ARGB_8888, true);
@@ -135,10 +132,8 @@ public class AnalyzeActivity extends AppCompatActivity {
                 this.analyzeButton.setChipBackgroundColor(new ColorStateList(states, colors));
             }
 
-            runOnUiThread(() -> {
-                this.analyzeView.setOnTouchListener(new ImageMatrixTouchHandler(this)); //Handles pitch-to-zoom on image views
-                this.analyzeView.setImageBitmap(bitmapImage);
-            });
+            this.analyzeView.setOnTouchListener(new ImageMatrixTouchHandler(this)); //Handles pitch-to-zoom on image views
+            this.analyzeView.setImageBitmap(bitmapImage);
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -193,8 +188,7 @@ public class AnalyzeActivity extends AppCompatActivity {
                     float scaleY = this.originalImage.getHeight() / this.analyzeView.getHeight();
 
                     List<Detection> detections = this.objectDetector.detect(this.originalImageTensor);
-                    this.liveDetectionViewAnalyze.setDetections(detections, this.originalImage.getWidth(), this.originalImage.getHeight(), false);
-                    this.liveDetectionViewAnalyze.invalidate();
+                    EventBus.getDefault().postSticky(new UpdateDetectionsRectsEvent(detections, this.originalImage.getWidth(), this.originalImage.getHeight(), false));
                     this.analyzeButton.setCheckable(true);
                 }
         ).start();
