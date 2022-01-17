@@ -36,6 +36,7 @@ public class LiveDetectionView extends View {
     private float scaleY;
     private float canvasCenter;
     private boolean flipNeeded;
+    private Matrix transformMatrix;
 
     private Paint boxPaint;
     private Paint textPaint;
@@ -65,6 +66,7 @@ public class LiveDetectionView extends View {
         this.detections = new ArrayList<>();
         this.canvasCenter = CANVAS_CENTER_DEFAULT_VALUE;
         this.flipNeeded = false;
+        this.transformMatrix = new Matrix();
         this.boxPaint = new Paint();
         this.textPaint = new Paint();
 
@@ -75,16 +77,16 @@ public class LiveDetectionView extends View {
         this.textPaint.setTextSize(MAX_FONT_SIZE);
         this.boxPaint.setColor(Color.RED);
         this.textPaint.setColor(Color.GREEN);
-
-        EventBus.getDefault().register(this);
     }
 
     @Subscribe(threadMode = ThreadMode.ASYNC)
     public void onUpdateDetectionsRects(UpdateDetectionsRectsEvent event) {
         this.detections = event.getDetections();
-        this.scaleX = this.getWidth()  / event.getRectsWidth();
-        this.scaleY = this.getHeight() / event.getRectsHeight();
+
+        this.scaleX = event.getRectsWidth()  == 0.0F ? 1 : this.getWidth()  / event.getRectsWidth();
+        this.scaleY = event.getRectsHeight() == 0.0F ? 1 : this.getHeight() / event.getRectsHeight();
         this.flipNeeded = event.isFlipNeeded();
+        this.transformMatrix = event.getTransformMatrix();
         this.invalidate();
     }
 
@@ -112,13 +114,16 @@ public class LiveDetectionView extends View {
             if(this.flipNeeded) matrix.postTranslate(2 * this.canvasCenter - scaleX * (boundingBox.right + boundingBox.left), 0);
             matrix.mapRect(boundingBox);
 
+            //Do extra translation/scaling if specified
+            this.transformMatrix.mapRect(boundingBox);
+
             this.boxPaint.setColor(wearingModeEnum.getBackgroundColor());
             canvas.drawRect(boundingBox, boxPaint);
         });
     }
 
     @Subscribe(sticky = true, threadMode = ThreadMode.ASYNC)
-    public void showPopDetails(MotionEvent motionEvent) {
+    public void onTap(MotionEvent motionEvent) {
         for(Detection detection : this.detections) {
             if(detection.getBoundingBox().contains(motionEvent.getX(), motionEvent.getY())) {
                 Category category = detection.getCategories().get(0);

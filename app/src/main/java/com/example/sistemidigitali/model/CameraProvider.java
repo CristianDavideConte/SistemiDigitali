@@ -1,19 +1,24 @@
 package com.example.sistemidigitali.model;
 
+import static com.example.sistemidigitali.debugUtility.Debug.println;
+
 import android.annotation.SuppressLint;
 import android.content.ContentValues;
 import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Matrix;
+import android.graphics.Rect;
 import android.media.Image;
 import android.media.metrics.Event;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.Environment;
 import android.provider.MediaStore;
+import android.util.Size;
 import android.view.MotionEvent;
 import android.view.ScaleGestureDetector;
+import android.view.WindowManager;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
@@ -87,6 +92,7 @@ public class CameraProvider {
 
             //Focus on finger-up gesture
             if(motionEvent.getAction() == MotionEvent.ACTION_UP) {
+                //If liveDetection is enabled, the tap-to-focus gesture is disabled.
                 if(liveDetection) {
                     EventBus.getDefault().postSticky(motionEvent);
                 } else {
@@ -121,6 +127,7 @@ public class CameraProvider {
      * unbinding all the previous use cases.
      * @param lensOrientation An int that indicates the lens orientation.
      */
+    @SuppressLint("RestrictedApi")
     public void startCamera(int lensOrientation) {
         this.provider = ProcessCameraProvider.getInstance(this.context);
         this.provider.addListener(() -> {
@@ -133,8 +140,13 @@ public class CameraProvider {
                 Preview preview = new Preview.Builder().build();
                 preview.setSurfaceProvider(this.pview.getSurfaceProvider());
 
+                Rect screenBounds = this.context.getWindowManager().getCurrentWindowMetrics().getBounds();
+
+                println(screenBounds.width(), screenBounds.height());
+
                 this.imageCapt = new ImageCapture.Builder()
                                 .setCaptureMode(ImageCapture.CAPTURE_MODE_MINIMIZE_LATENCY)
+                                //.setTargetResolution(new Size(screenBounds.width(), screenBounds.height()))
                                 .build();
                 this.imageAnalysis = new ImageAnalysis.Builder()
                                 // enable the following line if RGBA output is needed.
@@ -212,23 +224,21 @@ public class CameraProvider {
                                 image.close();
                                 EventBus.getDefault().postSticky(new ImageSavedEvent("success", picturePublicUri));
                             } catch (Exception e) {
-                                e.printStackTrace();
-
                                 //Remove the allocated space in the MediaStore if the picture can't be saved
                                 context.getContentResolver().delete(picturePublicUri, new Bundle());
                                 EventBus.getDefault().postSticky(new ImageSavedEvent(e.getMessage(), picturePublicUri));
+                                Toast.makeText(context, "Error saving image", Toast.LENGTH_SHORT).show();
                             }
                         }).start();
 
                         //Open a new activity and passes it the picture's uri
-                        Intent intent = new Intent(context, AnalyzeActivity.class);
-                        context.startActivity(intent);
+                        context.startActivity(new Intent(context, AnalyzeActivity.class));
                     }
 
                     @Override
                     public void onError(@NonNull ImageCaptureException exception) {
                         exception.printStackTrace();
-                        Toast.makeText(context, "Error saving picture", Toast.LENGTH_SHORT).show();
+                        Toast.makeText(context, "Error capturing image", Toast.LENGTH_SHORT).show();
                     }
                 }
         );
@@ -251,7 +261,7 @@ public class CameraProvider {
                 tensorImage.load(imageProxy.getImage());
 
                 List<Detection> detections = this.objectDetector.detect(tensorImage);
-                EventBus.getDefault().post(new UpdateDetectionsRectsEvent(detections, rectsWidth, rectsHeight, currentLensOrientation == CameraSelector.LENS_FACING_FRONT));
+                EventBus.getDefault().post(new UpdateDetectionsRectsEvent(detections, rectsWidth, rectsHeight, currentLensOrientation == CameraSelector.LENS_FACING_FRONT, new Matrix()));
             }
             imageProxy.close();
         });

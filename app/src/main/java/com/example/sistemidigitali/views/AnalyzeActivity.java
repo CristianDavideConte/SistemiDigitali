@@ -1,13 +1,12 @@
 package com.example.sistemidigitali.views;
 
+import static com.example.sistemidigitali.debugUtility.Debug.println;
+
 import android.annotation.SuppressLint;
 import android.content.res.ColorStateList;
 import android.graphics.Bitmap;
-import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.ImageDecoder;
-import android.graphics.Paint;
-import android.graphics.RectF;
 import android.net.Uri;
 import android.os.Bundle;
 import android.widget.ImageView;
@@ -16,6 +15,7 @@ import android.widget.Toast;
 import androidx.appcompat.app.AppCompatActivity;
 
 import com.bogdwellers.pinchtozoom.ImageMatrixTouchHandler;
+import com.example.sistemidigitali.customEvents.AllowUpdatePolicyChangeEvent;
 import com.example.sistemidigitali.customEvents.UpdateDetectionsRectsEvent;
 import com.example.sistemidigitali.model.CustomObjectDetector;
 import com.example.sistemidigitali.R;
@@ -25,7 +25,6 @@ import org.greenrobot.eventbus.EventBus;
 import org.greenrobot.eventbus.Subscribe;
 import org.greenrobot.eventbus.ThreadMode;
 import org.tensorflow.lite.support.image.TensorImage;
-import org.tensorflow.lite.support.label.Category;
 import org.tensorflow.lite.task.vision.detector.Detection;
 
 import java.io.IOException;
@@ -36,7 +35,6 @@ import com.example.sistemidigitali.customEvents.ImageSavedEvent;
 public class AnalyzeActivity extends AppCompatActivity {
     private float MAX_FONT_SIZE = 70F;
 
-    private Uri imageUri;
     private Bitmap originalImage;
     private TensorImage originalImageTensor;
 
@@ -44,7 +42,10 @@ public class AnalyzeActivity extends AppCompatActivity {
     private LiveDetectionView liveDetectionViewAnalyze;
     private Chip analyzeButton;
     private CustomObjectDetector objectDetector;
+    private List<Detection> detections;
 
+    private ImageMatrixTouchHandler zoomHandler;
+    private Thread analyzerThread;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -54,6 +55,8 @@ public class AnalyzeActivity extends AppCompatActivity {
         this.analyzeView = findViewById(R.id.analyzeView);
         this.liveDetectionViewAnalyze = findViewById(R.id.liveDetectionViewAnalyze);
         this.analyzeButton = findViewById(R.id.analyzeButton);
+
+        EventBus.getDefault().postSticky(new AllowUpdatePolicyChangeEvent(false));
     }
 
     /**
@@ -64,6 +67,7 @@ public class AnalyzeActivity extends AppCompatActivity {
     public void onStart() {
         super.onStart();
         EventBus.getDefault().register(this);
+        EventBus.getDefault().register(this.liveDetectionViewAnalyze);
     }
 
     /**
@@ -73,6 +77,7 @@ public class AnalyzeActivity extends AppCompatActivity {
     @Override
     public void onStop() {
         EventBus.getDefault().unregister(this);
+        EventBus.getDefault().unregister(this.liveDetectionViewAnalyze);
         super.onStop();
     }
 
@@ -85,7 +90,7 @@ public class AnalyzeActivity extends AppCompatActivity {
      */
     @SuppressLint("ClickableViewAccessibility")
     @Subscribe(sticky = true, threadMode = ThreadMode.MAIN)
-    public void onPictureUriAvailable(ImageSavedEvent event) {
+    public void onImageSaved(ImageSavedEvent event) {
         //If the picture is not available, go back to previous activity
         if(!event.getError().equals("success")) {
             Toast.makeText(this, event.getError(), Toast.LENGTH_SHORT).show();
@@ -94,103 +99,52 @@ public class AnalyzeActivity extends AppCompatActivity {
         }
 
         try {
-            this.imageUri = event.getUri();
-            ImageDecoder.Source source = ImageDecoder.createSource(this.getContentResolver(), this.imageUri);
-            Bitmap bitmapImage = ImageDecoder.decodeBitmap(source);
-            this.originalImage = bitmapImage.copy(Bitmap.Config.ARGB_8888, true);
+            ImageDecoder.Source source = ImageDecoder.createSource(this.getContentResolver(), event.getUri());
+            this.originalImage = ImageDecoder.decodeBitmap(source).copy(Bitmap.Config.ARGB_8888, true);
             this.originalImageTensor = TensorImage.fromBitmap(originalImage);
             this.objectDetector = new CustomObjectDetector(this);
+            this.analyzeView.setImageBitmap(this.originalImage);
+            this.analyzeButton.setOnCheckedChangeListener((view, isChecked) -> {
+                if(isChecked) {
+                    this.analyzeButton.setCheckable(false);
+                    this.analyzeButton.setText(". . .");
+                    this.detectObjects();
+                } else {
+                    this.analyzeButton.setText("Analyze");
+                    EventBus.getDefault().postSticky(new AllowUpdatePolicyChangeEvent(false));
+                }
+            });
 
-            try {
-                this.analyzeButton.setOnCheckedChangeListener((view, isChecked) -> {
-                    this.originalImage = bitmapImage.copy(Bitmap.Config.ARGB_8888, true);
-                    if(isChecked) {
-                        this.analyzeButton.setCheckable(false);
-                        this.analyzeButton.setText("Clear");
-                        this.detectObjects(this.originalImage);
-                        //this.detectObjects();
-                    } else {
-                        this.analyzeButton.setText("Analyze");
-                        this.analyzeView.setImageBitmap(this.originalImage);
-                        /*
-                        this.liveDetectionViewAnalyze.setDetections(new ArrayList<>(), 1, 1, false);
-                        this.liveDetectionViewAnalyze.invalidate();
-                        */
-                    }
-                });
-            } catch (Exception e) {
-                this.analyzeButton.setCheckable(false);
-                this.analyzeButton.setTextColor(Color.WHITE);
-                int[][] states = new int[][] {
-                        new int[] { android.R.attr.state_enabled}, // enabled
-                        new int[] {-android.R.attr.state_enabled}, // disabled
-                        new int[] {-android.R.attr.state_checked}, // unchecked
-                        new int[] { android.R.attr.state_pressed}  // pressed
-                };
-
-                int[] colors = new int[] { Color.RED, Color.RED, Color.RED, Color.RED };
-                this.analyzeButton.setChipBackgroundColor(new ColorStateList(states, colors));
-            }
-
-            this.analyzeView.setOnTouchListener(new ImageMatrixTouchHandler(this)); //Handles pitch-to-zoom on image views
-            this.analyzeView.setImageBitmap(bitmapImage);
-        } catch (IOException e) {
-            e.printStackTrace();
+            this.zoomHandler = new ImageMatrixTouchHandler(this);
+            this.analyzeView.setOnTouchListener((view, motionEvent) -> {
+                if(this.analyzeButton.isChecked()) {
+                    this.detectObjects();
+                }
+                return zoomHandler.onTouch(view, motionEvent);
+            });
+        } catch (IOException exception) {
+            Toast.makeText(this, exception.getMessage(), Toast.LENGTH_SHORT).show();
+            this.finish();
+            return;
         }
     }
 
-    /**
-     * Uses this AnalyzeActivity's objectDetector to analyze the given Bitmap image and
-     * draws a rectangle around each detected object labeling it.
-     * @param bitmapImage The Bitmap image to analyze.
-     */
-    private void detectObjects(Bitmap bitmapImage) {
-        new Thread(
-                () -> {
-                    List<Detection> detections = this.objectDetector.detect(this.originalImageTensor);
-                    Canvas canvas = new Canvas(bitmapImage);
-                    Paint boxPaint = new Paint();
-                    Paint textPaint = new Paint();
-                    boxPaint.setStyle(Paint.Style.STROKE);
-                    textPaint.setStyle(Paint.Style.FILL_AND_STROKE);
-                    boxPaint.setStrokeWidth(10);
-                    textPaint.setStrokeWidth(2F);
-                    textPaint.setTextSize(MAX_FONT_SIZE);
-                    boxPaint.setColor(Color.RED);
-                    textPaint.setColor(Color.GREEN);
+    private void detectObjects() {
+        if(this.analyzerThread != null) return;
+        this.analyzerThread = new Thread(() -> {
+            while(zoomHandler.isAnimating()) continue;
+            this.detections = this.objectDetector.detect(this.originalImageTensor);
+            EventBus.getDefault().postSticky(new AllowUpdatePolicyChangeEvent(true));
+            EventBus.getDefault().post(new UpdateDetectionsRectsEvent(detections, 0, 0, false, this.analyzeView.getImageMatrix()));
+            this.analyzerThread = null;
 
-                    runOnUiThread(() -> {
-                        detections.parallelStream().forEach((obj) -> {
-                            RectF boundingBox = obj.getBoundingBox();
-
-                            canvas.drawRect(boundingBox, boxPaint);
-                            Category category = obj.getCategories().get(0);
-                            String accuracy = String.format("%.2f", category.getScore() * 100);
-                            String label = category.getLabel();
-
-                            canvas.drawText(accuracy + "% " + label, boundingBox.left, boundingBox.top, textPaint);
-                        });
-
-                        this.analyzeView.setImageResource(0);
-                        this.analyzeView.draw(canvas);
-                        this.analyzeView.setImageBitmap(bitmapImage);
+            if(!this.analyzeButton.isCheckable()) {
+                runOnUiThread(() -> {
+                        this.analyzeButton.setText("Clear");
                         this.analyzeButton.setCheckable(true);
-                    });
-                }
-        ).start();
-    }
-
-
-    private void detectObjects2() {
-        new Thread(
-                () -> {
-                    float scaleX = this.originalImage.getWidth() / this.analyzeView.getWidth();
-                    float scaleY = this.originalImage.getHeight() / this.analyzeView.getHeight();
-
-                    List<Detection> detections = this.objectDetector.detect(this.originalImageTensor);
-                    EventBus.getDefault().postSticky(new UpdateDetectionsRectsEvent(detections, this.originalImage.getWidth(), this.originalImage.getHeight(), false));
-                    this.analyzeButton.setCheckable(true);
-                }
-        ).start();
+                });
+            }
+        });
+        this.analyzerThread.start();
     }
 }

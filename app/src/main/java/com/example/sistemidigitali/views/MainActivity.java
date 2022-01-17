@@ -105,6 +105,7 @@ public class MainActivity extends AppCompatActivity {
     public void onStart() {
         super.onStart();
         EventBus.getDefault().register(this);
+        EventBus.getDefault().register(this.liveDetectionViewMain);
     }
 
     /**
@@ -114,12 +115,13 @@ public class MainActivity extends AppCompatActivity {
     @Override
     public void onStop() {
         EventBus.getDefault().unregister(this);
+        EventBus.getDefault().unregister(this.liveDetectionViewMain);
         super.onStop();
     }
 
     @SuppressLint("WrongConstant")
     @Subscribe(sticky = true, threadMode = ThreadMode.MAIN)
-    public void OverlayVisibilityChange(OverlayVisibilityChangeEvent event) {
+    public void onOverlayVisibilityChange(OverlayVisibilityChangeEvent event) {
         this.backgroundOverlayMain.setVisibility(event.getVisibility());
     }
 
