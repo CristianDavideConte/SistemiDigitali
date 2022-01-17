@@ -137,13 +137,13 @@ public class AnalyzeActivity extends AppCompatActivity {
 
 
     @SuppressLint("WrongConstant")
-    @Subscribe(sticky = true, threadMode = ThreadMode.MAIN)
+    @Subscribe(threadMode = ThreadMode.MAIN)
     public void onOverlayVisibilityChange(OverlayVisibilityChangeEvent event) {
         int visibility = event.getVisibility();
         this.backgroundOverlayAnalyze.setVisibility(visibility);
     }
 
-    @Subscribe(sticky = true, threadMode = ThreadMode.ASYNC)
+    @Subscribe(threadMode = ThreadMode.ASYNC)
     public void onEndOfGesture(EndOfGestureEvent event) {
         this.detectObjects();
     }

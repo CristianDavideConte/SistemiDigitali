@@ -125,7 +125,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
     @SuppressLint("WrongConstant")
-    @Subscribe(sticky = true, threadMode = ThreadMode.MAIN)
+    @Subscribe(threadMode = ThreadMode.MAIN)
     public void onOverlayVisibilityChange(OverlayVisibilityChangeEvent event) {
         this.backgroundOverlayMain.setVisibility(event.getVisibility());
     }
