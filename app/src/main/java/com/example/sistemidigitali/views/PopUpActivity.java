@@ -60,12 +60,12 @@ public class PopUpActivity extends AppCompatActivity {
         GradientDrawable gradientDrawable = (GradientDrawable) this.popUpLayout.getBackground();
         gradientDrawable.setColor(Integer.parseInt(intent.getStringExtra(PopUpActivity.POP_UP_BACKGROUND_COLOR)));
 
-        EventBus.getDefault().postSticky(new OverlayVisibilityChangeEvent(View.VISIBLE));
+        EventBus.getDefault().post(new OverlayVisibilityChangeEvent(View.VISIBLE));
     }
 
     @Override
     protected void onDestroy() {
         super.onDestroy();
-        EventBus.getDefault().postSticky(new OverlayVisibilityChangeEvent(View.GONE));
+        EventBus.getDefault().post(new OverlayVisibilityChangeEvent(View.GONE));
     }
 }

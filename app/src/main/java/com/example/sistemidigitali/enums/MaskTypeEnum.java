@@ -4,8 +4,8 @@ public enum MaskTypeEnum {
 
     SRGM("Surgical Mask"),
     NMDM("Non-Medical Mask"),
-    DRWV("Disposable Respirator with Valve"),
-    DRNV("Disposable Respirator without Valve");
+    DRWV("Respirator with Valve"),
+    DRNV("Respirator without Valve");
 
     private String name;
 

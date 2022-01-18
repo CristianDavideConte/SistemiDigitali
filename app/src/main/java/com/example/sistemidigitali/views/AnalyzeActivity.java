@@ -5,6 +5,7 @@ import static com.example.sistemidigitali.debugUtility.Debug.println;
 import android.annotation.SuppressLint;
 import android.graphics.Bitmap;
 import android.graphics.ImageDecoder;
+import android.graphics.Matrix;
 import android.os.Bundle;
 import android.view.View;
 import android.widget.ImageView;
@@ -32,6 +33,7 @@ import org.tensorflow.lite.support.image.TensorImage;
 import org.tensorflow.lite.task.vision.detector.Detection;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
 
 public class AnalyzeActivity extends AppCompatActivity {
@@ -62,6 +64,7 @@ public class AnalyzeActivity extends AppCompatActivity {
 
         this.customGestureDetector = new CustomGestureDetector();
 
+        println("CREATE");
         EventBus.getDefault().postSticky(new AllowUpdatePolicyChangeEvent(false));
     }
 
@@ -75,6 +78,10 @@ public class AnalyzeActivity extends AppCompatActivity {
         EventBus.getDefault().register(this);
         EventBus.getDefault().register(this.liveDetectionViewAnalyze);
         EventBus.getDefault().register(this.customGestureDetector);
+        if(this.analyzeButton.isChecked()) {
+            this.liveDetectionViewAnalyze.setAllowUpdate(false);
+            this.detectObjects();
+        }
     }
 
     /**
@@ -83,9 +90,11 @@ public class AnalyzeActivity extends AppCompatActivity {
      */
     @Override
     public void onStop() {
+        EventBus.getDefault().post(new UpdateDetectionsRectsEvent(new ArrayList<>(), false, new Matrix()));
         EventBus.getDefault().unregister(this);
         EventBus.getDefault().unregister(this.liveDetectionViewAnalyze);
         EventBus.getDefault().unregister(this.customGestureDetector);
+        EventBus.getDefault().removeStickyEvent(AllowUpdatePolicyChangeEvent.class);
         super.onStop();
     }
 
@@ -135,6 +144,8 @@ public class AnalyzeActivity extends AppCompatActivity {
             Toast.makeText(this, exception.getMessage(), Toast.LENGTH_SHORT).show();
             this.finish();
             return;
+        } finally {
+            EventBus.getDefault().removeStickyEvent(ImageSavedEvent.class);
         }
     }
 
@@ -163,8 +174,8 @@ public class AnalyzeActivity extends AppCompatActivity {
     private void detectObjects() {
         this.analyzerThread = new Thread(() -> {
             this.detections = this.objectDetector.detect(this.originalImageTensor);
-            EventBus.getDefault().postSticky(new AllowUpdatePolicyChangeEvent(true));
             EventBus.getDefault().post(new UpdateDetectionsRectsEvent(detections, false, this.analyzeView.getImageMatrix()));
+            EventBus.getDefault().postSticky(new AllowUpdatePolicyChangeEvent(true));
 
             if(!this.analyzeButton.isCheckable()) {
                 runOnUiThread(() -> {

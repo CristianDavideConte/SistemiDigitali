@@ -1,5 +1,7 @@
 package com.example.sistemidigitali.views;
 
+import static com.example.sistemidigitali.debugUtility.Debug.println;
+
 import android.content.Context;
 import android.content.Intent;
 import android.graphics.Canvas;
@@ -56,6 +58,10 @@ public class LiveDetectionView extends View {
 
     public boolean isEnabled() {
         return !this.detections.isEmpty();
+    }
+
+    public void setAllowUpdate(boolean allowUpdate) {
+        this.allowUpdate = allowUpdate;
     }
 
     public void init() {
@@ -118,7 +124,7 @@ public class LiveDetectionView extends View {
         });
     }
 
-    @Subscribe(sticky = true, threadMode = ThreadMode.ASYNC)
+    @Subscribe(threadMode = ThreadMode.ASYNC)
     public boolean onTap(MotionEvent motionEvent) {
         for(Detection detection : this.detections) {
             if(detection.getBoundingBox().contains(motionEvent.getX(), motionEvent.getY())) {
