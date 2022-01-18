@@ -16,7 +16,7 @@ import org.greenrobot.eventbus.Subscribe;
 import org.greenrobot.eventbus.ThreadMode;
 
 public class CustomGestureDetector {
-    private int MAX_MOVE_POINTS_FOR_EVENT_TRIGGER = 10;
+    private int MAX_MOVE_POINTS_FOR_EVENT_TRIGGER = 5;
 
     private boolean gestureIsZoom;
     private boolean listenToTouchEvents;
