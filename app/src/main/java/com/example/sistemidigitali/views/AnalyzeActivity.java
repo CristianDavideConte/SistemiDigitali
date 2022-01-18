@@ -1,5 +1,7 @@
 package com.example.sistemidigitali.views;
 
+import static com.example.sistemidigitali.debugUtility.Debug.println;
+
 import android.annotation.SuppressLint;
 import android.graphics.Bitmap;
 import android.graphics.ImageDecoder;
@@ -117,7 +119,7 @@ public class AnalyzeActivity extends AppCompatActivity {
                     this.detectObjects();
                 } else {
                     this.analyzeButton.setText("Analyze");
-                    EventBus.getDefault().postSticky(new AllowUpdatePolicyChangeEvent(false));
+                    EventBus.getDefault().post(new AllowUpdatePolicyChangeEvent(false));
                 }
             });
 

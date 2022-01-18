@@ -111,7 +111,7 @@ public class CameraProvider {
 
     public void setLiveDetection(boolean liveDetection) {
         this.liveDetection = liveDetection;
-        EventBus.getDefault().postSticky(new AllowUpdatePolicyChangeEvent(this.liveDetection));
+        EventBus.getDefault().post(new AllowUpdatePolicyChangeEvent(this.liveDetection));
     }
 
     /**
@@ -244,6 +244,7 @@ public class CameraProvider {
      */
     @SuppressLint({"UnsafeOptInUsageError", "RestrictedApi"})
     public void analyze(@NonNull ImageProxy imageProxy) {
+        println(this.liveDetection);
         this.analyzerThread = new Thread(() -> {
             if (this.objectDetector != null && this.liveDetection) {
                 TensorImage tensorImage = new TensorImage();
@@ -261,8 +262,9 @@ public class CameraProvider {
                 float scaleY = originalImageWidth / screenWidth;
 
                 Matrix matrix = new Matrix();
-                matrix.preTranslate(imageWidth - screenWidth, 0);
-                matrix.postScale(screenWidth / imageWidth, screenHeight / imageHeight);
+                //matrix.preTranslate(imageWidth - screenWidth, 0);
+                //matrix.postScale(screenWidth / imageWidth, screenHeight / imageHeight);
+                //matrix.postScale(screenWidth / imageWidth, screenHeight / imageHeight);
 
                 List<Detection> detections = this.objectDetector.detect(tensorImage);
                 EventBus.getDefault().post(new UpdateDetectionsRectsEvent(detections, currentLensOrientation == CameraSelector.LENS_FACING_FRONT, matrix));

@@ -1,10 +1,13 @@
 package com.example.sistemidigitali.views;
 
+import static com.example.sistemidigitali.debugUtility.Debug.println;
+
 import android.Manifest;
 import android.annotation.SuppressLint;
 import android.content.Intent;
 import android.content.res.ColorStateList;
 import android.graphics.Color;
+import android.graphics.Matrix;
 import android.net.Uri;
 import android.os.Bundle;
 import android.view.MotionEvent;
@@ -15,8 +18,10 @@ import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.appcompat.app.AppCompatActivity;
 
 import com.example.sistemidigitali.R;
+import com.example.sistemidigitali.customEvents.AllowUpdatePolicyChangeEvent;
 import com.example.sistemidigitali.customEvents.ImageSavedEvent;
 import com.example.sistemidigitali.customEvents.OverlayVisibilityChangeEvent;
+import com.example.sistemidigitali.customEvents.UpdateDetectionsRectsEvent;
 import com.example.sistemidigitali.model.CameraProvider;
 import com.example.sistemidigitali.model.CustomGestureDetector;
 import com.example.sistemidigitali.model.CustomObjectDetector;
@@ -30,6 +35,7 @@ import org.greenrobot.eventbus.ThreadMode;
 import org.tensorflow.lite.task.vision.detector.Detection;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
 
 public class MainActivity extends AppCompatActivity {
@@ -98,6 +104,9 @@ public class MainActivity extends AppCompatActivity {
         if(!this.permission.checkPermission(this, permissions)) {
             this.permission.requestPermission(this, permissions);
         }
+
+        //Debug only
+        //this.liveDetectionSwitch.performClick();
     }
 
     /**
