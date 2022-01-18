@@ -119,6 +119,8 @@ public class MainActivity extends AppCompatActivity {
         EventBus.getDefault().register(this);
         EventBus.getDefault().register(this.liveDetectionViewMain);
         EventBus.getDefault().register(this.customGestureDetector);
+        EventBus.getDefault().post(new UpdateDetectionsRectsEvent(new ArrayList<>(), false, new Matrix()));
+        EventBus.getDefault().post(new AllowUpdatePolicyChangeEvent(true));
     }
 
     /**
