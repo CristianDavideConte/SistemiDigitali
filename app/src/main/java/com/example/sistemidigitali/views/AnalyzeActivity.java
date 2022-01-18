@@ -14,6 +14,8 @@ import com.bogdwellers.pinchtozoom.ImageMatrixTouchHandler;
 import com.example.sistemidigitali.R;
 import com.example.sistemidigitali.customEvents.AllowUpdatePolicyChangeEvent;
 import com.example.sistemidigitali.customEvents.EndOfGestureEvent;
+import com.example.sistemidigitali.customEvents.GestureIsMoveEvent;
+import com.example.sistemidigitali.customEvents.GestureIsZoomEvent;
 import com.example.sistemidigitali.customEvents.ImageSavedEvent;
 import com.example.sistemidigitali.customEvents.OverlayVisibilityChangeEvent;
 import com.example.sistemidigitali.customEvents.UpdateDetectionsRectsEvent;
@@ -123,9 +125,8 @@ public class AnalyzeActivity extends AppCompatActivity {
             this.analyzeView.setOnTouchListener((view, motionEvent) -> {
                 if(!this.customGestureDetector.shouldListenToTouchEvents()) return true;
 
-                if(this.analyzeButton.isChecked()) {
-                    customGestureDetector.update(motionEvent);
-                }
+                if(this.analyzeButton.isChecked()) customGestureDetector.update(motionEvent);
+
                 return zoomHandler.onTouch(view, motionEvent);
             });
         } catch (IOException exception) {
@@ -139,8 +140,17 @@ public class AnalyzeActivity extends AppCompatActivity {
     @SuppressLint("WrongConstant")
     @Subscribe(threadMode = ThreadMode.MAIN)
     public void onOverlayVisibilityChange(OverlayVisibilityChangeEvent event) {
-        int visibility = event.getVisibility();
-        this.backgroundOverlayAnalyze.setVisibility(visibility);
+        this.backgroundOverlayAnalyze.setVisibility(event.getVisibility());
+    }
+
+    @Subscribe(threadMode = ThreadMode.ASYNC)
+    public void onGestureIsZoom(GestureIsZoomEvent event) {
+        EventBus.getDefault().postSticky(new AllowUpdatePolicyChangeEvent(false));
+    }
+
+    @Subscribe(threadMode = ThreadMode.ASYNC)
+    public void onGestureIsMove(GestureIsMoveEvent event) {
+        EventBus.getDefault().postSticky(new AllowUpdatePolicyChangeEvent(false));
     }
 
     @Subscribe(threadMode = ThreadMode.ASYNC)
@@ -152,7 +162,7 @@ public class AnalyzeActivity extends AppCompatActivity {
         this.analyzerThread = new Thread(() -> {
             this.detections = this.objectDetector.detect(this.originalImageTensor);
             EventBus.getDefault().postSticky(new AllowUpdatePolicyChangeEvent(true));
-            EventBus.getDefault().post(new UpdateDetectionsRectsEvent(detections, 0, 0, false, this.analyzeView.getImageMatrix()));
+            EventBus.getDefault().post(new UpdateDetectionsRectsEvent(detections, false, this.analyzeView.getImageMatrix()));
 
             if(!this.analyzeButton.isCheckable()) {
                 runOnUiThread(() -> {

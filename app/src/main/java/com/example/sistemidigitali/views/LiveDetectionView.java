@@ -11,12 +11,11 @@ import android.util.AttributeSet;
 import android.view.MotionEvent;
 import android.view.View;
 
-import com.example.sistemidigitali.customEvents.UpdateDetectionsRectsEvent;
 import com.example.sistemidigitali.customEvents.AllowUpdatePolicyChangeEvent;
+import com.example.sistemidigitali.customEvents.UpdateDetectionsRectsEvent;
 import com.example.sistemidigitali.enums.MaskTypeEnum;
 import com.example.sistemidigitali.enums.WearingModeEnum;
 
-import org.greenrobot.eventbus.EventBus;
 import org.greenrobot.eventbus.Subscribe;
 import org.greenrobot.eventbus.ThreadMode;
 import org.tensorflow.lite.support.label.Category;
@@ -26,14 +25,13 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class LiveDetectionView extends View {
+    private float ROUNDING_RECTS_RADIUS = 70;
     private float MAX_FONT_SIZE = 50F;
-    private float CANVAS_CENTER_DEFAULT_VALUE = -1.0F;
+    private float CANVAS_CENTER_DEFAULT_VALUE = 0.0F;
 
     private boolean allowUpdate;
 
     private List<Detection> detections;
-    private float scaleX;
-    private float scaleY;
     private float canvasCenter;
     private boolean flipNeeded;
     private Matrix transformMatrix;
@@ -82,9 +80,6 @@ public class LiveDetectionView extends View {
     @Subscribe(threadMode = ThreadMode.ASYNC)
     public void onUpdateDetectionsRects(UpdateDetectionsRectsEvent event) {
         this.detections = event.getDetections();
-
-        this.scaleX = event.getRectsWidth()  == 0.0F ? 1 : this.getWidth()  / event.getRectsWidth();
-        this.scaleY = event.getRectsHeight() == 0.0F ? 1 : this.getHeight() / event.getRectsHeight();
         this.flipNeeded = event.isFlipNeeded();
         this.transformMatrix = event.getTransformMatrix();
         this.invalidate();
@@ -100,7 +95,7 @@ public class LiveDetectionView extends View {
     public void onDraw(Canvas canvas) {
         super.onDraw(canvas);
         if(!this.allowUpdate) return;
-        if(this.canvasCenter == CANVAS_CENTER_DEFAULT_VALUE) this.canvasCenter = this.getWidth() / 2.0F;
+        this.canvasCenter = this.getWidth() / 2.0F;
 
         this.detections.parallelStream().forEach((detection) -> {
             String labelParts [] = detection.getCategories().get(0).getLabel().split("_");
@@ -108,17 +103,18 @@ public class LiveDetectionView extends View {
 
             RectF boundingBox = detection.getBoundingBox();
 
-            //Scale the bounding rectangles and flip on y-axis if necessary
-            Matrix matrix = new Matrix();
-            matrix.preScale(scaleX, scaleY);
-            if(this.flipNeeded) matrix.postTranslate(2 * this.canvasCenter - scaleX * (boundingBox.right + boundingBox.left), 0);
-            matrix.mapRect(boundingBox);
+            //Flip on y-axis if necessary
+            if(this.flipNeeded) {
+                Matrix matrix = new Matrix();
+                matrix.preTranslate(2 * this.canvasCenter - (boundingBox.right + boundingBox.left), 0);
+                matrix.mapRect(boundingBox);
+            }
 
             //Do extra translation/scaling if specified
             this.transformMatrix.mapRect(boundingBox);
 
             this.boxPaint.setColor(wearingModeEnum.getBackgroundColor());
-            canvas.drawRect(boundingBox, boxPaint);
+            canvas.drawRoundRect(boundingBox, ROUNDING_RECTS_RADIUS, ROUNDING_RECTS_RADIUS, boxPaint);
         });
     }
 

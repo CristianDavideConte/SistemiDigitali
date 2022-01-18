@@ -110,8 +110,8 @@ public class CameraProvider {
     }
 
     public void setLiveDetection(boolean liveDetection) {
-        EventBus.getDefault().postSticky(new AllowUpdatePolicyChangeEvent(liveDetection));
         this.liveDetection = liveDetection;
+        EventBus.getDefault().postSticky(new AllowUpdatePolicyChangeEvent(this.liveDetection));
     }
 
     /**
@@ -139,20 +139,12 @@ public class CameraProvider {
                 Preview preview = new Preview.Builder().build();
                 preview.setSurfaceProvider(this.pview.getSurfaceProvider());
 
-                Rect screenBounds = this.context.getWindowManager().getCurrentWindowMetrics().getBounds();
-
-                println(screenBounds.width(), screenBounds.height());
-
                 this.imageCapt = new ImageCapture.Builder()
                                 .setCaptureMode(ImageCapture.CAPTURE_MODE_MINIMIZE_LATENCY)
-                                //.setTargetResolution(new Size(screenBounds.width(), screenBounds.height()))
                                 .build();
                 this.imageAnalysis = new ImageAnalysis.Builder()
-                                // enable the following line if RGBA output is needed.
-                                //.setOutputImageFormat(ImageAnalysis.OUTPUT_IMAGE_FORMAT_RGBA_8888)
                                 .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
                                 .setOutputImageRotationEnabled(true)
-
                                 .build();
 
                 this.imageAnalysis.setAnalyzer(this.getExecutor(), (proxy) -> this.analyze(proxy));
@@ -214,7 +206,8 @@ public class CameraProvider {
                             try {
                                 OutputStream stream = context.getContentResolver().openOutputStream(picturePublicUri);
 
-                                Bitmap bitmapImage = convertImageProxyToBitmap(image, currentLensOrientation == CameraSelector.LENS_FACING_FRONT);
+                                println(image.getImageInfo().getRotationDegrees());
+                                Bitmap bitmapImage = convertImageProxyToBitmap(image, image.getImageInfo().getRotationDegrees(),currentLensOrientation == CameraSelector.LENS_FACING_FRONT);
                                 if (!bitmapImage.compress(Bitmap.CompressFormat.JPEG, 100, stream)) {
                                     throw new Exception("Image compression failed");
                                 }
@@ -249,18 +242,30 @@ public class CameraProvider {
      * The next analysis will be executed only after the current one closes the imageProxy.
      * @param imageProxy The imageProxy of the image to analyze
      */
-    @SuppressLint("UnsafeOptInUsageError")
+    @SuppressLint({"UnsafeOptInUsageError", "RestrictedApi"})
     public void analyze(@NonNull ImageProxy imageProxy) {
         this.analyzerThread = new Thread(() -> {
             if (this.objectDetector != null && this.liveDetection) {
-                int rectsWidth = imageProxy.getWidth();
-                int rectsHeight = imageProxy.getHeight();
-
                 TensorImage tensorImage = new TensorImage();
                 tensorImage.load(imageProxy.getImage());
 
+                Rect screenBounds = this.context.getWindowManager().getCurrentWindowMetrics().getBounds();
+                float originalImageWidth = this.imageCapt.getResolutionInfo().getResolution().getWidth();
+                float originalImageHeight = this.imageCapt.getResolutionInfo().getResolution().getHeight();
+                float imageWidth = imageProxy.getWidth();
+                float imageHeight = imageProxy.getHeight();
+                float screenHeight = screenBounds.height();
+                float screenWidth = screenBounds.width();
+
+                float scaleX = originalImageHeight / screenHeight;
+                float scaleY = originalImageWidth / screenWidth;
+
+                Matrix matrix = new Matrix();
+                matrix.preTranslate(imageWidth - screenWidth, 0);
+                matrix.postScale(screenWidth / imageWidth, screenHeight / imageHeight);
+
                 List<Detection> detections = this.objectDetector.detect(tensorImage);
-                EventBus.getDefault().post(new UpdateDetectionsRectsEvent(detections, rectsWidth, rectsHeight, currentLensOrientation == CameraSelector.LENS_FACING_FRONT, new Matrix()));
+                EventBus.getDefault().post(new UpdateDetectionsRectsEvent(detections, currentLensOrientation == CameraSelector.LENS_FACING_FRONT, matrix));
             }
             imageProxy.close();
         });
@@ -275,8 +280,8 @@ public class CameraProvider {
      * @return The corresponding Bitmap image
      */
     @SuppressLint("UnsafeOptInUsageError")
-    private Bitmap convertImageProxyToBitmap(@NonNull ImageProxy image, boolean flipNeeded) {
-        return convertImageToBitmap(image.getImage(), image.getImageInfo().getRotationDegrees(), flipNeeded);
+    private Bitmap convertImageProxyToBitmap(@NonNull ImageProxy image, int rotationDegree, boolean flipNeeded) {
+        return convertImageToBitmap(image.getImage(), rotationDegree, flipNeeded);
     }
 
     private Bitmap convertImageToBitmap(@NonNull Image image, int rotationDegree, boolean flipNeeded) {
