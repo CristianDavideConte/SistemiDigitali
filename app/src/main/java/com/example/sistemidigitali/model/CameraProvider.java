@@ -18,6 +18,7 @@ import android.provider.MediaStore;
 import android.util.Size;
 import android.view.MotionEvent;
 import android.view.ScaleGestureDetector;
+import android.view.Surface;
 import android.view.WindowManager;
 import android.widget.Toast;
 
@@ -32,6 +33,8 @@ import androidx.camera.core.ImageProxy;
 import androidx.camera.core.MeteringPoint;
 import androidx.camera.core.MeteringPointFactory;
 import androidx.camera.core.Preview;
+import androidx.camera.core.impl.ImageOutputConfig;
+import androidx.camera.core.impl.utils.Exif;
 import androidx.camera.lifecycle.ProcessCameraProvider;
 import androidx.camera.view.PreviewView;
 import androidx.core.content.ContextCompat;
@@ -46,6 +49,8 @@ import org.greenrobot.eventbus.EventBus;
 import org.tensorflow.lite.support.image.TensorImage;
 import org.tensorflow.lite.task.vision.detector.Detection;
 
+import java.io.ByteArrayOutputStream;
+import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
 import java.text.SimpleDateFormat;
@@ -171,7 +176,7 @@ public class CameraProvider {
      * If the saving is successful an AnalyzeActivity is started by
      * asynchronously passing it the picture's uri.
      */
-    @SuppressLint("SimpleDateFormat")
+    @SuppressLint({"SimpleDateFormat", "RestrictedApi"})
     public void captureImage() {
         //Es. SISDIG_2021127_189230.jpg
         String pictureName = "SISDIG_" + new SimpleDateFormat("yyyyMMdd_HHmmss").format(new Date()) + ".jpeg";
@@ -190,7 +195,6 @@ public class CameraProvider {
                         //Create the picture's metadata
                         ContentValues newPictureDetails = new ContentValues();
                         newPictureDetails.put(MediaStore.Images.Media._ID, pictureName);
-                        newPictureDetails.put(MediaStore.Images.Media.ORIENTATION, String.valueOf(-image.getImageInfo().getRotationDegrees()));
                         newPictureDetails.put(MediaStore.Images.Media.DISPLAY_NAME, pictureName);
                         newPictureDetails.put(MediaStore.Images.Media.MIME_TYPE, "image/jpeg");
                         newPictureDetails.put(MediaStore.Images.Media.WIDTH, image.getWidth());
@@ -206,7 +210,6 @@ public class CameraProvider {
                             try {
                                 OutputStream stream = context.getContentResolver().openOutputStream(picturePublicUri);
 
-                                println(image.getImageInfo().getRotationDegrees());
                                 Bitmap bitmapImage = convertImageProxyToBitmap(image, image.getImageInfo().getRotationDegrees(),currentLensOrientation == CameraSelector.LENS_FACING_FRONT);
                                 if (!bitmapImage.compress(Bitmap.CompressFormat.JPEG, 100, stream)) {
                                     throw new Exception("Image compression failed");
@@ -216,10 +219,14 @@ public class CameraProvider {
                                 image.close();
                                 EventBus.getDefault().postSticky(new ImageSavedEvent("success", picturePublicUri));
                             } catch (Exception e) {
+                                e.printStackTrace();
+
                                 //Remove the allocated space in the MediaStore if the picture can't be saved
                                 context.getContentResolver().delete(picturePublicUri, new Bundle());
                                 EventBus.getDefault().postSticky(new ImageSavedEvent(e.getMessage(), picturePublicUri));
-                                Toast.makeText(context, "Error saving image", Toast.LENGTH_SHORT).show();
+                                context.runOnUiThread(() -> {
+                                    Toast.makeText(context, "Error saving image", Toast.LENGTH_SHORT).show();
+                                });
                             }
                         }).start();
 
@@ -261,7 +268,7 @@ public class CameraProvider {
                 float scaleY = originalImageWidth / screenWidth;
 
                 Matrix matrix = new Matrix();
-                //matrix.preTranslate(imageWidth - screenWidth, 0);
+                matrix.preTranslate(imageWidth - screenWidth, 0);
                 matrix.postScale(screenWidth / imageWidth, screenHeight / imageHeight);
 
                 List<Detection> detections = this.objectDetector.detect(tensorImage);
@@ -285,7 +292,7 @@ public class CameraProvider {
     }
 
     private Bitmap convertImageToBitmap(@NonNull Image image, int rotationDegree, boolean flipNeeded) {
-        //rotationDegree = 180; //Fix per simo
+        //if(flipNeeded) rotationDegree = 180; //Fix per simo
         ByteBuffer byteBuffer = image.getPlanes()[0].getBuffer();
         byteBuffer.rewind();
         byte[] bytes = new byte[byteBuffer.capacity()];

@@ -64,7 +64,6 @@ public class AnalyzeActivity extends AppCompatActivity {
 
         this.customGestureDetector = new CustomGestureDetector();
 
-        println("CREATE");
         EventBus.getDefault().postSticky(new AllowUpdatePolicyChangeEvent(false));
     }
 
