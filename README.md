@@ -2,4 +2,6 @@
  Progetto Sistemi Digitali
  
  TODO:
- * Train tensorflowLite for mask/people recognition
+ * Prepare dataset for Data augmentation
+ * Improve NN performance
+ * Imporve NN max accuracy
