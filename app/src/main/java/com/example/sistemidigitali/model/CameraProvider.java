@@ -10,7 +10,6 @@ import android.graphics.BitmapFactory;
 import android.graphics.Matrix;
 import android.graphics.Rect;
 import android.media.Image;
-import android.media.metrics.Event;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.Environment;
@@ -18,11 +17,10 @@ import android.provider.MediaStore;
 import android.util.Size;
 import android.view.MotionEvent;
 import android.view.ScaleGestureDetector;
-import android.view.Surface;
-import android.view.WindowManager;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
+import androidx.camera.core.AspectRatio;
 import androidx.camera.core.Camera;
 import androidx.camera.core.CameraSelector;
 import androidx.camera.core.FocusMeteringAction;
@@ -33,13 +31,13 @@ import androidx.camera.core.ImageProxy;
 import androidx.camera.core.MeteringPoint;
 import androidx.camera.core.MeteringPointFactory;
 import androidx.camera.core.Preview;
-import androidx.camera.core.impl.ImageOutputConfig;
-import androidx.camera.core.impl.utils.Exif;
+import androidx.camera.core.UseCaseGroup;
 import androidx.camera.lifecycle.ProcessCameraProvider;
 import androidx.camera.view.PreviewView;
 import androidx.core.content.ContextCompat;
 
 import com.example.sistemidigitali.customEvents.AllowUpdatePolicyChangeEvent;
+import com.example.sistemidigitali.customEvents.ImageSavedEvent;
 import com.example.sistemidigitali.customEvents.UpdateDetectionsRectsEvent;
 import com.example.sistemidigitali.views.AnalyzeActivity;
 import com.example.sistemidigitali.views.MainActivity;
@@ -49,17 +47,13 @@ import org.greenrobot.eventbus.EventBus;
 import org.tensorflow.lite.support.image.TensorImage;
 import org.tensorflow.lite.task.vision.detector.Detection;
 
-import java.io.ByteArrayOutputStream;
-import java.io.InputStream;
+import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
 import java.text.SimpleDateFormat;
-import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 import java.util.concurrent.Executor;
-
-import com.example.sistemidigitali.customEvents.ImageSavedEvent;
 
 public class CameraProvider {
 
@@ -67,22 +61,25 @@ public class CameraProvider {
     private Camera camera;
     private int currentLensOrientation;
 
-    private PreviewView pview;
+    private Preview preview;
+    private PreviewView previewView;
     private ImageCapture imageCapt;
     private ImageAnalysis imageAnalysis;
     private CustomObjectDetector objectDetector;
     private boolean liveDetection;
+    private boolean flipNeeded;
 
     private MainActivity context;
     private Thread analyzerThread;
     private CustomGestureDetector customGestureDetector;
 
     @SuppressLint("ClickableViewAccessibility")
-    public CameraProvider(MainActivity context, PreviewView pview, CustomGestureDetector customGestureDetector) {
+    public CameraProvider(MainActivity context, PreviewView previewView, CustomGestureDetector customGestureDetector) throws IOException {
         this.context = context;
-        this.pview = pview;
+        this.previewView = previewView;
         this.liveDetection = false;
         this.customGestureDetector = customGestureDetector;
+        this.objectDetector = new CustomObjectDetector(context);
         this.startCamera(CameraSelector.LENS_FACING_BACK);
 
         //Handler for the pintch-to-zoom gesture
@@ -94,14 +91,14 @@ public class CameraProvider {
             }
         });
 
-        this.pview.setOnTouchListener((view, motionEvent) -> {
+        this.previewView.setOnTouchListener((view, motionEvent) -> {
             scaleGestureDetector.onTouchEvent(motionEvent);
             this.customGestureDetector.update(motionEvent);
 
             //Focus on finger-up gesture
+            //If liveDetection is enabled, the tap-to-focus gesture is disabled.
             if(motionEvent.getAction() == MotionEvent.ACTION_UP && !this.liveDetection) {
-                //If liveDetection is enabled, the tap-to-focus gesture is disabled.
-                MeteringPointFactory factory = this.pview.getMeteringPointFactory();
+                MeteringPointFactory factory = this.previewView.getMeteringPointFactory();
                 MeteringPoint point = factory.createPoint(motionEvent.getX(), motionEvent.getY());
                 this.camera.getCameraControl().startFocusAndMetering(new FocusMeteringAction.Builder(point).build());
             }
@@ -138,22 +135,34 @@ public class CameraProvider {
             try {
                 ProcessCameraProvider cameraProvider = this.provider.get();
                 cameraProvider.unbindAll(); //Clear usecases
+
                 this.currentLensOrientation = lensOrientation;
+                this.flipNeeded = currentLensOrientation == CameraSelector.LENS_FACING_FRONT;
                 CameraSelector cameraSelector = new CameraSelector.Builder().requireLensFacing(this.currentLensOrientation).build();
 
-                Preview preview = new Preview.Builder().build();
-                preview.setSurfaceProvider(this.pview.getSurfaceProvider());
+                this.preview = new Preview.Builder().build();
+                preview.setSurfaceProvider(this.previewView.getSurfaceProvider());
 
                 this.imageCapt = new ImageCapture.Builder()
                                 .setCaptureMode(ImageCapture.CAPTURE_MODE_MINIMIZE_LATENCY)
                                 .build();
-                this.imageAnalysis = new ImageAnalysis.Builder()
-                                .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
-                                .setOutputImageRotationEnabled(true)
-                                .build();
 
+                this.imageAnalysis = new ImageAnalysis.Builder()
+                                    .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
+                                    .setOutputImageRotationEnabled(true)
+                                    .setTargetAspectRatio(AspectRatio.RATIO_4_3)
+                                    .build();
                 this.imageAnalysis.setAnalyzer(this.getExecutor(), (proxy) -> this.analyze(proxy));
-                this.camera = cameraProvider.bindToLifecycle(this.context, cameraSelector, this.imageAnalysis, preview, this.imageCapt);
+
+
+                UseCaseGroup useCaseGroup = new UseCaseGroup.Builder()
+                                            .addUseCase(this.preview)
+                                            .addUseCase(this.imageCapt)
+                                            .addUseCase(this.imageAnalysis)
+                                            .setViewPort(this.previewView.getViewPort())
+                                            .build();
+
+                this.camera = cameraProvider.bindToLifecycle(this.context, cameraSelector, useCaseGroup);
             } catch (Exception e) {
                 e.printStackTrace();
             }
@@ -251,28 +260,46 @@ public class CameraProvider {
      */
     @SuppressLint({"UnsafeOptInUsageError", "RestrictedApi"})
     public void analyze(@NonNull ImageProxy imageProxy) {
+        if (!this.liveDetection) {
+            imageProxy.close();
+            return;
+        }
+
         this.analyzerThread = new Thread(() -> {
-            if (this.objectDetector != null && this.liveDetection) {
-                TensorImage tensorImage = new TensorImage();
+            try {
+                final TensorImage tensorImage = new TensorImage();
                 tensorImage.load(imageProxy.getImage());
 
-                Rect screenBounds = this.context.getWindowManager().getCurrentWindowMetrics().getBounds();
-                float originalImageWidth = this.imageCapt.getResolutionInfo().getResolution().getWidth();
-                float originalImageHeight = this.imageCapt.getResolutionInfo().getResolution().getHeight();
-                float imageWidth = imageProxy.getWidth();
-                float imageHeight = imageProxy.getHeight();
-                float screenHeight = screenBounds.height();
-                float screenWidth = screenBounds.width();
+                final Size originalImageResolution = this.imageCapt.getResolutionInfo().getResolution();
+                final float imageWidth = imageProxy.getWidth();
+                final float imageHeight = imageProxy.getHeight();
+                final float screenWidth = this.previewView.getWidth();
+                final float screenHeight = this.previewView.getHeight();
 
-                float scaleX = originalImageHeight / screenHeight;
-                float scaleY = originalImageWidth / screenWidth;
+                float scaleX = originalImageResolution.getWidth()  / screenWidth;
+                float scaleY = originalImageResolution.getHeight() / screenHeight;
+                final float translateX = this.flipNeeded ? 0.5F * (imageWidth - screenWidth) : 0.5F * (screenWidth - imageWidth);
+                final float translateY = 0.5F * (screenHeight - imageHeight);
 
+                if(scaleX > scaleY) {
+                    scaleX = scaleY;
+                    scaleY = 1;
+                } else {
+                    scaleY = scaleX;
+                    scaleX = 1;
+                }
+
+                //previewView's scale type is FILL_CENTER, so
+                //the transformations have the center of the previewView as the pivot
                 Matrix matrix = new Matrix();
-                matrix.preTranslate(imageWidth - screenWidth, 0);
-                matrix.postScale(screenWidth / imageWidth, screenHeight / imageHeight);
+                matrix.preTranslate(translateX, translateY);
+                matrix.postScale(scaleX * screenWidth / imageWidth, scaleY * screenHeight / imageHeight, 0.5F * screenWidth, 0.5F * screenHeight);
 
+                //long init = System.currentTimeMillis();
                 List<Detection> detections = this.objectDetector.detect(tensorImage);
-                EventBus.getDefault().post(new UpdateDetectionsRectsEvent(detections, currentLensOrientation == CameraSelector.LENS_FACING_FRONT, matrix));
+                EventBus.getDefault().post(new UpdateDetectionsRectsEvent(detections, this.flipNeeded, matrix));
+            } catch (Exception e) {
+                e.printStackTrace();
             }
             imageProxy.close();
         });
@@ -293,6 +320,7 @@ public class CameraProvider {
 
     private Bitmap convertImageToBitmap(@NonNull Image image, int rotationDegree, boolean flipNeeded) {
         //if(flipNeeded) rotationDegree = 180; //Fix per simo
+        //Maybe this.camera.getCameraInfo().getSensorRotationDegrees();
         ByteBuffer byteBuffer = image.getPlanes()[0].getBuffer();
         byteBuffer.rewind();
         byte[] bytes = new byte[byteBuffer.capacity()];

@@ -4,8 +4,6 @@ import android.annotation.SuppressLint;
 import android.view.MotionEvent;
 import android.view.View;
 
-import androidx.constraintlayout.widget.ConstraintSet;
-
 import com.example.sistemidigitali.customEvents.EndOfGestureEvent;
 import com.example.sistemidigitali.customEvents.GestureIsMoveEvent;
 import com.example.sistemidigitali.customEvents.GestureIsZoomEvent;

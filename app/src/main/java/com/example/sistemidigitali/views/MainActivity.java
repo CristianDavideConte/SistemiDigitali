@@ -62,7 +62,6 @@ public class MainActivity extends AppCompatActivity {
 
         this.permission = new Permission();
         this.customGestureDetector = new CustomGestureDetector();
-        this.cameraProvider = new CameraProvider(this,  findViewById(R.id.previewView), customGestureDetector);
         this.backgroundOverlayMain = findViewById(R.id.backgroundOverlayMain);
         this.liveDetectionViewMain = findViewById(R.id.liveDetectionViewMain);
         this.liveDetectionSwitch = findViewById(R.id.liveDetectionSwitch);
@@ -72,7 +71,7 @@ public class MainActivity extends AppCompatActivity {
         this.shutterButton = findViewById(R.id.shutterButton);
 
         try {
-            this.cameraProvider.setObjectDetector(new CustomObjectDetector(this));
+            this.cameraProvider = new CameraProvider(this,  findViewById(R.id.previewView), customGestureDetector);
             this.liveDetectionSwitch.setOnCheckedChangeListener((view, isChecked) -> this.cameraProvider.setLiveDetection(isChecked));
         } catch (IOException e) {
             this.liveDetectionSwitch.setCheckable(false);

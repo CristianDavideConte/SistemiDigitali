@@ -41,6 +41,9 @@ public class LiveDetectionView extends View {
     private Paint boxPaint;
     private Paint textPaint;
 
+    private long lastInvocationTime;
+    private float currentFps;
+
     public LiveDetectionView(Context context) {
         super(context);
         init();
@@ -81,6 +84,9 @@ public class LiveDetectionView extends View {
         this.textPaint.setTextSize(MAX_FONT_SIZE);
         this.boxPaint.setColor(Color.RED);
         this.textPaint.setColor(Color.GREEN);
+
+        this.lastInvocationTime = System.currentTimeMillis();
+        this.currentFps = 0;
     }
 
     @Subscribe(threadMode = ThreadMode.ASYNC)
@@ -117,15 +123,25 @@ public class LiveDetectionView extends View {
             }
 
             //Do extra translation/scaling if specified
-            this.transformMatrix.mapRect(boundingBox);
+            if(this.transformMatrix != null) this.transformMatrix.mapRect(boundingBox);
 
             this.boxPaint.setColor(wearingModeEnum.getBackgroundColor());
             canvas.drawRoundRect(boundingBox, ROUNDING_RECTS_RADIUS, ROUNDING_RECTS_RADIUS, boxPaint);
         });
+
+        long currentTime = System.currentTimeMillis();
+        if(currentTime - this.lastInvocationTime < 1000) {
+            this.currentFps++;
+        } else {
+            println(this.currentFps);
+            this.currentFps = 0;
+            this.lastInvocationTime = currentTime;
+        }
     }
 
     @Subscribe(threadMode = ThreadMode.ASYNC)
     public boolean onTap(MotionEvent motionEvent) {
+        if(!this.allowUpdate) return false;
         for(Detection detection : this.detections) {
             if(detection.getBoundingBox().contains(motionEvent.getX(), motionEvent.getY())) {
                 Category category = detection.getCategories().get(0);
