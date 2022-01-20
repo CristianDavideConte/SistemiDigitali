@@ -13,6 +13,11 @@ android {
         versionName "1.0"
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+
+        //https://www.tensorflow.org/lite/guide/android#use_the_tensorflow_lite_aar_from_mavencentral
+        ndk {
+            abiFilters 'armeabi-v7a', 'arm64-v8a', 'x86'
+        }
     }
 
     buildTypes {
@@ -39,6 +44,7 @@ android {
 }
 
 dependencies {
+    //UI dependencies
     implementation 'androidx.appcompat:appcompat:1.4.0'
     implementation 'com.google.android.material:material:1.4.0'
     implementation 'androidx.constraintlayout:constraintlayout:2.1.2'
@@ -51,28 +57,19 @@ dependencies {
     //Pintch-to-zoom: https://github.com/martinwithaar/PinchToZoom
     implementation('com.bogdwellers:pinchtozoom:0.1')
 
-    //CameraX
-    implementation 'androidx.camera:camera-view:1.0.0-alpha23'
-    implementation 'org.tensorflow:tensorflow-lite-support:0.1.0'
-    implementation 'org.tensorflow:tensorflow-lite-gpu:2.3.0'
-
-    def cameraVersion = "1.1.0-alpha11"
+    //CameraX: https://developer.android.com/jetpack/androidx/releases/camera
+    def cameraVersion = "1.1.0-alpha12"
+    def cameraViewVersion = "1.0.0-alpha32"
     implementation "androidx.camera:camera-core:${cameraVersion}"
     implementation "androidx.camera:camera-camera2:${cameraVersion}"
     implementation "androidx.camera:camera-lifecycle:${cameraVersion}"
+    implementation "androidx.camera:camera-view:${cameraViewVersion}"
 
-    //ML kit
-    implementation 'com.google.mlkit:face-detection:16.1.2'
-    implementation 'com.google.mlkit:pose-detection:17.0.1-beta6' //Pose detection
-
-    //TensorFlowLite
+    //TensorFlowLite: https://www.tensorflow.org/lite/guide/android
     implementation 'org.tensorflow:tensorflow-lite-task-vision:0.3.0'
-    implementation 'org.tensorflow:tensorflow-lite-task-text:0.3.0'
-    implementation 'org.tensorflow:tensorflow-lite-task-audio:0.3.0'
     implementation 'org.tensorflow:tensorflow-lite-support:0.3.0'
-
     implementation 'org.tensorflow:tensorflow-lite-metadata:0.1.0'
-    implementation 'org.tensorflow:tensorflow-lite-task-vision:0.3.0'
+    implementation 'org.tensorflow:tensorflow-lite-gpu:2.3.0'
     implementation 'org.tensorflow:tensorflow-lite-gpu-delegate-plugin:0.3.0'
 
     //noinspection GradleDynamicVersion
