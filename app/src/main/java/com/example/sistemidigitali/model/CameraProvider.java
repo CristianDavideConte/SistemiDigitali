@@ -150,7 +150,7 @@ public class CameraProvider {
                 this.imageAnalysis = new ImageAnalysis.Builder()
                                     .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
                                     .setOutputImageRotationEnabled(true)
-                                    .setTargetAspectRatio(AspectRatio.RATIO_4_3)
+                                    .setTargetResolution(new Size(240, 320)) //Default: 480x640
                                     .build();
                 this.imageAnalysis.setAnalyzer(this.getExecutor(), (proxy) -> this.analyze(proxy));
 
@@ -271,15 +271,15 @@ public class CameraProvider {
                 tensorImage.load(imageProxy.getImage());
 
                 final Size originalImageResolution = this.imageCapt.getResolutionInfo().getResolution();
-                final float imageWidth = imageProxy.getWidth();
-                final float imageHeight = imageProxy.getHeight();
-                final float screenWidth = this.previewView.getWidth();
+                final float analyzeImageWidth  = imageProxy.getWidth();
+                final float analyzeImageHeight = imageProxy.getHeight();
+                final float screenWidth  = this.previewView.getWidth();
                 final float screenHeight = this.previewView.getHeight();
 
                 float scaleX = originalImageResolution.getWidth()  / screenWidth;
                 float scaleY = originalImageResolution.getHeight() / screenHeight;
-                final float translateX = this.flipNeeded ? 0.5F * (imageWidth - screenWidth) : 0.5F * (screenWidth - imageWidth);
-                final float translateY = 0.5F * (screenHeight - imageHeight);
+                final float translateX = this.flipNeeded ? 0.5F * (analyzeImageWidth - screenWidth) : 0.5F * (screenWidth - analyzeImageWidth);
+                final float translateY = 0.5F * (screenHeight - analyzeImageHeight);
 
                 if(scaleX > scaleY) {
                     scaleX = scaleY;
@@ -293,10 +293,12 @@ public class CameraProvider {
                 //the transformations have the center of the previewView as the pivot
                 Matrix matrix = new Matrix();
                 matrix.preTranslate(translateX, translateY);
-                matrix.postScale(scaleX * screenWidth / imageWidth, scaleY * screenHeight / imageHeight, 0.5F * screenWidth, 0.5F * screenHeight);
+                matrix.postScale(scaleX * screenWidth / analyzeImageWidth, scaleY * screenHeight / analyzeImageHeight, 0.5F * screenWidth, 0.5F * screenHeight);
 
-                //long init = System.currentTimeMillis();
+                long init = System.currentTimeMillis();
                 List<Detection> detections = this.objectDetector.detect(tensorImage);
+                println(analyzeImageWidth+"x"+analyzeImageHeight, System.currentTimeMillis() - init);
+
                 EventBus.getDefault().post(new UpdateDetectionsRectsEvent(detections, this.flipNeeded, matrix));
             } catch (Exception e) {
                 e.printStackTrace();
