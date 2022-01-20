@@ -13,7 +13,7 @@ import java.util.List;
 
 public class CustomObjectDetector {
 
-    //private final String METADATA_FILE = "model.tflite";
+    private final String TEST_MODEL_FILE = "ssd_mobilenet_v1_1_metadata_1.tflite";
     private final String MODEL_FILE = "model_light.tflite";
 
     private ObjectDetector detector;
@@ -27,10 +27,10 @@ public class CustomObjectDetector {
                 ObjectDetectorOptions.builder()
                         .setBaseOptions(BaseOptions.builder().useNnapi().build())
                         .setScoreThreshold(0.3f) //30% sicurezza sulla predizione
-                        .setMaxResults(10)
+                        .setMaxResults(5)
                         .build();
 
-        this.detector = ObjectDetector.createFromFileAndOptions(this.context, MODEL_FILE, options);
+        this.detector = ObjectDetector.createFromFileAndOptions(this.context, TEST_MODEL_FILE, options);
     }
 
     /**

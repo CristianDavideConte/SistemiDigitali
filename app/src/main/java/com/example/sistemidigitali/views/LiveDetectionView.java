@@ -111,7 +111,12 @@ public class LiveDetectionView extends View {
 
         this.detections.parallelStream().forEach((detection) -> {
             String labelParts [] = detection.getCategories().get(0).getLabel().split("_");
-            WearingModeEnum wearingModeEnum = WearingModeEnum.valueOf(labelParts[0]);
+            WearingModeEnum wearingModeEnum;
+            try{
+                wearingModeEnum = WearingModeEnum.valueOf(labelParts[0]);
+            } catch (IllegalArgumentException e) { //Test mode
+                wearingModeEnum = WearingModeEnum.TEST;
+            }
 
             RectF boundingBox = detection.getBoundingBox();
 
@@ -146,11 +151,18 @@ public class LiveDetectionView extends View {
             if(detection.getBoundingBox().contains(motionEvent.getX(), motionEvent.getY())) {
                 Category category = detection.getCategories().get(0);
                 String labelParts [] = category.getLabel().split("_");
-                WearingModeEnum wearingModeEnum = WearingModeEnum.valueOf(labelParts[0]);
-
-                String wearingMode = wearingModeEnum.getFullName();
-                String maskType = wearingModeEnum != WearingModeEnum.MRNW ? MaskTypeEnum.valueOf(labelParts[1]).getFullName() : "";
                 String accuracy = String.format("%.2f", category.getScore() * 100) + "%";
+
+                WearingModeEnum wearingModeEnum;
+                String maskType;
+                try{
+                    wearingModeEnum = WearingModeEnum.valueOf(labelParts[0]);
+                    maskType = wearingModeEnum != WearingModeEnum.MRNW ? MaskTypeEnum.valueOf(labelParts[1]).getFullName() : "";
+                } catch (IllegalArgumentException e) { //Test mode
+                    wearingModeEnum = WearingModeEnum.TEST;
+                    maskType = WearingModeEnum.TEST.getFullName();
+                }
+                String wearingMode = wearingModeEnum.getFullName();
 
                 Intent intent = new Intent(this.getContext(), PopUpActivity.class);
                 intent.putExtra(PopUpActivity.POP_UP_TEXT_1, wearingMode);

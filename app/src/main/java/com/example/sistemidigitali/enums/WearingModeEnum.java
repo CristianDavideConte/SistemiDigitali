@@ -13,7 +13,9 @@ public enum WearingModeEnum {
     MRFH("Mask on the Forehead", ColorsEnum.YELLOW.getColor(), Color.BLACK),
     MRTN("Mask on the Tip of the Nose", ColorsEnum.YELLOW.getColor(), Color.BLACK),
     MRNC("Mask Under the Chin", ColorsEnum.YELLOW.getColor(), Color.BLACK),
-    MRNN("Mask Under the Nose", ColorsEnum.YELLOW.getColor(), Color.BLACK);
+    MRNN("Mask Under the Nose", ColorsEnum.YELLOW.getColor(), Color.BLACK),
+    TEST("Test", ColorsEnum.TEST.getColor(), Color.WHITE);
+
 
     private String name;
     private int backgroundColor;
