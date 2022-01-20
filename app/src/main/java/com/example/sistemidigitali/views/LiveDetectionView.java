@@ -138,7 +138,7 @@ public class LiveDetectionView extends View {
         if(currentTime - this.lastInvocationTime < 1000) {
             this.currentFps++;
         } else {
-            println(this.currentFps);
+            //println(this.currentFps);
             this.currentFps = 0;
             this.lastInvocationTime = currentTime;
         }

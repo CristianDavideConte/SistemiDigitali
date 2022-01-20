@@ -16,7 +16,9 @@ import android.os.Environment;
 import android.provider.MediaStore;
 import android.util.Size;
 import android.view.MotionEvent;
+import android.view.OrientationEventListener;
 import android.view.ScaleGestureDetector;
+import android.view.Surface;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
@@ -31,7 +33,10 @@ import androidx.camera.core.ImageProxy;
 import androidx.camera.core.MeteringPoint;
 import androidx.camera.core.MeteringPointFactory;
 import androidx.camera.core.Preview;
+import androidx.camera.core.SurfaceRequest;
 import androidx.camera.core.UseCaseGroup;
+import androidx.camera.core.impl.ImageOutputConfig;
+import androidx.camera.core.impl.utils.Exif;
 import androidx.camera.lifecycle.ProcessCameraProvider;
 import androidx.camera.view.PreviewView;
 import androidx.core.content.ContextCompat;
@@ -54,6 +59,8 @@ import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.List;
 import java.util.concurrent.Executor;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ThreadPoolExecutor;
 
 public class CameraProvider {
 
@@ -70,7 +77,6 @@ public class CameraProvider {
     private boolean flipNeeded;
 
     private MainActivity context;
-    private Thread analyzerThread;
     private CustomGestureDetector customGestureDetector;
 
     @SuppressLint("ClickableViewAccessibility")
@@ -106,10 +112,7 @@ public class CameraProvider {
             return true;
         });
     }
-
-    public void setObjectDetector(CustomObjectDetector objectDetector) {
-        this.objectDetector = objectDetector;
-    }
+    
 
     public void setLiveDetection(boolean liveDetection) {
         this.liveDetection = liveDetection;
@@ -130,29 +133,35 @@ public class CameraProvider {
      */
     @SuppressLint("RestrictedApi")
     public void startCamera(int lensOrientation) {
+        this.currentLensOrientation = lensOrientation;
+        this.flipNeeded = currentLensOrientation == CameraSelector.LENS_FACING_FRONT;
+
         this.provider = ProcessCameraProvider.getInstance(this.context);
         this.provider.addListener(() -> {
             try {
                 ProcessCameraProvider cameraProvider = this.provider.get();
                 cameraProvider.unbindAll(); //Clear usecases
 
-                this.currentLensOrientation = lensOrientation;
-                this.flipNeeded = currentLensOrientation == CameraSelector.LENS_FACING_FRONT;
+                //Camera Selector
                 CameraSelector cameraSelector = new CameraSelector.Builder().requireLensFacing(this.currentLensOrientation).build();
 
+                //Preview View
                 this.preview = new Preview.Builder().build();
                 preview.setSurfaceProvider(this.previewView.getSurfaceProvider());
 
+                //Image Capture
                 this.imageCapt = new ImageCapture.Builder()
                                 .setCaptureMode(ImageCapture.CAPTURE_MODE_MINIMIZE_LATENCY)
+                                .setTargetRotation(Surface.ROTATION_0)
                                 .build();
 
+                //Image Analysis
                 this.imageAnalysis = new ImageAnalysis.Builder()
                                     .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
                                     .setOutputImageRotationEnabled(true)
                                     .setTargetResolution(new Size(240, 320)) //Default: 480x640
                                     .build();
-                this.imageAnalysis.setAnalyzer(this.getExecutor(), (proxy) -> this.analyze(proxy));
+                this.imageAnalysis.setAnalyzer(Executors.newSingleThreadExecutor(), (imageProxy) -> this.analyze(imageProxy));
 
 
                 UseCaseGroup useCaseGroup = new UseCaseGroup.Builder()
@@ -218,8 +227,8 @@ public class CameraProvider {
                         new Thread(() -> {
                             try {
                                 OutputStream stream = context.getContentResolver().openOutputStream(picturePublicUri);
-
-                                Bitmap bitmapImage = convertImageProxyToBitmap(image, image.getImageInfo().getRotationDegrees(),currentLensOrientation == CameraSelector.LENS_FACING_FRONT);
+                                int rotationDegree = camera.getCameraInfo().getSensorRotationDegrees() - context.getDisplay().getRotation() * 90;
+                                Bitmap bitmapImage = convertImageProxyToBitmap(image, rotationDegree,currentLensOrientation == CameraSelector.LENS_FACING_FRONT);
                                 if (!bitmapImage.compress(Bitmap.CompressFormat.JPEG, 100, stream)) {
                                     throw new Exception("Image compression failed");
                                 }
@@ -233,13 +242,11 @@ public class CameraProvider {
                                 //Remove the allocated space in the MediaStore if the picture can't be saved
                                 context.getContentResolver().delete(picturePublicUri, new Bundle());
                                 EventBus.getDefault().postSticky(new ImageSavedEvent(e.getMessage(), picturePublicUri));
-                                context.runOnUiThread(() -> {
-                                    Toast.makeText(context, "Error saving image", Toast.LENGTH_SHORT).show();
-                                });
                             }
                         }).start();
 
-                        //Open a new activity and passes it the picture's uri
+                        //Open a new analyze activity
+                        liveDetection = false;
                         context.startActivity(new Intent(context, AnalyzeActivity.class));
                     }
 
@@ -265,47 +272,38 @@ public class CameraProvider {
             return;
         }
 
-        this.analyzerThread = new Thread(() -> {
-            try {
-                final TensorImage tensorImage = new TensorImage();
-                tensorImage.load(imageProxy.getImage());
+        try {
+            final TensorImage tensorImage = new TensorImage();
+            tensorImage.load(imageProxy.getImage());
 
-                final Size originalImageResolution = this.imageCapt.getResolutionInfo().getResolution();
-                final float analyzeImageWidth  = imageProxy.getWidth();
-                final float analyzeImageHeight = imageProxy.getHeight();
-                final float screenWidth  = this.previewView.getWidth();
-                final float screenHeight = this.previewView.getHeight();
+            final Size originalImageResolution = this.imageCapt.getResolutionInfo().getResolution();
+            final float analyzeImageWidth  = imageProxy.getWidth();
+            final float analyzeImageHeight = imageProxy.getHeight();
+            final float screenWidth  = this.previewView.getWidth();
+            final float screenHeight = this.previewView.getHeight();
 
-                float scaleX = originalImageResolution.getWidth()  / screenWidth;
-                float scaleY = originalImageResolution.getHeight() / screenHeight;
-                final float translateX = this.flipNeeded ? 0.5F * (analyzeImageWidth - screenWidth) : 0.5F * (screenWidth - analyzeImageWidth);
-                final float translateY = 0.5F * (screenHeight - analyzeImageHeight);
+            final float translateX = this.flipNeeded ? 0.5F * (analyzeImageWidth - screenWidth) : 0.5F * (screenWidth - analyzeImageWidth);
+            final float translateY = 0.5F * (screenHeight - analyzeImageHeight);
+            float scaleX = originalImageResolution.getWidth()  / screenWidth;
+            float scaleY = originalImageResolution.getHeight() / screenHeight;
+            final float scalingFactor = scaleX > scaleY ? screenHeight / analyzeImageHeight : screenWidth / analyzeImageWidth;
 
-                if(scaleX > scaleY) {
-                    scaleX = scaleY;
-                    scaleY = 1;
-                } else {
-                    scaleY = scaleX;
-                    scaleX = 1;
-                }
+            //previewView's scale type is FILL_CENTER, so
+            //the transformations have the center of the previewView as the pivot
+            Matrix matrix = new Matrix();
+            matrix.preTranslate(translateX, translateY);
+            matrix.postScale(scalingFactor, scalingFactor, 0.5F * screenWidth, 0.5F * screenHeight);
 
-                //previewView's scale type is FILL_CENTER, so
-                //the transformations have the center of the previewView as the pivot
-                Matrix matrix = new Matrix();
-                matrix.preTranslate(translateX, translateY);
-                matrix.postScale(scaleX * screenWidth / analyzeImageWidth, scaleY * screenHeight / analyzeImageHeight, 0.5F * screenWidth, 0.5F * screenHeight);
+            long init = System.currentTimeMillis();
+            List<Detection> detections = this.objectDetector.detect(tensorImage);
+            //println(System.currentTimeMillis() - init);
 
-                long init = System.currentTimeMillis();
-                List<Detection> detections = this.objectDetector.detect(tensorImage);
-                println(analyzeImageWidth+"x"+analyzeImageHeight, System.currentTimeMillis() - init);
-
-                EventBus.getDefault().post(new UpdateDetectionsRectsEvent(detections, this.flipNeeded, matrix));
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
+            EventBus.getDefault().post(new UpdateDetectionsRectsEvent(detections, this.flipNeeded, matrix));
+        } catch (Exception e) {
+            e.printStackTrace();
+        } finally {
             imageProxy.close();
-        });
-        this.analyzerThread.start();
+        }
     }
 
     /**
@@ -322,7 +320,6 @@ public class CameraProvider {
 
     private Bitmap convertImageToBitmap(@NonNull Image image, int rotationDegree, boolean flipNeeded) {
         //if(flipNeeded) rotationDegree = 180; //Fix per simo
-        //Maybe this.camera.getCameraInfo().getSensorRotationDegrees();
         ByteBuffer byteBuffer = image.getPlanes()[0].getBuffer();
         byteBuffer.rewind();
         byte[] bytes = new byte[byteBuffer.capacity()];

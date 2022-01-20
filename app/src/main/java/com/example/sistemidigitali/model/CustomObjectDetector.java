@@ -30,7 +30,7 @@ public class CustomObjectDetector {
                         .setMaxResults(5)
                         .build();
 
-        this.detector = ObjectDetector.createFromFileAndOptions(this.context, TEST_MODEL_FILE, options);
+        this.detector = ObjectDetector.createFromFileAndOptions(this.context, MODEL_FILE, options);
     }
 
     /**
