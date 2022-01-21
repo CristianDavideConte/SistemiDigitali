@@ -227,7 +227,10 @@ public class CameraProvider {
                         new Thread(() -> {
                             try {
                                 OutputStream stream = context.getContentResolver().openOutputStream(picturePublicUri);
-                                int rotationDegree = camera.getCameraInfo().getSensorRotationDegrees() - context.getDisplay().getRotation() * 90;
+                                int rotationDirection = currentLensOrientation == CameraSelector.LENS_FACING_BACK ? 1 : -1;
+                                int constantRotation = image.getImageInfo().getRotationDegrees() - camera.getCameraInfo().getSensorRotationDegrees();
+                                int rotationDegree = camera.getCameraInfo().getSensorRotationDegrees() - context.getDisplay().getRotation() * 90 + constantRotation * rotationDirection;
+
                                 Bitmap bitmapImage = convertImageProxyToBitmap(image, rotationDegree,currentLensOrientation == CameraSelector.LENS_FACING_FRONT);
                                 if (!bitmapImage.compress(Bitmap.CompressFormat.JPEG, 100, stream)) {
                                     throw new Exception("Image compression failed");
@@ -319,7 +322,6 @@ public class CameraProvider {
     }
 
     private Bitmap convertImageToBitmap(@NonNull Image image, int rotationDegree, boolean flipNeeded) {
-        //if(flipNeeded) rotationDegree = 180; //Fix per simo
         ByteBuffer byteBuffer = image.getPlanes()[0].getBuffer();
         byteBuffer.rewind();
         byte[] bytes = new byte[byteBuffer.capacity()];
