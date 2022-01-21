@@ -161,7 +161,7 @@ public class CameraProvider {
                                     .setOutputImageRotationEnabled(true)
                                     .setTargetResolution(new Size(240, 320)) //Default: 480x640
                                     .build();
-                this.imageAnalysis.setAnalyzer(Executors.newSingleThreadExecutor(), (imageProxy) -> this.analyze(imageProxy));
+                this.imageAnalysis.setAnalyzer(Executors.newSingleThreadExecutor(), this::analyze);
 
 
                 UseCaseGroup useCaseGroup = new UseCaseGroup.Builder()
@@ -296,7 +296,7 @@ public class CameraProvider {
 
             long init = System.currentTimeMillis();
             List<Detection> detections = this.objectDetector.detect(tensorImage);
-            //println(System.currentTimeMillis() - init);
+            println(System.currentTimeMillis() - init);
 
             EventBus.getDefault().post(new UpdateDetectionsRectsEvent(detections, this.flipNeeded, matrix));
         } catch (Exception e) {

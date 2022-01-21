@@ -2,6 +2,7 @@ package com.example.sistemidigitali.views;
 
 import static com.example.sistemidigitali.debugUtility.Debug.println;
 
+import android.annotation.SuppressLint;
 import android.content.Context;
 import android.content.Intent;
 import android.graphics.Canvas;
@@ -110,7 +111,7 @@ public class LiveDetectionView extends View {
         this.canvasCenter = this.getWidth() / 2.0F;
 
         this.detections.parallelStream().forEach((detection) -> {
-            String labelParts [] = detection.getCategories().get(0).getLabel().split("_");
+            String[] labelParts = detection.getCategories().get(0).getLabel().split("_");
             WearingModeEnum wearingModeEnum;
             try{
                 wearingModeEnum = WearingModeEnum.valueOf(labelParts[0]);
@@ -144,34 +145,36 @@ public class LiveDetectionView extends View {
         }
     }
 
+    @SuppressLint("DefaultLocale")
     @Subscribe(threadMode = ThreadMode.ASYNC)
     public boolean onTap(MotionEvent motionEvent) {
-        if(!this.allowUpdate) return false;
-        for(Detection detection : this.detections) {
-            if(detection.getBoundingBox().contains(motionEvent.getX(), motionEvent.getY())) {
-                Category category = detection.getCategories().get(0);
-                String labelParts [] = category.getLabel().split("_");
-                String accuracy = String.format("%.2f", category.getScore() * 100) + "%";
+        if(this.allowUpdate) {
+            for(Detection detection : this.detections) {
+                if(detection.getBoundingBox().contains(motionEvent.getX(), motionEvent.getY())) {
+                    Category category = detection.getCategories().get(0);
+                    String[] labelParts = category.getLabel().split("_");
+                    String accuracy = String.format("%.2f", category.getScore() * 100) + "%";
 
-                WearingModeEnum wearingModeEnum;
-                String maskType;
-                try{
-                    wearingModeEnum = WearingModeEnum.valueOf(labelParts[0]);
-                    maskType = wearingModeEnum != WearingModeEnum.MRNW ? MaskTypeEnum.valueOf(labelParts[1]).getFullName() : "";
-                } catch (IllegalArgumentException e) { //Test mode
-                    wearingModeEnum = WearingModeEnum.TEST;
-                    maskType = WearingModeEnum.TEST.getFullName();
+                    WearingModeEnum wearingModeEnum;
+                    String maskType;
+                    try{
+                        wearingModeEnum = WearingModeEnum.valueOf(labelParts[0]);
+                        maskType = wearingModeEnum != WearingModeEnum.MRNW ? MaskTypeEnum.valueOf(labelParts[1]).getFullName() : "";
+                    } catch (IllegalArgumentException e) { //Test mode
+                        wearingModeEnum = WearingModeEnum.TEST;
+                        maskType = WearingModeEnum.TEST.getFullName();
+                    }
+                    String wearingMode = wearingModeEnum.getFullName();
+
+                    Intent intent = new Intent(this.getContext(), PopUpActivity.class);
+                    intent.putExtra(PopUpActivity.POP_UP_TEXT_1, wearingMode);
+                    intent.putExtra(PopUpActivity.POP_UP_TEXT_2, maskType);
+                    intent.putExtra(PopUpActivity.POP_UP_TEXT_3, accuracy);
+                    intent.putExtra(PopUpActivity.POP_UP_BACKGROUND_COLOR, String.valueOf(wearingModeEnum.getBackgroundColor()));
+                    intent.putExtra(PopUpActivity.POP_UP_TEXT_COLOR, String.valueOf(wearingModeEnum.getTextColor()));
+                    this.getContext().startActivity(intent);
+                    return true;
                 }
-                String wearingMode = wearingModeEnum.getFullName();
-
-                Intent intent = new Intent(this.getContext(), PopUpActivity.class);
-                intent.putExtra(PopUpActivity.POP_UP_TEXT_1, wearingMode);
-                intent.putExtra(PopUpActivity.POP_UP_TEXT_2, maskType);
-                intent.putExtra(PopUpActivity.POP_UP_TEXT_3, accuracy);
-                intent.putExtra(PopUpActivity.POP_UP_BACKGROUND_COLOR, String.valueOf(wearingModeEnum.getBackgroundColor()));
-                intent.putExtra(PopUpActivity.POP_UP_TEXT_COLOR, String.valueOf(wearingModeEnum.getTextColor()));
-                this.getContext().startActivity(intent);
-                return true;
             }
         }
         return false;

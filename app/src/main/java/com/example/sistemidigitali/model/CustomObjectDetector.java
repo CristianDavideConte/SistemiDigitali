@@ -27,7 +27,7 @@ public class CustomObjectDetector {
                 ObjectDetectorOptions.builder()
                         .setBaseOptions(BaseOptions.builder().useNnapi().build())
                         .setScoreThreshold(0.3f) //30% sicurezza sulla predizione
-                        .setMaxResults(5)
+                        .setMaxResults(10)
                         .build();
 
         this.detector = ObjectDetector.createFromFileAndOptions(this.context, MODEL_FILE, options);
