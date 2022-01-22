@@ -12,6 +12,7 @@ import android.net.Uri;
 import android.os.Bundle;
 import android.view.MotionEvent;
 import android.view.View;
+import android.widget.Toast;
 
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
@@ -72,6 +73,7 @@ public class MainActivity extends AppCompatActivity {
 
         try {
             this.cameraProvider = new CameraProvider(this,  findViewById(R.id.previewView), customGestureDetector);
+            if(!this.cameraProvider.isObjectDetectorInitialized()) throw new IOException();
             this.liveDetectionSwitch.setOnCheckedChangeListener((view, isChecked) -> this.cameraProvider.setLiveDetection(isChecked));
         } catch (IOException e) {
             this.liveDetectionSwitch.setCheckable(false);
@@ -85,6 +87,7 @@ public class MainActivity extends AppCompatActivity {
 
             int[] colors = new int[] { Color.RED, Color.RED, Color.RED, Color.RED };
             this.liveDetectionSwitch.setChipBackgroundColor(new ColorStateList(states, colors));
+            this.liveDetectionSwitch.setOnClickListener((view) -> Toast.makeText(this, "Unavailable", Toast.LENGTH_SHORT).show());
         }
 
         ActivityResultLauncher<String> mGetContent = registerForActivityResult(new ActivityResultContracts.GetContent(), (uri) -> {

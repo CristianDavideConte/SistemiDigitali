@@ -59,6 +59,7 @@ import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.List;
 import java.util.concurrent.Executor;
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadPoolExecutor;
 
@@ -78,14 +79,15 @@ public class CameraProvider {
 
     private MainActivity context;
     private CustomGestureDetector customGestureDetector;
+    private Executor imageCaptureExecutor;
 
     @SuppressLint("ClickableViewAccessibility")
-    public CameraProvider(MainActivity context, PreviewView previewView, CustomGestureDetector customGestureDetector) throws IOException {
+    public CameraProvider(MainActivity context, PreviewView previewView, CustomGestureDetector customGestureDetector) {
         this.context = context;
         this.previewView = previewView;
         this.liveDetection = false;
         this.customGestureDetector = customGestureDetector;
-        this.objectDetector = new CustomObjectDetector(context);
+        this.imageCaptureExecutor = Executors.newSingleThreadExecutor();
         this.startCamera(CameraSelector.LENS_FACING_BACK);
 
         //Handler for the pintch-to-zoom gesture
@@ -111,8 +113,16 @@ public class CameraProvider {
 
             return true;
         });
+        try{
+            this.objectDetector = new CustomObjectDetector(context);
+        } catch(Exception e) {
+            e.printStackTrace();
+        }
     }
-    
+
+    public boolean isObjectDetectorInitialized() {
+        return this.objectDetector != null;
+    }
 
     public void setLiveDetection(boolean liveDetection) {
         this.liveDetection = liveDetection;
@@ -200,10 +210,14 @@ public class CameraProvider {
         String pictureName = "SISDIG_" + new SimpleDateFormat("yyyyMMdd_HHmmss").format(new Date()) + ".jpeg";
 
         this.imageCapt.takePicture(
-                this.getExecutor(),
+                this.imageCaptureExecutor,
                 new ImageCapture.OnImageCapturedCallback(){
                     @Override
                     public void onCaptureSuccess(ImageProxy image) {
+                        //Open a new analyze activity
+                        liveDetection = false;
+                        context.startActivity(new Intent(context, AnalyzeActivity.class));
+
                         //Sources:
                         //https://stackoverflow.com/questions/56904485/how-to-save-an-image-in-android-q-using-mediastore
                         //https://developer.android.com/reference/android/content/ContentResolver#insert(android.net.Uri,%20android.content.ContentValues)
@@ -224,33 +238,27 @@ public class CameraProvider {
                         Uri picturePublicUri = context.getContentResolver().insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, newPictureDetails);
 
                         //Saves the image in the background and post the result on the EventBus
-                        new Thread(() -> {
-                            try {
-                                OutputStream stream = context.getContentResolver().openOutputStream(picturePublicUri);
-                                int rotationDirection = currentLensOrientation == CameraSelector.LENS_FACING_BACK ? 1 : -1;
-                                int constantRotation = image.getImageInfo().getRotationDegrees() - camera.getCameraInfo().getSensorRotationDegrees();
-                                int rotationDegree = camera.getCameraInfo().getSensorRotationDegrees() - context.getDisplay().getRotation() * 90 + constantRotation * rotationDirection;
+                        try {
+                            OutputStream stream = context.getContentResolver().openOutputStream(picturePublicUri);
+                            int rotationDirection = currentLensOrientation == CameraSelector.LENS_FACING_BACK ? 1 : -1;
+                            int constantRotation = image.getImageInfo().getRotationDegrees() - camera.getCameraInfo().getSensorRotationDegrees();
+                            int rotationDegree = camera.getCameraInfo().getSensorRotationDegrees() - context.getDisplay().getRotation() * 90 + constantRotation * rotationDirection;
 
-                                Bitmap bitmapImage = convertImageProxyToBitmap(image, rotationDegree,currentLensOrientation == CameraSelector.LENS_FACING_FRONT);
-                                if (!bitmapImage.compress(Bitmap.CompressFormat.JPEG, 100, stream)) {
-                                    throw new Exception("Image compression failed");
-                                }
-
-                                stream.close();
-                                image.close();
-                                EventBus.getDefault().postSticky(new ImageSavedEvent("success", picturePublicUri));
-                            } catch (Exception e) {
-                                e.printStackTrace();
-
-                                //Remove the allocated space in the MediaStore if the picture can't be saved
-                                context.getContentResolver().delete(picturePublicUri, new Bundle());
-                                EventBus.getDefault().postSticky(new ImageSavedEvent(e.getMessage(), picturePublicUri));
+                            Bitmap bitmapImage = convertImageProxyToBitmap(image, rotationDegree,currentLensOrientation == CameraSelector.LENS_FACING_FRONT);
+                            if (!bitmapImage.compress(Bitmap.CompressFormat.JPEG, 100, stream)) {
+                                throw new Exception("Image compression failed");
                             }
-                        }).start();
 
-                        //Open a new analyze activity
-                        liveDetection = false;
-                        context.startActivity(new Intent(context, AnalyzeActivity.class));
+                            stream.close();
+                            image.close();
+                            EventBus.getDefault().postSticky(new ImageSavedEvent("success", picturePublicUri));
+                        } catch (Exception e) {
+                            e.printStackTrace();
+
+                            //Remove the allocated space in the MediaStore if the picture can't be saved
+                            context.getContentResolver().delete(picturePublicUri, new Bundle());
+                            EventBus.getDefault().postSticky(new ImageSavedEvent(e.getMessage(), picturePublicUri));
+                        }
                     }
 
                     @Override
