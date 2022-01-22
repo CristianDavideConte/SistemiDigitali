@@ -1,14 +1,14 @@
 package com.example.sistemidigitali.views;
 
-import static com.example.sistemidigitali.debugUtility.Debug.println;
-
 import android.annotation.SuppressLint;
 import android.graphics.Bitmap;
 import android.graphics.ImageDecoder;
 import android.graphics.Matrix;
+import android.opengl.Visibility;
 import android.os.Bundle;
 import android.view.View;
 import android.widget.ImageView;
+import android.widget.RelativeLayout;
 import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
@@ -52,6 +52,8 @@ public class AnalyzeActivity extends AppCompatActivity {
 
     private CustomGestureDetector customGestureDetector;
 
+    private RelativeLayout loadingIndicator;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -61,6 +63,7 @@ public class AnalyzeActivity extends AppCompatActivity {
         this.analyzeView = findViewById(R.id.analyzeView);
         this.liveDetectionViewAnalyze = findViewById(R.id.liveDetectionViewAnalyze);
         this.analyzeButton = findViewById(R.id.analyzeButton);
+        this.loadingIndicator = findViewById(R.id.loadingIndicatorPanel);
 
         this.customGestureDetector = new CustomGestureDetector();
 
@@ -139,6 +142,7 @@ public class AnalyzeActivity extends AppCompatActivity {
 
                 return zoomHandler.onTouch(view, motionEvent);
             });
+            this.loadingIndicator.setVisibility(View.GONE);
         } catch (IOException exception) {
             Toast.makeText(this, exception.getMessage(), Toast.LENGTH_SHORT).show();
             this.finish();
