@@ -85,7 +85,8 @@ public class MainActivity extends AppCompatActivity {
                     new int[] { android.R.attr.state_pressed}  // pressed
             };
 
-            int[] colors = new int[] { Color.RED, Color.RED, Color.RED, Color.RED };
+            int errorColor = Color.rgb(240,72,84);
+            int[] colors = new int[] { errorColor, errorColor, errorColor, errorColor };
             this.liveDetectionSwitch.setChipBackgroundColor(new ColorStateList(states, colors));
             this.liveDetectionSwitch.setOnClickListener((view) -> Toast.makeText(this, "Unavailable", Toast.LENGTH_SHORT).show());
         }
