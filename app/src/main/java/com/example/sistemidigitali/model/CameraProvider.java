@@ -209,15 +209,16 @@ public class CameraProvider {
         //Es. SISDIG_2021127_189230.jpg
         String pictureName = "SISDIG_" + new SimpleDateFormat("yyyyMMdd_HHmmss").format(new Date()) + ".jpeg";
 
+        //Open a new analyze activity
+        liveDetection = false;
+        context.startActivity(new Intent(context, AnalyzeActivity.class));
+
+        //Take the picture
         this.imageCapt.takePicture(
                 this.imageCaptureExecutor,
                 new ImageCapture.OnImageCapturedCallback(){
                     @Override
                     public void onCaptureSuccess(ImageProxy image) {
-                        //Open a new analyze activity
-                        liveDetection = false;
-                        context.startActivity(new Intent(context, AnalyzeActivity.class));
-
                         //Sources:
                         //https://stackoverflow.com/questions/56904485/how-to-save-an-image-in-android-q-using-mediastore
                         //https://developer.android.com/reference/android/content/ContentResolver#insert(android.net.Uri,%20android.content.ContentValues)
@@ -239,6 +240,7 @@ public class CameraProvider {
 
                         //Saves the image in the background and post the result on the EventBus
                         try {
+
                             OutputStream stream = context.getContentResolver().openOutputStream(picturePublicUri);
                             int rotationDirection = currentLensOrientation == CameraSelector.LENS_FACING_BACK ? 1 : -1;
                             int constantRotation = image.getImageInfo().getRotationDegrees() - camera.getCameraInfo().getSensorRotationDegrees();
@@ -264,7 +266,7 @@ public class CameraProvider {
                     @Override
                     public void onError(@NonNull ImageCaptureException exception) {
                         exception.printStackTrace();
-                        Toast.makeText(context, "Error capturing image", Toast.LENGTH_SHORT).show();
+                        EventBus.getDefault().postSticky(new ImageSavedEvent(exception.getMessage(), Uri.parse("")));
                     }
                 }
         );
