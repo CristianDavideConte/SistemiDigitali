@@ -21,7 +21,7 @@ import java.util.Map;
 
 public class CustomObjectDetector {
     private final String TEST_MODEL_FILE = "ssd_mobilenet_v1_1_metadata_1.tflite";
-    private final String MODEL_FILE = "model_light_unoptimized.tflite";
+    private final String MODEL_FILE = "model_light.tflite";
 
     private ObjectDetector detector;
     private Context context;
