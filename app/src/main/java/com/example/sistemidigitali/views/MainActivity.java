@@ -85,9 +85,8 @@ public class MainActivity extends AppCompatActivity {
             this.liveDetectionSwitch.setOnClickListener((view) -> Toast.makeText(this, "Unavailable", Toast.LENGTH_SHORT).show());
         }
 
-        ActivityResultLauncher<String> mGetContent = registerForActivityResult(new ActivityResultContracts.GetContent(), (uri) -> {
-            this.showAnalyzeActivity(uri); //If the file picked is an image the analyze activity is launched
-        });
+        //If the file picked is an image the analyze activity is launched
+        ActivityResultLauncher<String> mGetContent = registerForActivityResult(new ActivityResultContracts.GetContent(), this::showAnalyzeActivity);
 
         this.hideUIButton.setOnClickListener((view) -> this.changeUIVisibility());
         this.switchCameraButton.setOnClickListener((view) -> this.cameraProvider.switchCamera());
@@ -118,6 +117,7 @@ public class MainActivity extends AppCompatActivity {
         EventBus.getDefault().register(this.customGestureDetector);
         EventBus.getDefault().post(new UpdateDetectionsRectsEvent(new ArrayList<>(), false, new Matrix()));
         EventBus.getDefault().post(new AllowUpdatePolicyChangeEvent(true));
+        this.liveDetectionSwitch.setChecked(false);
     }
 
     /**

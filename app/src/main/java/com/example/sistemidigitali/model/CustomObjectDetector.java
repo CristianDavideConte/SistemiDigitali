@@ -34,12 +34,12 @@ public class CustomObjectDetector {
         ObjectDetectorOptions options =
                 ObjectDetectorOptions.builder()
                         .setBaseOptions(BaseOptions.builder().useNnapi().build())
-                        .setScoreThreshold(0.4f) //40% sicurezza sulla predizione
+                        .setScoreThreshold(0.3f) //30% sicurezza sulla predizione
                         .setMaxResults(10)
                         .build();
 
         long init = System.currentTimeMillis();
-        this.detector = ObjectDetector.createFromFileAndOptions(this.context, MODEL_FILE_IO8, options);
+        this.detector = ObjectDetector.createFromFileAndOptions(this.context, MODEL_FILE_F16, options);
         println("DEC:", System.currentTimeMillis() - init);
     }
 
