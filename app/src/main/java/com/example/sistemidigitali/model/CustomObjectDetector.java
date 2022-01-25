@@ -21,7 +21,8 @@ import java.util.Map;
 
 public class CustomObjectDetector {
     private final String TEST_MODEL_FILE = "ssd_mobilenet_v1_1_metadata_1.tflite";
-    private final String MODEL_FILE = "model_light.tflite";
+    private final String MODEL_FILE_F16 = "float_16_model_light.tflite";
+    private final String MODEL_FILE_IO8 = "int_8_model_light.tflite";
 
     private ObjectDetector detector;
     private Context context;
@@ -35,11 +36,11 @@ public class CustomObjectDetector {
         ObjectDetectorOptions options =
                 ObjectDetectorOptions.builder()
                         .setBaseOptions(BaseOptions.builder().useNnapi().build())
-                        .setScoreThreshold(0.3f) //30% sicurezza sulla predizione
+                        .setScoreThreshold(0.05f) //30% sicurezza sulla predizione
                         .setMaxResults(10)
                         .build();
 
-        this.detector = ObjectDetector.createFromFileAndOptions(this.context, MODEL_FILE, options);
+        this.detector = ObjectDetector.createFromFileAndOptions(this.context, MODEL_FILE_IO8, options);
     }
 
     /**
