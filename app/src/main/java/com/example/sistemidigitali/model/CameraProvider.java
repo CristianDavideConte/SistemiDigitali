@@ -8,7 +8,6 @@ import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Matrix;
-import android.graphics.Rect;
 import android.media.Image;
 import android.net.Uri;
 import android.os.Bundle;
@@ -16,13 +15,10 @@ import android.os.Environment;
 import android.provider.MediaStore;
 import android.util.Size;
 import android.view.MotionEvent;
-import android.view.OrientationEventListener;
 import android.view.ScaleGestureDetector;
 import android.view.Surface;
-import android.widget.Toast;
 
 import androidx.annotation.NonNull;
-import androidx.camera.core.AspectRatio;
 import androidx.camera.core.Camera;
 import androidx.camera.core.CameraSelector;
 import androidx.camera.core.FocusMeteringAction;
@@ -33,10 +29,7 @@ import androidx.camera.core.ImageProxy;
 import androidx.camera.core.MeteringPoint;
 import androidx.camera.core.MeteringPointFactory;
 import androidx.camera.core.Preview;
-import androidx.camera.core.SurfaceRequest;
 import androidx.camera.core.UseCaseGroup;
-import androidx.camera.core.impl.ImageOutputConfig;
-import androidx.camera.core.impl.utils.Exif;
 import androidx.camera.lifecycle.ProcessCameraProvider;
 import androidx.camera.view.PreviewView;
 import androidx.core.content.ContextCompat;
@@ -52,16 +45,13 @@ import org.greenrobot.eventbus.EventBus;
 import org.tensorflow.lite.support.image.TensorImage;
 import org.tensorflow.lite.task.vision.detector.Detection;
 
-import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.List;
 import java.util.concurrent.Executor;
-import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.concurrent.ThreadPoolExecutor;
 
 public class CameraProvider {
 
@@ -113,6 +103,7 @@ public class CameraProvider {
 
             return true;
         });
+
         try{
             this.objectDetector = new CustomObjectDetector(context);
         } catch(Exception e) {

@@ -1,7 +1,5 @@
 package com.example.sistemidigitali.views;
 
-import static com.example.sistemidigitali.debugUtility.Debug.println;
-
 import android.Manifest;
 import android.annotation.SuppressLint;
 import android.content.Intent;
@@ -10,7 +8,6 @@ import android.graphics.Color;
 import android.graphics.Matrix;
 import android.net.Uri;
 import android.os.Bundle;
-import android.view.MotionEvent;
 import android.view.View;
 import android.widget.Toast;
 
@@ -25,7 +22,6 @@ import com.example.sistemidigitali.customEvents.OverlayVisibilityChangeEvent;
 import com.example.sistemidigitali.customEvents.UpdateDetectionsRectsEvent;
 import com.example.sistemidigitali.model.CameraProvider;
 import com.example.sistemidigitali.model.CustomGestureDetector;
-import com.example.sistemidigitali.model.CustomObjectDetector;
 import com.example.sistemidigitali.model.Permission;
 import com.google.android.material.chip.Chip;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
@@ -33,11 +29,9 @@ import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import org.greenrobot.eventbus.EventBus;
 import org.greenrobot.eventbus.Subscribe;
 import org.greenrobot.eventbus.ThreadMode;
-import org.tensorflow.lite.task.vision.detector.Detection;
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.List;
 
 public class MainActivity extends AppCompatActivity {
     private Permission permission;
