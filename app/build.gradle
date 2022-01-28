@@ -38,8 +38,8 @@ android {
     }
 
     // Specify tflite file should not be compressed for the app apk
-    aaptOptions {
-        noCompress "tflite"
+    androidResources {
+        noCompress 'tflite'
     }
 }
 
