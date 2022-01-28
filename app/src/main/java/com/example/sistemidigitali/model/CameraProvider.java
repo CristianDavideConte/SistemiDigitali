@@ -166,7 +166,7 @@ public class CameraProvider {
                 this.imageAnalysis = new ImageAnalysis.Builder()
                                     .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
                                     .setOutputImageRotationEnabled(true)
-                                    .setTargetResolution(new Size(640, 640)) //Default: 480x640
+                                    .setTargetResolution(new Size(240, 320)) //Default: 480x640
                                     .build();
                 this.imageAnalysis.setAnalyzer(Executors.newSingleThreadExecutor(), this::analyze);
 
