@@ -33,13 +33,13 @@ public class CustomObjectDetector {
         // Initialization
         ObjectDetectorOptions options =
                 ObjectDetectorOptions.builder()
-                        .setBaseOptions(BaseOptions.builder().useNnapi().build())
+                        .setBaseOptions(BaseOptions.builder().useGpu().build()) //<uses-native-library> tag is required in the AndroidManifest.xml to use the GPU
                         .setScoreThreshold(0.3f) //30% sicurezza sulla predizione
                         .setMaxResults(10)
                         .build();
 
         long init = System.currentTimeMillis();
-        this.detector = ObjectDetector.createFromFileAndOptions(this.context, MODEL_FILE_F16, options);
+        this.detector = ObjectDetector.createFromFileAndOptions(this.context, MODEL_FILE_IO8, options);
         println("DEC:", System.currentTimeMillis() - init);
     }
 

@@ -13,6 +13,9 @@
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:theme="@style/Theme.SistemiDigitali">
+        <uses-native-library
+            android:name="libOpenCL.so"
+            android:required="true"/>
         <activity
             android:name=".views.PopUpActivity"
             android:exported="false"
