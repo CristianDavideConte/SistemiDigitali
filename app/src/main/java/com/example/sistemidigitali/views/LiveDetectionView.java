@@ -28,15 +28,16 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class LiveDetectionView extends View {
-    private float ROUNDING_RECTS_RADIUS = 70;
-    private float MAX_FONT_SIZE = 50F;
-    private float CANVAS_CENTER_DEFAULT_VALUE = 0.0F;
+    private final float ROUNDING_RECTS_RADIUS = 70;
+    private final float MAX_FONT_SIZE = 50F;
+    private final float CANVAS_CENTER_DEFAULT_VALUE = 0.0F;
 
     private boolean allowUpdate;
 
     private List<Detection> detections;
     private float canvasCenter;
     private boolean flipNeeded;
+    private Matrix flipperMatrix;
     private Matrix transformMatrix;
 
     private Paint boxPaint;
@@ -74,6 +75,7 @@ public class LiveDetectionView extends View {
         this.detections = new ArrayList<>();
         this.canvasCenter = CANVAS_CENTER_DEFAULT_VALUE;
         this.flipNeeded = false;
+        this.flipperMatrix = new Matrix();
         this.transformMatrix = new Matrix();
         this.boxPaint = new Paint();
         this.textPaint = new Paint();
@@ -95,6 +97,7 @@ public class LiveDetectionView extends View {
         this.detections = event.getDetections();
         this.flipNeeded = event.isFlipNeeded();
         this.transformMatrix = event.getTransformMatrix();
+        this.flipperMatrix.reset();
         this.invalidate();
     }
 
@@ -123,9 +126,8 @@ public class LiveDetectionView extends View {
 
             //Flip on y-axis if necessary
             if(this.flipNeeded) {
-                Matrix matrix = new Matrix();
-                matrix.preTranslate(2 * this.canvasCenter - (boundingBox.right + boundingBox.left), 0);
-                matrix.mapRect(boundingBox);
+                this.flipperMatrix.preTranslate(2 * this.canvasCenter - (boundingBox.right + boundingBox.left), 0);
+                this.flipperMatrix.mapRect(boundingBox);
             }
 
             //Do extra translation/scaling if specified

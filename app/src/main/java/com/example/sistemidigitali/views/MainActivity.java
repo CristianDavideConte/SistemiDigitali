@@ -1,19 +1,24 @@
 package com.example.sistemidigitali.views;
 
+import static com.example.sistemidigitali.debugUtility.Debug.println;
+
 import android.Manifest;
 import android.annotation.SuppressLint;
 import android.content.Intent;
 import android.content.res.ColorStateList;
 import android.graphics.Color;
 import android.graphics.Matrix;
+import android.hardware.SensorManager;
 import android.net.Uri;
 import android.os.Bundle;
+import android.view.OrientationEventListener;
 import android.view.View;
 import android.widget.Toast;
 
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.camera.core.CameraSelector;
 
 import com.example.sistemidigitali.R;
 import com.example.sistemidigitali.customEvents.AllowUpdatePolicyChangeEvent;
@@ -49,6 +54,7 @@ public class MainActivity extends AppCompatActivity {
 
     private int isUIVisible;
     private CustomGestureDetector customGestureDetector;
+    private int currentOrientation;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -66,7 +72,8 @@ public class MainActivity extends AppCompatActivity {
         this.shutterButton = findViewById(R.id.shutterButton);
 
         try {
-            this.cameraProvider = new CameraProvider(this,  findViewById(R.id.previewView), customGestureDetector);
+            MainActivity context = this;
+            this.cameraProvider = new CameraProvider(context,  findViewById(R.id.previewView), customGestureDetector);
             if(!this.cameraProvider.isObjectDetectorInitialized()) throw new IOException();
             this.liveDetectionSwitch.setOnCheckedChangeListener((view, isChecked) -> this.cameraProvider.setLiveDetection(isChecked));
         } catch (IOException e) {

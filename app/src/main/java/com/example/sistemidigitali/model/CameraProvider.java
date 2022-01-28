@@ -8,6 +8,7 @@ import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Matrix;
+import android.hardware.SensorManager;
 import android.media.Image;
 import android.net.Uri;
 import android.os.Bundle;
@@ -15,6 +16,7 @@ import android.os.Environment;
 import android.provider.MediaStore;
 import android.util.Size;
 import android.view.MotionEvent;
+import android.view.OrientationEventListener;
 import android.view.ScaleGestureDetector;
 import android.view.Surface;
 
@@ -50,6 +52,7 @@ import java.nio.ByteBuffer;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.List;
+import java.util.Objects;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 
@@ -111,6 +114,9 @@ public class CameraProvider {
         }
     }
 
+    public int getCurrentLensOrientation() {
+        return currentLensOrientation;
+    }
     public boolean isObjectDetectorInitialized() {
         return this.objectDetector != null;
     }
@@ -210,6 +216,7 @@ public class CameraProvider {
                 new ImageCapture.OnImageCapturedCallback(){
                     @Override
                     public void onCaptureSuccess(ImageProxy image) {
+                        println(image.getWidth()+"x"+image.getHeight());
                         //Sources:
                         //https://stackoverflow.com/questions/56904485/how-to-save-an-image-in-android-q-using-mediastore
                         //https://developer.android.com/reference/android/content/ContentResolver#insert(android.net.Uri,%20android.content.ContentValues)
