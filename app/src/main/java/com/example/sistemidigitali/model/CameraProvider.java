@@ -37,8 +37,10 @@ import androidx.camera.view.PreviewView;
 import androidx.core.content.ContextCompat;
 
 import com.example.sistemidigitali.customEvents.AllowUpdatePolicyChangeEvent;
+import com.example.sistemidigitali.customEvents.CustomObjectDetectorAvailableEvent;
 import com.example.sistemidigitali.customEvents.ImageSavedEvent;
 import com.example.sistemidigitali.customEvents.UpdateDetectionsRectsEvent;
+import com.example.sistemidigitali.enums.CustomObjectDetectorType;
 import com.example.sistemidigitali.views.AnalyzeActivity;
 import com.example.sistemidigitali.views.MainActivity;
 import com.google.common.util.concurrent.ListenableFuture;
@@ -47,9 +49,11 @@ import org.greenrobot.eventbus.EventBus;
 import org.tensorflow.lite.support.image.TensorImage;
 import org.tensorflow.lite.task.vision.detector.Detection;
 
+import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 import java.util.Objects;
@@ -58,15 +62,16 @@ import java.util.concurrent.Executors;
 
 public class CameraProvider {
 
+    private static CustomObjectDetector objectDetector;
+    private static int currentLensOrientation = CameraSelector.LENS_FACING_BACK;
+
     private ListenableFuture<ProcessCameraProvider> provider;
     private Camera camera;
-    private int currentLensOrientation;
 
     private Preview preview;
     private PreviewView previewView;
     private ImageCapture imageCapt;
     private ImageAnalysis imageAnalysis;
-    private CustomObjectDetector objectDetector;
     private boolean liveDetection;
     private boolean flipNeeded;
 
@@ -81,7 +86,7 @@ public class CameraProvider {
         this.liveDetection = false;
         this.customGestureDetector = customGestureDetector;
         this.imageCaptureExecutor = Executors.newSingleThreadExecutor();
-        this.startCamera(CameraSelector.LENS_FACING_BACK);
+        this.startCamera(currentLensOrientation);
 
         //Handler for the pintch-to-zoom gesture
         ScaleGestureDetector scaleGestureDetector = new ScaleGestureDetector(this.context, new ScaleGestureDetector.SimpleOnScaleGestureListener() {
@@ -107,18 +112,18 @@ public class CameraProvider {
             return true;
         });
 
-        try{
-            this.objectDetector = new CustomObjectDetector(context);
-        } catch(Exception e) {
-            e.printStackTrace();
-        }
+        new Thread(() -> {
+            try {
+                if(objectDetector == null) objectDetector = new CustomObjectDetector(context, CustomObjectDetectorType.HIGH_PERFORMANCE);
+                EventBus.getDefault().postSticky(new CustomObjectDetectorAvailableEvent(context, objectDetector, CustomObjectDetectorType.HIGH_PERFORMANCE));
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }).start();
     }
 
     public int getCurrentLensOrientation() {
         return currentLensOrientation;
-    }
-    public boolean isObjectDetectorInitialized() {
-        return this.objectDetector != null;
     }
 
     public void setLiveDetection(boolean liveDetection) {
@@ -140,7 +145,7 @@ public class CameraProvider {
      */
     @SuppressLint("RestrictedApi")
     public void startCamera(int lensOrientation) {
-        this.currentLensOrientation = lensOrientation;
+        currentLensOrientation = lensOrientation;
         this.flipNeeded = currentLensOrientation == CameraSelector.LENS_FACING_FRONT;
 
         this.provider = ProcessCameraProvider.getInstance(this.context);
@@ -150,7 +155,7 @@ public class CameraProvider {
                 cameraProvider.unbindAll(); //Clear usecases
 
                 //Camera Selector
-                CameraSelector cameraSelector = new CameraSelector.Builder().requireLensFacing(this.currentLensOrientation).build();
+                CameraSelector cameraSelector = new CameraSelector.Builder().requireLensFacing(currentLensOrientation).build();
 
                 //Preview View
                 this.preview = new Preview.Builder().build();
@@ -191,7 +196,8 @@ public class CameraProvider {
      * Otherwise the backward facing lens is selected.
      */
     public void switchCamera() {
-        int newLensOrientation = this.currentLensOrientation == CameraSelector.LENS_FACING_BACK ? CameraSelector.LENS_FACING_FRONT : CameraSelector.LENS_FACING_BACK;
+        EventBus.getDefault().post(new UpdateDetectionsRectsEvent(new ArrayList<>(), false, null));
+        int newLensOrientation = currentLensOrientation == CameraSelector.LENS_FACING_BACK ? CameraSelector.LENS_FACING_FRONT : CameraSelector.LENS_FACING_BACK;
         this.startCamera(newLensOrientation);
     }
 
@@ -215,7 +221,7 @@ public class CameraProvider {
                 this.imageCaptureExecutor,
                 new ImageCapture.OnImageCapturedCallback(){
                     @Override
-                    public void onCaptureSuccess(ImageProxy image) {
+                    public void onCaptureSuccess(@NonNull ImageProxy image) {
                         println(image.getWidth()+"x"+image.getHeight());
                         //Sources:
                         //https://stackoverflow.com/questions/56904485/how-to-save-an-image-in-android-q-using-mediastore
@@ -306,7 +312,7 @@ public class CameraProvider {
             matrix.postScale(scalingFactor, scalingFactor, 0.5F * screenWidth, 0.5F * screenHeight);
 
             long init = System.currentTimeMillis();
-            List<Detection> detections = this.objectDetector.detect(tensorImage);
+            List<Detection> detections = objectDetector.detect(tensorImage);
             println(System.currentTimeMillis() - init);
 
             EventBus.getDefault().post(new UpdateDetectionsRectsEvent(detections, this.flipNeeded, matrix));

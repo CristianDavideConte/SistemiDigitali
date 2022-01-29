@@ -1,27 +1,22 @@
 package com.example.sistemidigitali.views;
 
-import static com.example.sistemidigitali.debugUtility.Debug.println;
-
 import android.Manifest;
 import android.annotation.SuppressLint;
 import android.content.Intent;
-import android.content.res.ColorStateList;
-import android.graphics.Color;
 import android.graphics.Matrix;
-import android.hardware.SensorManager;
 import android.net.Uri;
 import android.os.Bundle;
-import android.view.OrientationEventListener;
 import android.view.View;
+import android.view.WindowManager;
 import android.widget.Toast;
 
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.appcompat.app.AppCompatActivity;
-import androidx.camera.core.CameraSelector;
 
 import com.example.sistemidigitali.R;
 import com.example.sistemidigitali.customEvents.AllowUpdatePolicyChangeEvent;
+import com.example.sistemidigitali.customEvents.CustomObjectDetectorAvailableEvent;
 import com.example.sistemidigitali.customEvents.ImageSavedEvent;
 import com.example.sistemidigitali.customEvents.OverlayVisibilityChangeEvent;
 import com.example.sistemidigitali.customEvents.UpdateDetectionsRectsEvent;
@@ -35,7 +30,6 @@ import org.greenrobot.eventbus.EventBus;
 import org.greenrobot.eventbus.Subscribe;
 import org.greenrobot.eventbus.ThreadMode;
 
-import java.io.IOException;
 import java.util.ArrayList;
 
 public class MainActivity extends AppCompatActivity {
@@ -54,12 +48,12 @@ public class MainActivity extends AppCompatActivity {
 
     private int isUIVisible;
     private CustomGestureDetector customGestureDetector;
-    private int currentOrientation;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+        getWindow().setFlags(WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS, WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS);
 
         this.permission = new Permission();
         this.customGestureDetector = new CustomGestureDetector();
@@ -71,34 +65,15 @@ public class MainActivity extends AppCompatActivity {
         this.galleryButton = findViewById(R.id.galleryButton);
         this.shutterButton = findViewById(R.id.shutterButton);
 
-        try {
-            MainActivity context = this;
-            this.cameraProvider = new CameraProvider(context,  findViewById(R.id.previewView), customGestureDetector);
-            if(!this.cameraProvider.isObjectDetectorInitialized()) throw new IOException();
-            this.liveDetectionSwitch.setOnCheckedChangeListener((view, isChecked) -> this.cameraProvider.setLiveDetection(isChecked));
-        } catch (IOException e) {
-            this.liveDetectionSwitch.setCheckable(false);
-            this.liveDetectionSwitch.setTextColor(Color.WHITE);
-            int[][] states = new int[][] {
-                    new int[] { android.R.attr.state_enabled}, // enabled
-                    new int[] {-android.R.attr.state_enabled}, // disabled
-                    new int[] {-android.R.attr.state_checked}, // unchecked
-                    new int[] { android.R.attr.state_pressed}  // pressed
-            };
-
-            int errorColor = Color.rgb(240,72,84);
-            int[] colors = new int[] { errorColor, errorColor, errorColor, errorColor };
-            this.liveDetectionSwitch.setChipBackgroundColor(new ColorStateList(states, colors));
-            this.liveDetectionSwitch.setOnClickListener((view) -> Toast.makeText(this, "Unavailable", Toast.LENGTH_SHORT).show());
-        }
+        this.cameraProvider = new CameraProvider(this,  findViewById(R.id.previewView), customGestureDetector);
+        this.switchCameraButton.setOnClickListener((view) -> this.cameraProvider.switchCamera());
+        this.shutterButton.setOnClickListener((view) -> this.cameraProvider.captureImage());
+        this.liveDetectionSwitch.setOnClickListener((view) -> Toast.makeText(this, "Unavailable", Toast.LENGTH_SHORT).show());
 
         //If the file picked is an image the analyze activity is launched
-        ActivityResultLauncher<String> mGetContent = registerForActivityResult(new ActivityResultContracts.GetContent(), this::showAnalyzeActivity);
-
+        ActivityResultLauncher<String> filePicker = registerForActivityResult(new ActivityResultContracts.GetContent(), this::showAnalyzeActivity);
+        this.galleryButton.setOnClickListener((view) -> filePicker.launch("image/*")); //Shows the file picker for images only
         this.hideUIButton.setOnClickListener((view) -> this.changeUIVisibility());
-        this.switchCameraButton.setOnClickListener((view) -> this.cameraProvider.switchCamera());
-        this.galleryButton.setOnClickListener((view) -> mGetContent.launch("image/*")); //Shows the file picker for images only
-        this.shutterButton.setOnClickListener((view) -> this.cameraProvider.captureImage());
 
         //Request all the permissions needed if not already available
         String [] permissions = {Manifest.permission.CAMERA,
@@ -107,9 +82,6 @@ public class MainActivity extends AppCompatActivity {
         if(!this.permission.checkPermission(this, permissions)) {
             this.permission.requestPermission(this, permissions);
         }
-
-        //Debug only
-        //this.liveDetectionSwitch.performClick();
     }
 
     /**
@@ -137,6 +109,15 @@ public class MainActivity extends AppCompatActivity {
         EventBus.getDefault().unregister(this.liveDetectionViewMain);
         EventBus.getDefault().unregister(this.customGestureDetector);
         super.onStop();
+    }
+
+    @Subscribe(sticky = true, threadMode = ThreadMode.MAIN)
+    public void onCustomObjectDetectorAvailable(CustomObjectDetectorAvailableEvent event) {
+        if(event.getContext() != this) return;
+        this.liveDetectionSwitch.setOnClickListener((view) -> {});
+        this.liveDetectionSwitch.setOnCheckedChangeListener((view, isChecked) -> this.cameraProvider.setLiveDetection(isChecked));
+        this.liveDetectionSwitch.setCheckable(true);
+        EventBus.getDefault().removeStickyEvent(CustomObjectDetectorAvailableEvent.class);
     }
 
     @SuppressLint("WrongConstant")

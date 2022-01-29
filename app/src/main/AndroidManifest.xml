@@ -25,7 +25,8 @@
         <activity
             android:name=".views.AnalyzeActivity"
             android:exported="false"
-            android:parentActivityName=".views.MainActivity" />
+            android:parentActivityName=".views.MainActivity"
+            android:theme="@style/Theme.SistemiDigitali.NoActionBar"/>
         <activity
             android:name=".views.MainActivity"
             android:exported="true"

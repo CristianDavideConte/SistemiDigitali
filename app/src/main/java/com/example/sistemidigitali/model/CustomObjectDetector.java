@@ -4,6 +4,8 @@ import static com.example.sistemidigitali.debugUtility.Debug.println;
 
 import android.content.Context;
 
+import com.example.sistemidigitali.enums.CustomObjectDetectorType;
+
 import org.tensorflow.lite.Interpreter;
 import org.tensorflow.lite.TensorFlowLite;
 import org.tensorflow.lite.support.image.TensorImage;
@@ -24,11 +26,13 @@ public class CustomObjectDetector {
     private final String MODEL_FILE_F16 = "float_16_model_light.tflite";
     private final String MODEL_FILE_IO8 = "int_8_model_light.tflite";
 
-    private ObjectDetector detector;
     private Context context;
+    private ObjectDetector detector;
+    private CustomObjectDetectorType type;
 
-    public CustomObjectDetector(Context context) throws IOException {
+    public CustomObjectDetector(Context context, CustomObjectDetectorType type) throws IOException {
         this.context = context;
+        this.type = type;
 
         // Initialization
         ObjectDetectorOptions options =
@@ -40,7 +44,8 @@ public class CustomObjectDetector {
                         .build();
 
         long init = System.currentTimeMillis();
-        this.detector = ObjectDetector.createFromFileAndOptions(this.context, MODEL_FILE_IO8, options);
+        if(this.type == CustomObjectDetectorType.HIGH_ACCURACY) this.detector = ObjectDetector.createFromFileAndOptions(this.context, MODEL_FILE_F16, options);
+        else this.detector = ObjectDetector.createFromFileAndOptions(this.context, MODEL_FILE_IO8, options);
         println("DEC:", System.currentTimeMillis() - init);
     }
 

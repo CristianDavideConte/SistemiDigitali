@@ -1,5 +1,7 @@
 package com.example.sistemidigitali.views;
 
+import static com.example.sistemidigitali.debugUtility.Debug.println;
+
 import android.annotation.SuppressLint;
 import android.graphics.Bitmap;
 import android.graphics.ImageDecoder;
@@ -7,6 +9,7 @@ import android.graphics.Matrix;
 import android.opengl.Visibility;
 import android.os.Bundle;
 import android.view.View;
+import android.view.WindowManager;
 import android.widget.ImageView;
 import android.widget.RelativeLayout;
 import android.widget.Toast;
@@ -16,12 +19,14 @@ import androidx.appcompat.app.AppCompatActivity;
 import com.bogdwellers.pinchtozoom.ImageMatrixTouchHandler;
 import com.example.sistemidigitali.R;
 import com.example.sistemidigitali.customEvents.AllowUpdatePolicyChangeEvent;
+import com.example.sistemidigitali.customEvents.CustomObjectDetectorAvailableEvent;
 import com.example.sistemidigitali.customEvents.EndOfGestureEvent;
 import com.example.sistemidigitali.customEvents.GestureIsMoveEvent;
 import com.example.sistemidigitali.customEvents.GestureIsZoomEvent;
 import com.example.sistemidigitali.customEvents.ImageSavedEvent;
 import com.example.sistemidigitali.customEvents.OverlayVisibilityChangeEvent;
 import com.example.sistemidigitali.customEvents.UpdateDetectionsRectsEvent;
+import com.example.sistemidigitali.enums.CustomObjectDetectorType;
 import com.example.sistemidigitali.model.CustomGestureDetector;
 import com.example.sistemidigitali.model.CustomObjectDetector;
 import com.google.android.material.chip.Chip;
@@ -35,8 +40,12 @@ import org.tensorflow.lite.task.vision.detector.Detection;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.Executor;
+import java.util.concurrent.Executors;
 
 public class AnalyzeActivity extends AppCompatActivity {
+    private static CustomObjectDetector objectDetector;
+
     private Bitmap originalImage;
     private TensorImage originalImageTensor;
 
@@ -44,11 +53,10 @@ public class AnalyzeActivity extends AppCompatActivity {
     private ImageView analyzeView;
     private LiveDetectionView liveDetectionViewAnalyze;
     private Chip analyzeButton;
-    private CustomObjectDetector objectDetector;
     private List<Detection> detections;
 
     private ImageMatrixTouchHandler zoomHandler;
-    private Thread analyzerThread;
+    private Executor analyzer;
 
     private CustomGestureDetector customGestureDetector;
 
@@ -58,6 +66,7 @@ public class AnalyzeActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_analyze);
+        getWindow().setFlags(WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS, WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS);
 
         this.backgroundOverlayAnalyze = findViewById(R.id.backgroundOverlayAnalyze);
         this.analyzeView = findViewById(R.id.analyzeView);
@@ -65,7 +74,19 @@ public class AnalyzeActivity extends AppCompatActivity {
         this.analyzeButton = findViewById(R.id.analyzeButton);
         this.loadingIndicator = findViewById(R.id.loadingIndicatorPanel);
 
+        this.analyzer = Executors.newSingleThreadExecutor();
         this.customGestureDetector = new CustomGestureDetector();
+        this.analyzeButton.setOnClickListener((view) -> Toast.makeText(this, "Unavailable", Toast.LENGTH_SHORT).show());
+
+        new Thread(() -> {
+            try {
+                println(objectDetector == null);
+                if(objectDetector == null) objectDetector = new CustomObjectDetector(this, CustomObjectDetectorType.HIGH_ACCURACY);
+                EventBus.getDefault().postSticky(new CustomObjectDetectorAvailableEvent(this, objectDetector, CustomObjectDetectorType.HIGH_ACCURACY));
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }).start();
 
         EventBus.getDefault().postSticky(new AllowUpdatePolicyChangeEvent(false));
     }
@@ -121,18 +142,7 @@ public class AnalyzeActivity extends AppCompatActivity {
             ImageDecoder.Source source = ImageDecoder.createSource(this.getContentResolver(), event.getUri());
             this.originalImage = ImageDecoder.decodeBitmap(source).copy(Bitmap.Config.ARGB_8888, true);
             this.originalImageTensor = TensorImage.fromBitmap(originalImage);
-            this.objectDetector = new CustomObjectDetector(this);
             this.analyzeView.setImageBitmap(this.originalImage);
-            this.analyzeButton.setOnCheckedChangeListener((view, isChecked) -> {
-                if(isChecked) {
-                    this.analyzeButton.setCheckable(false);
-                    this.analyzeButton.setText(". . .");
-                    this.detectObjects();
-                } else {
-                    this.analyzeButton.setText("Analyze");
-                    EventBus.getDefault().post(new AllowUpdatePolicyChangeEvent(false));
-                }
-            });
 
             this.zoomHandler = new ImageMatrixTouchHandler(this);
             this.analyzeView.setOnTouchListener((view, motionEvent) -> {
@@ -143,15 +153,32 @@ public class AnalyzeActivity extends AppCompatActivity {
                 return zoomHandler.onTouch(view, motionEvent);
             });
             this.loadingIndicator.setVisibility(View.GONE);
+            if(objectDetector != null) this.analyzeButton.setCheckable(true);
         } catch (IOException exception) {
             Toast.makeText(this, exception.getMessage(), Toast.LENGTH_SHORT).show();
             this.finish();
-            return;
         } finally {
             EventBus.getDefault().removeStickyEvent(ImageSavedEvent.class);
         }
     }
 
+    @Subscribe(sticky = true, threadMode = ThreadMode.MAIN)
+    public void onCustomObjectDetectorAvailable(CustomObjectDetectorAvailableEvent event) {
+        if(event.getContext() != this) return;
+        this.analyzeButton.setOnClickListener((view) -> {});
+        this.analyzeButton.setOnCheckedChangeListener((view, isChecked) -> {
+            if(isChecked) {
+                this.analyzeButton.setCheckable(false);
+                this.analyzeButton.setText(". . .");
+                this.detectObjects();
+            } else {
+                this.analyzeButton.setText("Analyze");
+                EventBus.getDefault().post(new AllowUpdatePolicyChangeEvent(false));
+            }
+        });
+        if(this.originalImage != null) this.analyzeButton.setCheckable(true);
+        EventBus.getDefault().removeStickyEvent(CustomObjectDetectorAvailableEvent.class);
+    }
 
     @SuppressLint("WrongConstant")
     @Subscribe(threadMode = ThreadMode.MAIN)
@@ -175,8 +202,8 @@ public class AnalyzeActivity extends AppCompatActivity {
     }
 
     private void detectObjects() {
-        this.analyzerThread = new Thread(() -> {
-            this.detections = this.objectDetector.detect(this.originalImageTensor);
+        this.analyzer.execute(() -> {
+            this.detections = objectDetector.detect(this.originalImageTensor);
             EventBus.getDefault().post(new UpdateDetectionsRectsEvent(detections, false, this.analyzeView.getImageMatrix()));
             EventBus.getDefault().postSticky(new AllowUpdatePolicyChangeEvent(true));
 
@@ -187,6 +214,5 @@ public class AnalyzeActivity extends AppCompatActivity {
                 });
             }
         });
-        this.analyzerThread.start();
     }
 }
