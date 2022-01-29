@@ -23,6 +23,7 @@ import com.example.sistemidigitali.customEvents.UpdateDetectionsRectsEvent;
 import com.example.sistemidigitali.model.CameraProvider;
 import com.example.sistemidigitali.model.CustomGestureDetector;
 import com.example.sistemidigitali.model.Permission;
+import com.example.sistemidigitali.model.ToastMessagesManager;
 import com.google.android.material.chip.Chip;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 
@@ -33,6 +34,8 @@ import org.greenrobot.eventbus.ThreadMode;
 import java.util.ArrayList;
 
 public class MainActivity extends AppCompatActivity {
+    private final String [] permissions = {Manifest.permission.CAMERA, Manifest.permission.READ_EXTERNAL_STORAGE, Manifest.permission.WRITE_EXTERNAL_STORAGE};
+
     private Permission permission;
     private CameraProvider cameraProvider;
 
@@ -47,6 +50,8 @@ public class MainActivity extends AppCompatActivity {
     private FloatingActionButton shutterButton;
 
     private int isUIVisible;
+
+    private ToastMessagesManager toastMessagesManager;
     private CustomGestureDetector customGestureDetector;
 
     @Override
@@ -65,10 +70,11 @@ public class MainActivity extends AppCompatActivity {
         this.galleryButton = findViewById(R.id.galleryButton);
         this.shutterButton = findViewById(R.id.shutterButton);
 
+        this.toastMessagesManager = new ToastMessagesManager(this, Toast.LENGTH_SHORT);
         this.cameraProvider = new CameraProvider(this,  findViewById(R.id.previewView), customGestureDetector);
         this.switchCameraButton.setOnClickListener((view) -> this.cameraProvider.switchCamera());
         this.shutterButton.setOnClickListener((view) -> this.cameraProvider.captureImage());
-        this.liveDetectionSwitch.setOnClickListener((view) -> Toast.makeText(this, "Unavailable", Toast.LENGTH_SHORT).show());
+        this.liveDetectionSwitch.setOnClickListener((view) -> this.toastMessagesManager.showToastIfNeeded());
 
         //If the file picked is an image the analyze activity is launched
         ActivityResultLauncher<String> filePicker = registerForActivityResult(new ActivityResultContracts.GetContent(), this::showAnalyzeActivity);
@@ -76,9 +82,6 @@ public class MainActivity extends AppCompatActivity {
         this.hideUIButton.setOnClickListener((view) -> this.changeUIVisibility());
 
         //Request all the permissions needed if not already available
-        String [] permissions = {Manifest.permission.CAMERA,
-                                 Manifest.permission.READ_EXTERNAL_STORAGE,
-                                 Manifest.permission.WRITE_EXTERNAL_STORAGE};
         if(!this.permission.checkPermission(this, permissions)) {
             this.permission.requestPermission(this, permissions);
         }
@@ -117,7 +120,8 @@ public class MainActivity extends AppCompatActivity {
         this.liveDetectionSwitch.setOnClickListener((view) -> {});
         this.liveDetectionSwitch.setOnCheckedChangeListener((view, isChecked) -> this.cameraProvider.setLiveDetection(isChecked));
         this.liveDetectionSwitch.setCheckable(true);
-        EventBus.getDefault().removeStickyEvent(CustomObjectDetectorAvailableEvent.class);
+        this.toastMessagesManager.hideToast();
+        EventBus.getDefault().removeStickyEvent(event);
     }
 
     @SuppressLint("WrongConstant")

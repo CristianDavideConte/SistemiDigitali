@@ -69,18 +69,20 @@ public class CameraProvider {
     private Camera camera;
 
     private Preview preview;
-    private PreviewView previewView;
+    private final PreviewView previewView;
     private ImageCapture imageCapt;
     private ImageAnalysis imageAnalysis;
     private boolean liveDetection;
     private boolean flipNeeded;
 
-    private MainActivity context;
-    private CustomGestureDetector customGestureDetector;
-    private Executor imageCaptureExecutor;
+    private final MainActivity context;
+    private final CustomGestureDetector customGestureDetector;
+    private final Executor imageCaptureExecutor;
 
     @SuppressLint("ClickableViewAccessibility")
     public CameraProvider(MainActivity context, PreviewView previewView, CustomGestureDetector customGestureDetector) {
+        EventBus.getDefault().post(new UpdateDetectionsRectsEvent(new ArrayList<>(), false, null));
+
         this.context = context;
         this.previewView = previewView;
         this.liveDetection = false;
@@ -196,7 +198,6 @@ public class CameraProvider {
      * Otherwise the backward facing lens is selected.
      */
     public void switchCamera() {
-        EventBus.getDefault().post(new UpdateDetectionsRectsEvent(new ArrayList<>(), false, null));
         int newLensOrientation = currentLensOrientation == CameraSelector.LENS_FACING_BACK ? CameraSelector.LENS_FACING_FRONT : CameraSelector.LENS_FACING_BACK;
         this.startCamera(newLensOrientation);
     }
@@ -207,7 +208,7 @@ public class CameraProvider {
      * If the saving is successful an AnalyzeActivity is started by
      * asynchronously passing it the picture's uri.
      */
-    @SuppressLint({"SimpleDateFormat", "RestrictedApi"})
+    @SuppressLint({"UnsafeOptInUsageError, SimpleDateFormat", "RestrictedApi"})
     public void captureImage() {
         //Es. SISDIG_2021127_189230.jpg
         String pictureName = "SISDIG_" + new SimpleDateFormat("yyyyMMdd_HHmmss").format(new Date()) + ".jpeg";
@@ -222,7 +223,6 @@ public class CameraProvider {
                 new ImageCapture.OnImageCapturedCallback(){
                     @Override
                     public void onCaptureSuccess(@NonNull ImageProxy image) {
-                        println(image.getWidth()+"x"+image.getHeight());
                         //Sources:
                         //https://stackoverflow.com/questions/56904485/how-to-save-an-image-in-android-q-using-mediastore
                         //https://developer.android.com/reference/android/content/ContentResolver#insert(android.net.Uri,%20android.content.ContentValues)
@@ -244,13 +244,12 @@ public class CameraProvider {
 
                         //Saves the image in the background and post the result on the EventBus
                         try {
-
                             OutputStream stream = context.getContentResolver().openOutputStream(picturePublicUri);
                             int rotationDirection = currentLensOrientation == CameraSelector.LENS_FACING_BACK ? 1 : -1;
                             int constantRotation = image.getImageInfo().getRotationDegrees() - camera.getCameraInfo().getSensorRotationDegrees();
                             int rotationDegree = camera.getCameraInfo().getSensorRotationDegrees() - context.getDisplay().getRotation() * 90 + constantRotation * rotationDirection;
 
-                            Bitmap bitmapImage = convertImageProxyToBitmap(image, rotationDegree,currentLensOrientation == CameraSelector.LENS_FACING_FRONT);
+                            Bitmap bitmapImage = convertImageToBitmap(image.getImage(), rotationDegree,currentLensOrientation == CameraSelector.LENS_FACING_FRONT);
                             if (!bitmapImage.compress(Bitmap.CompressFormat.JPEG, 100, stream)) {
                                 throw new Exception("Image compression failed");
                             }
@@ -330,11 +329,6 @@ public class CameraProvider {
      * @param flipNeeded True if image needs to be mirrored on the y-axis, false otherwise.
      * @return The corresponding Bitmap image
      */
-    @SuppressLint("UnsafeOptInUsageError")
-    private Bitmap convertImageProxyToBitmap(@NonNull ImageProxy image, int rotationDegree, boolean flipNeeded) {
-        return convertImageToBitmap(image.getImage(), rotationDegree, flipNeeded);
-    }
-
     private Bitmap convertImageToBitmap(@NonNull Image image, int rotationDegree, boolean flipNeeded) {
         ByteBuffer byteBuffer = image.getPlanes()[0].getBuffer();
         byteBuffer.rewind();

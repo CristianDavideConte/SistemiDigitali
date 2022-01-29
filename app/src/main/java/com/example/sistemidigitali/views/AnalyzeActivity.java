@@ -29,6 +29,7 @@ import com.example.sistemidigitali.customEvents.UpdateDetectionsRectsEvent;
 import com.example.sistemidigitali.enums.CustomObjectDetectorType;
 import com.example.sistemidigitali.model.CustomGestureDetector;
 import com.example.sistemidigitali.model.CustomObjectDetector;
+import com.example.sistemidigitali.model.ToastMessagesManager;
 import com.google.android.material.chip.Chip;
 
 import org.greenrobot.eventbus.EventBus;
@@ -58,6 +59,7 @@ public class AnalyzeActivity extends AppCompatActivity {
     private ImageMatrixTouchHandler zoomHandler;
     private Executor analyzer;
 
+    private ToastMessagesManager toastMessagesManager;
     private CustomGestureDetector customGestureDetector;
 
     private RelativeLayout loadingIndicator;
@@ -74,13 +76,13 @@ public class AnalyzeActivity extends AppCompatActivity {
         this.analyzeButton = findViewById(R.id.analyzeButton);
         this.loadingIndicator = findViewById(R.id.loadingIndicatorPanel);
 
+        this.toastMessagesManager = new ToastMessagesManager(this, Toast.LENGTH_SHORT);
         this.analyzer = Executors.newSingleThreadExecutor();
         this.customGestureDetector = new CustomGestureDetector();
-        this.analyzeButton.setOnClickListener((view) -> Toast.makeText(this, "Unavailable", Toast.LENGTH_SHORT).show());
+        this.analyzeButton.setOnClickListener((view) -> this.toastMessagesManager.showToastIfNeeded());
 
         new Thread(() -> {
             try {
-                println(objectDetector == null);
                 if(objectDetector == null) objectDetector = new CustomObjectDetector(this, CustomObjectDetectorType.HIGH_ACCURACY);
                 EventBus.getDefault().postSticky(new CustomObjectDetectorAvailableEvent(this, objectDetector, CustomObjectDetectorType.HIGH_ACCURACY));
             } catch (IOException e) {
@@ -133,7 +135,8 @@ public class AnalyzeActivity extends AppCompatActivity {
     public void onImageSaved(ImageSavedEvent event) {
         //If the picture is not available, go back to previous activity
         if(!event.getError().equals("success")) {
-            Toast.makeText(this, event.getError(), Toast.LENGTH_SHORT).show();
+            println("CAMERA IS CLOSED ERROR");
+            this.toastMessagesManager.showToast(event.getError());
             this.finish();
             return;
         }
@@ -155,10 +158,10 @@ public class AnalyzeActivity extends AppCompatActivity {
             this.loadingIndicator.setVisibility(View.GONE);
             if(objectDetector != null) this.analyzeButton.setCheckable(true);
         } catch (IOException exception) {
-            Toast.makeText(this, exception.getMessage(), Toast.LENGTH_SHORT).show();
+            this.toastMessagesManager.showToast(exception.getMessage());
             this.finish();
         } finally {
-            EventBus.getDefault().removeStickyEvent(ImageSavedEvent.class);
+            EventBus.getDefault().removeStickyEvent(event);
         }
     }
 
@@ -168,8 +171,9 @@ public class AnalyzeActivity extends AppCompatActivity {
         this.analyzeButton.setOnClickListener((view) -> {});
         this.analyzeButton.setOnCheckedChangeListener((view, isChecked) -> {
             if(isChecked) {
-                this.analyzeButton.setCheckable(false);
+                this.loadingIndicator.setVisibility(View.VISIBLE);
                 this.analyzeButton.setText(". . .");
+                this.analyzeButton.setCheckable(false);
                 this.detectObjects();
             } else {
                 this.analyzeButton.setText("Analyze");
@@ -177,7 +181,8 @@ public class AnalyzeActivity extends AppCompatActivity {
             }
         });
         if(this.originalImage != null) this.analyzeButton.setCheckable(true);
-        EventBus.getDefault().removeStickyEvent(CustomObjectDetectorAvailableEvent.class);
+        this.toastMessagesManager.hideToast();
+        EventBus.getDefault().removeStickyEvent(event);
     }
 
     @SuppressLint("WrongConstant")
@@ -209,6 +214,7 @@ public class AnalyzeActivity extends AppCompatActivity {
 
             if(!this.analyzeButton.isCheckable()) {
                 runOnUiThread(() -> {
+                        this.loadingIndicator.setVisibility(View.GONE);
                         this.analyzeButton.setText("Clear");
                         this.analyzeButton.setCheckable(true);
                 });
