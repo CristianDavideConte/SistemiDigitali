@@ -43,10 +43,8 @@ public class CustomObjectDetector {
                         .setMaxResults(10)
                         .build();
 
-        long init = System.currentTimeMillis();
         if(this.type == CustomObjectDetectorType.HIGH_ACCURACY) this.detector = ObjectDetector.createFromFileAndOptions(this.context, MODEL_FILE_F16, options);
         else this.detector = ObjectDetector.createFromFileAndOptions(this.context, MODEL_FILE_IO8, options);
-        println("DEC:", System.currentTimeMillis() - init);
     }
 
     /**

@@ -62,6 +62,7 @@ public class MainActivity extends AppCompatActivity {
 
         this.permission = new Permission();
         this.customGestureDetector = new CustomGestureDetector();
+        this.toastMessagesManager = new ToastMessagesManager(this, Toast.LENGTH_SHORT);
         this.backgroundOverlayMain = findViewById(R.id.backgroundOverlayMain);
         this.liveDetectionViewMain = findViewById(R.id.liveDetectionViewMain);
         this.liveDetectionSwitch = findViewById(R.id.liveDetectionSwitch);
@@ -70,7 +71,6 @@ public class MainActivity extends AppCompatActivity {
         this.galleryButton = findViewById(R.id.galleryButton);
         this.shutterButton = findViewById(R.id.shutterButton);
 
-        this.toastMessagesManager = new ToastMessagesManager(this, Toast.LENGTH_SHORT);
         this.cameraProvider = new CameraProvider(this,  findViewById(R.id.previewView), customGestureDetector);
         this.switchCameraButton.setOnClickListener((view) -> this.cameraProvider.switchCamera());
         this.shutterButton.setOnClickListener((view) -> this.cameraProvider.captureImage());
