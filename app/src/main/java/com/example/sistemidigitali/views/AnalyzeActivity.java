@@ -160,8 +160,6 @@ public class AnalyzeActivity extends AppCompatActivity {
         } catch (IOException exception) {
             this.toastMessagesManager.showToast(exception.getMessage());
             this.finish();
-        } finally {
-            EventBus.getDefault().removeStickyEvent(event);
         }
     }
 

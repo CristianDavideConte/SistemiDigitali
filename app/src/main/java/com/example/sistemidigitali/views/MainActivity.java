@@ -99,6 +99,7 @@ public class MainActivity extends AppCompatActivity {
         EventBus.getDefault().register(this.customGestureDetector);
         EventBus.getDefault().post(new UpdateDetectionsRectsEvent(new ArrayList<>(), false, new Matrix()));
         EventBus.getDefault().post(new AllowUpdatePolicyChangeEvent(true));
+        EventBus.getDefault().removeStickyEvent(ImageSavedEvent.class);
         this.liveDetectionSwitch.setChecked(false);
     }
 
