@@ -1,7 +1,5 @@
 package com.example.sistemidigitali.enums;
 
-import android.graphics.Color;
-
 public enum MaskTypeEnum {
 
     SRGM("Surgical Mask"),

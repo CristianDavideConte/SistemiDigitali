@@ -2,8 +2,6 @@ package com.example.sistemidigitali.enums;
 
 import android.graphics.Color;
 
-import com.example.sistemidigitali.enums.ColorsEnum;
-
 public enum WearingModeEnum {
 
     MRNW("Mask not Worn", ColorsEnum.RED.getColor(), Color.WHITE),

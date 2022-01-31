@@ -19,6 +19,7 @@ import com.example.sistemidigitali.customEvents.UpdateDetectionsRectsEvent;
 import com.example.sistemidigitali.enums.MaskTypeEnum;
 import com.example.sistemidigitali.enums.WearingModeEnum;
 
+import org.greenrobot.eventbus.EventBus;
 import org.greenrobot.eventbus.Subscribe;
 import org.greenrobot.eventbus.ThreadMode;
 import org.tensorflow.lite.support.label.Category;
@@ -30,7 +31,6 @@ import java.util.List;
 public class LiveDetectionView extends View {
     private final float ROUNDING_RECTS_RADIUS = 70;
     private final float MAX_FONT_SIZE = 50F;
-    private final float CANVAS_CENTER_DEFAULT_VALUE = 0.0F;
 
     private boolean allowUpdate;
 
@@ -65,15 +65,10 @@ public class LiveDetectionView extends View {
         return !this.detections.isEmpty();
     }
 
-    public void setAllowUpdate(boolean allowUpdate) {
-        this.allowUpdate = allowUpdate;
-    }
-
     public void init() {
         this.allowUpdate = true;
 
         this.detections = new ArrayList<>();
-        this.canvasCenter = CANVAS_CENTER_DEFAULT_VALUE;
         this.flipNeeded = false;
         this.flipperMatrix = new Matrix();
         this.transformMatrix = new Matrix();
@@ -101,7 +96,7 @@ public class LiveDetectionView extends View {
         this.invalidate();
     }
 
-    @Subscribe(sticky = true, threadMode = ThreadMode.ASYNC)
+    @Subscribe(threadMode = ThreadMode.ASYNC)
     public void onAllowUpdatePolicyChange(AllowUpdatePolicyChangeEvent event) {
         this.allowUpdate = event.isAllowUpdatePolicyChange();
         this.invalidate();

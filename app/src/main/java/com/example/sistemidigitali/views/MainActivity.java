@@ -1,9 +1,10 @@
 package com.example.sistemidigitali.views;
 
+import static com.example.sistemidigitali.debugUtility.Debug.println;
+
 import android.Manifest;
 import android.annotation.SuppressLint;
 import android.content.Intent;
-import android.graphics.Matrix;
 import android.net.Uri;
 import android.os.Bundle;
 import android.view.View;
@@ -15,11 +16,9 @@ import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.appcompat.app.AppCompatActivity;
 
 import com.example.sistemidigitali.R;
-import com.example.sistemidigitali.customEvents.AllowUpdatePolicyChangeEvent;
 import com.example.sistemidigitali.customEvents.CustomObjectDetectorAvailableEvent;
 import com.example.sistemidigitali.customEvents.ImageSavedEvent;
 import com.example.sistemidigitali.customEvents.OverlayVisibilityChangeEvent;
-import com.example.sistemidigitali.customEvents.UpdateDetectionsRectsEvent;
 import com.example.sistemidigitali.model.CameraProvider;
 import com.example.sistemidigitali.model.CustomGestureDetector;
 import com.example.sistemidigitali.model.Permission;
@@ -30,8 +29,6 @@ import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import org.greenrobot.eventbus.EventBus;
 import org.greenrobot.eventbus.Subscribe;
 import org.greenrobot.eventbus.ThreadMode;
-
-import java.util.ArrayList;
 
 public class MainActivity extends AppCompatActivity {
     private final String [] permissions = {Manifest.permission.CAMERA, Manifest.permission.READ_EXTERNAL_STORAGE, Manifest.permission.WRITE_EXTERNAL_STORAGE};
@@ -97,10 +94,17 @@ public class MainActivity extends AppCompatActivity {
         EventBus.getDefault().register(this);
         EventBus.getDefault().register(this.liveDetectionViewMain);
         EventBus.getDefault().register(this.customGestureDetector);
-        EventBus.getDefault().post(new UpdateDetectionsRectsEvent(new ArrayList<>(), false, new Matrix()));
-        EventBus.getDefault().post(new AllowUpdatePolicyChangeEvent(true));
         EventBus.getDefault().removeStickyEvent(ImageSavedEvent.class);
-        this.liveDetectionSwitch.setChecked(false);
+    }
+
+    /**
+     * Synchronizes the live detection switch value with the current camera's live detection
+     * value set by the user. Otherwise they could diverge resulting in a graphical artifact
+     */
+    @Override
+    protected void onResume() {
+        super.onResume();
+        this.cameraProvider.setLiveDetection(this.liveDetectionSwitch.isChecked());
     }
 
     /**

@@ -8,7 +8,6 @@ import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Matrix;
-import android.hardware.SensorManager;
 import android.media.Image;
 import android.net.Uri;
 import android.os.Bundle;
@@ -16,14 +15,12 @@ import android.os.Environment;
 import android.provider.MediaStore;
 import android.util.Size;
 import android.view.MotionEvent;
-import android.view.OrientationEventListener;
 import android.view.ScaleGestureDetector;
 import android.view.Surface;
 
 import androidx.annotation.NonNull;
 import androidx.camera.core.Camera;
 import androidx.camera.core.CameraSelector;
-import androidx.camera.core.CameraState;
 import androidx.camera.core.FocusMeteringAction;
 import androidx.camera.core.ImageAnalysis;
 import androidx.camera.core.ImageCapture;
@@ -57,7 +54,6 @@ import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
-import java.util.Objects;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 
@@ -69,22 +65,20 @@ public class CameraProvider {
     private ListenableFuture<ProcessCameraProvider> provider;
     private Camera camera;
 
-    private Preview preview;
     private final PreviewView previewView;
+    private Preview preview;
     private ImageCapture imageCapt;
     private ImageAnalysis imageAnalysis;
     private boolean liveDetection;
     private boolean flipNeeded;
 
-    private int currentDisplayRotation;
+    private final int currentDisplayRotation;
     private final MainActivity context;
     private final CustomGestureDetector customGestureDetector;
     private final Executor imageCaptureExecutor;
 
     @SuppressLint("ClickableViewAccessibility")
     public CameraProvider(MainActivity context, PreviewView previewView, CustomGestureDetector customGestureDetector) {
-        EventBus.getDefault().post(new UpdateDetectionsRectsEvent(new ArrayList<>(), false, null));
-
         this.context = context;
         this.previewView = previewView;
         this.liveDetection = false;
@@ -127,12 +121,9 @@ public class CameraProvider {
         }).start();
     }
 
-    public int getCurrentLensOrientation() {
-        return currentLensOrientation;
-    }
-
     public void setLiveDetection(boolean liveDetection) {
         this.liveDetection = liveDetection;
+        EventBus.getDefault().post(new UpdateDetectionsRectsEvent(new ArrayList<>(), false, null));
         EventBus.getDefault().post(new AllowUpdatePolicyChangeEvent(this.liveDetection));
     }
 
@@ -150,6 +141,8 @@ public class CameraProvider {
      */
     @SuppressLint("RestrictedApi")
     public void startCamera(int lensOrientation) {
+        EventBus.getDefault().post(new AllowUpdatePolicyChangeEvent(false));
+
         currentLensOrientation = lensOrientation;
         this.flipNeeded = currentLensOrientation == CameraSelector.LENS_FACING_FRONT;
 
@@ -192,6 +185,9 @@ public class CameraProvider {
                 this.camera = cameraProvider.bindToLifecycle(this.context, cameraSelector, useCaseGroup);
             } catch (Exception e) {
                 e.printStackTrace();
+            } finally {
+                EventBus.getDefault().post(new UpdateDetectionsRectsEvent(new ArrayList<>(), false, null));
+                EventBus.getDefault().post(new AllowUpdatePolicyChangeEvent(true));
             }
         }, this.getExecutor());
     }
