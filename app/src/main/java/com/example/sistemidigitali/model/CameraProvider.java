@@ -128,13 +128,6 @@ public class CameraProvider {
     }
 
     /**
-     * @return The current context's main executor
-     */
-    private Executor getExecutor() {
-        return ContextCompat.getMainExecutor(this.context);
-    }
-
-    /**
      * Create a new CameraX instance with the specified lens orientation,
      * unbinding all the previous use cases.
      * @param lensOrientation An int that indicates the lens orientation.
@@ -189,7 +182,7 @@ public class CameraProvider {
                 EventBus.getDefault().post(new UpdateDetectionsRectsEvent(new ArrayList<>(), false, null));
                 EventBus.getDefault().post(new AllowUpdatePolicyChangeEvent(true));
             }
-        }, this.getExecutor());
+        }, this.context.getMainExecutor());
     }
 
     /**

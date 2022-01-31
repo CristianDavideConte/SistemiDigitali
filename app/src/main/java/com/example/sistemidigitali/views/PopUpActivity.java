@@ -36,7 +36,9 @@ public class PopUpActivity extends AppCompatActivity {
         ConstraintLayout popUpLayout = this.findViewById(R.id.popUpLayout);
 
         Rect windowBounds = this.getWindowManager().getCurrentWindowMetrics().getBounds();
-        this.getWindow().setLayout((int)(windowBounds.width() * 0.8), (int)(windowBounds.height() * 0.2));
+        final int width = (int) Math.min(windowBounds.width() * 0.8, 864);   //1080 * 0.8 = 864
+        final int height = (int) Math.max(windowBounds.height() * 0.2, 384); //1920 * 0.2 = 384
+        this.getWindow().setLayout(width, height);
 
         WindowManager.LayoutParams params = this.getWindow().getAttributes();
         params.gravity = Gravity.CENTER;
