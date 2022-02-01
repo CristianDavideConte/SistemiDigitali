@@ -6,6 +6,7 @@ import android.Manifest;
 import android.annotation.SuppressLint;
 import android.content.Intent;
 import android.net.Uri;
+import android.opengl.Visibility;
 import android.os.Bundle;
 import android.view.View;
 import android.view.WindowManager;
@@ -16,10 +17,10 @@ import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.appcompat.app.AppCompatActivity;
 
 import com.example.sistemidigitali.R;
+import com.example.sistemidigitali.customEvents.CameraAvailabilityChangeEvent;
 import com.example.sistemidigitali.customEvents.CustomObjectDetectorAvailableEvent;
 import com.example.sistemidigitali.customEvents.ImageSavedEvent;
 import com.example.sistemidigitali.customEvents.OverlayVisibilityChangeEvent;
-import com.example.sistemidigitali.model.CameraProvider;
 import com.example.sistemidigitali.model.CustomGestureDetector;
 import com.example.sistemidigitali.model.Permission;
 import com.example.sistemidigitali.model.ToastMessagesManager;
@@ -34,7 +35,7 @@ public class MainActivity extends AppCompatActivity {
     private final String [] permissions = {Manifest.permission.CAMERA, Manifest.permission.READ_EXTERNAL_STORAGE, Manifest.permission.WRITE_EXTERNAL_STORAGE};
 
     private Permission permission;
-    private CameraProvider cameraProvider;
+    private CameraProviderView cameraProviderView;
 
     private View backgroundOverlayMain;
     private LiveDetectionView liveDetectionViewMain;
@@ -68,9 +69,9 @@ public class MainActivity extends AppCompatActivity {
         this.galleryButton = findViewById(R.id.galleryButton);
         this.shutterButton = findViewById(R.id.shutterButton);
 
-        this.cameraProvider = new CameraProvider(this,  findViewById(R.id.previewView), customGestureDetector);
-        this.switchCameraButton.setOnClickListener((view) -> this.cameraProvider.switchCamera());
-        this.shutterButton.setOnClickListener((view) -> this.cameraProvider.captureImage());
+        this.cameraProviderView = new CameraProviderView(this,  findViewById(R.id.previewView), customGestureDetector);
+        this.shutterButton.setOnClickListener((view) -> this.cameraProviderView.captureImage());
+        this.switchCameraButton.setOnClickListener((view) -> this.cameraProviderView.switchCamera());
         this.liveDetectionSwitch.setOnClickListener((view) -> this.toastMessagesManager.showToastIfNeeded());
 
         //If the file picked is an image the analyze activity is launched
@@ -95,6 +96,7 @@ public class MainActivity extends AppCompatActivity {
         EventBus.getDefault().register(this.liveDetectionViewMain);
         EventBus.getDefault().register(this.customGestureDetector);
         EventBus.getDefault().removeStickyEvent(ImageSavedEvent.class);
+        this.cameraProviderView.setLiveDetection(this.liveDetectionSwitch.isChecked());
     }
 
     /**
@@ -104,7 +106,6 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onResume() {
         super.onResume();
-        this.cameraProvider.setLiveDetection(this.liveDetectionSwitch.isChecked());
     }
 
     /**
@@ -123,14 +124,20 @@ public class MainActivity extends AppCompatActivity {
     public void onCustomObjectDetectorAvailable(CustomObjectDetectorAvailableEvent event) {
         if(event.getContext() != this) return;
         this.liveDetectionSwitch.setOnClickListener((view) -> {});
-        this.liveDetectionSwitch.setOnCheckedChangeListener((view, isChecked) -> this.cameraProvider.setLiveDetection(isChecked));
+        this.liveDetectionSwitch.setOnCheckedChangeListener((view, isChecked) -> this.cameraProviderView.setLiveDetection(isChecked));
         this.liveDetectionSwitch.setCheckable(true);
         this.toastMessagesManager.hideToast();
         EventBus.getDefault().removeStickyEvent(event);
     }
 
-    @SuppressLint("WrongConstant")
     @Subscribe(threadMode = ThreadMode.MAIN)
+    public void onCameraAvailabilityChange(CameraAvailabilityChangeEvent event) {
+        this.shutterButton.setClickable(event.isAvailable());
+        EventBus.getDefault().removeStickyEvent(event);
+    }
+
+    @SuppressLint("WrongConstant")
+    @Subscribe(sticky = true, threadMode = ThreadMode.MAIN)
     public void onOverlayVisibilityChange(OverlayVisibilityChangeEvent event) {
         this.backgroundOverlayMain.setVisibility(event.getVisibility());
     }

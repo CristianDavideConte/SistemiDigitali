@@ -1,5 +1,7 @@
 package com.example.sistemidigitali.views;
 
+import static com.example.sistemidigitali.debugUtility.Debug.println;
+
 import android.content.Intent;
 import android.graphics.Rect;
 import android.graphics.drawable.GradientDrawable;
@@ -36,8 +38,9 @@ public class PopUpActivity extends AppCompatActivity {
         ConstraintLayout popUpLayout = this.findViewById(R.id.popUpLayout);
 
         Rect windowBounds = this.getWindowManager().getCurrentWindowMetrics().getBounds();
-        final int width = (int) Math.min(windowBounds.width() * 0.8, 864);   //1080 * 0.8 = 864
+        final int width = (int) Math.min(windowBounds.width() * 0.8, 960);   //1920 * 0.5 = 960
         final int height = (int) Math.max(windowBounds.height() * 0.2, 384); //1920 * 0.2 = 384
+        println(windowBounds.height() * 0.2);
         this.getWindow().setLayout(width, height);
 
         WindowManager.LayoutParams params = this.getWindow().getAttributes();
@@ -56,12 +59,13 @@ public class PopUpActivity extends AppCompatActivity {
         GradientDrawable gradientDrawable = (GradientDrawable) popUpLayout.getBackground();
         gradientDrawable.setColor(Integer.parseInt(intent.getStringExtra(PopUpActivity.POP_UP_BACKGROUND_COLOR)));
 
-        EventBus.getDefault().post(new OverlayVisibilityChangeEvent(View.VISIBLE));
+        EventBus.getDefault().postSticky(new OverlayVisibilityChangeEvent(View.VISIBLE));
     }
 
     @Override
     protected void onDestroy() {
         super.onDestroy();
+        EventBus.getDefault().removeStickyEvent(OverlayVisibilityChangeEvent.class);
         EventBus.getDefault().post(new OverlayVisibilityChangeEvent(View.GONE));
     }
 }

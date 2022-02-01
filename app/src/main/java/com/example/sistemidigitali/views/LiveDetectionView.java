@@ -1,7 +1,5 @@
 package com.example.sistemidigitali.views;
 
-import static com.example.sistemidigitali.debugUtility.Debug.println;
-
 import android.annotation.SuppressLint;
 import android.content.Context;
 import android.content.Intent;
@@ -19,7 +17,6 @@ import com.example.sistemidigitali.customEvents.UpdateDetectionsRectsEvent;
 import com.example.sistemidigitali.enums.MaskTypeEnum;
 import com.example.sistemidigitali.enums.WearingModeEnum;
 
-import org.greenrobot.eventbus.EventBus;
 import org.greenrobot.eventbus.Subscribe;
 import org.greenrobot.eventbus.ThreadMode;
 import org.tensorflow.lite.support.label.Category;
@@ -98,6 +95,7 @@ public class LiveDetectionView extends View {
 
     @Subscribe(threadMode = ThreadMode.ASYNC)
     public void onAllowUpdatePolicyChange(AllowUpdatePolicyChangeEvent event) {
+        if(this.getContext() != event.getContext()) return;
         this.allowUpdate = event.isAllowUpdatePolicyChange();
         this.invalidate();
     }

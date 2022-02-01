@@ -135,7 +135,7 @@
                 android:id="@+id/shutterButton"
                 android:layout_width="73dp"
                 android:layout_height="wrap_content"
-                android:clickable="true"
+                android:clickable="false"
                 android:hapticFeedbackEnabled="true"
                 android:scaleX="1.5"
                 android:scaleY="1.5"

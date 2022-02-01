@@ -17,6 +17,7 @@ import androidx.appcompat.app.AppCompatActivity;
 import com.bogdwellers.pinchtozoom.ImageMatrixTouchHandler;
 import com.example.sistemidigitali.R;
 import com.example.sistemidigitali.customEvents.AllowUpdatePolicyChangeEvent;
+import com.example.sistemidigitali.customEvents.CameraAvailabilityChangeEvent;
 import com.example.sistemidigitali.customEvents.CustomObjectDetectorAvailableEvent;
 import com.example.sistemidigitali.customEvents.EndOfGestureEvent;
 import com.example.sistemidigitali.customEvents.GestureIsMoveEvent;
@@ -99,6 +100,7 @@ public class AnalyzeActivity extends AppCompatActivity {
         EventBus.getDefault().register(this);
         EventBus.getDefault().register(this.liveDetectionViewAnalyze);
         EventBus.getDefault().register(this.customGestureDetector);
+        EventBus.getDefault().removeStickyEvent(CameraAvailabilityChangeEvent.class);
     }
 
     /**
@@ -121,6 +123,7 @@ public class AnalyzeActivity extends AppCompatActivity {
         EventBus.getDefault().unregister(this);
         EventBus.getDefault().unregister(this.liveDetectionViewAnalyze);
         EventBus.getDefault().unregister(this.customGestureDetector);
+
         super.onStop();
     }
 
@@ -137,6 +140,7 @@ public class AnalyzeActivity extends AppCompatActivity {
         //If the picture is not available, go back to previous activity
         if(!event.getError().equals("success")) {
             println("CAMERA IS CLOSED ERROR");
+            EventBus.getDefault().removeStickyEvent(event);
             this.toastMessagesManager.showToast(event.getError());
             this.finish();
             return;
@@ -176,7 +180,7 @@ public class AnalyzeActivity extends AppCompatActivity {
                 this.detectObjects();
             } else {
                 this.analyzeButton.setText("Analyze");
-                EventBus.getDefault().post(new AllowUpdatePolicyChangeEvent(false));
+                EventBus.getDefault().post(new AllowUpdatePolicyChangeEvent(this, false));
             }
         });
         if(this.originalImage != null) this.analyzeButton.setCheckable(true);
@@ -185,19 +189,19 @@ public class AnalyzeActivity extends AppCompatActivity {
     }
 
     @SuppressLint("WrongConstant")
-    @Subscribe(threadMode = ThreadMode.MAIN)
+    @Subscribe(sticky = true, threadMode = ThreadMode.MAIN)
     public void onOverlayVisibilityChange(OverlayVisibilityChangeEvent event) {
         this.backgroundOverlayAnalyze.setVisibility(event.getVisibility());
     }
 
     @Subscribe(threadMode = ThreadMode.ASYNC)
     public void onGestureIsZoom(GestureIsZoomEvent event) {
-        EventBus.getDefault().post(new AllowUpdatePolicyChangeEvent(false));
+        EventBus.getDefault().post(new AllowUpdatePolicyChangeEvent(this, false));
     }
 
     @Subscribe(threadMode = ThreadMode.ASYNC)
     public void onGestureIsMove(GestureIsMoveEvent event) {
-        EventBus.getDefault().post(new AllowUpdatePolicyChangeEvent(false));
+        EventBus.getDefault().post(new AllowUpdatePolicyChangeEvent(this, false));
     }
 
     @Subscribe(threadMode = ThreadMode.ASYNC)
@@ -209,7 +213,7 @@ public class AnalyzeActivity extends AppCompatActivity {
         this.analyzer.execute(() -> {
             this.detections = objectDetector.detect(this.originalImageTensor);
             EventBus.getDefault().post(new UpdateDetectionsRectsEvent(detections, false, this.analyzeView.getImageMatrix()));
-            EventBus.getDefault().post(new AllowUpdatePolicyChangeEvent(true));
+            EventBus.getDefault().post(new AllowUpdatePolicyChangeEvent(this, true));
 
             if(!this.analyzeButton.isCheckable()) {
                 runOnUiThread(() -> {
