@@ -58,6 +58,7 @@ import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
+import java.util.Objects;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 
@@ -79,7 +80,9 @@ public class CameraProviderView {
     private final int currentDisplayRotation;
     private final MainActivity context;
     private final CustomGestureDetector customGestureDetector;
-    private final Executor imageCaptureExecutor;
+    private final Executor imageCaptureExecutor, analyzeExecutor;
+
+    private boolean isCameraAvailable;
 
     @SuppressLint("ClickableViewAccessibility")
     public CameraProviderView(MainActivity context, PreviewView previewView, CustomGestureDetector customGestureDetector) {
@@ -87,12 +90,14 @@ public class CameraProviderView {
         this.liveDetection = false;
         this.customGestureDetector = customGestureDetector;
         this.imageCaptureExecutor = Executors.newSingleThreadExecutor();
+        this.analyzeExecutor = Executors.newSingleThreadExecutor();
         this.currentDisplayRotation = this.context.getDisplay().getRotation() * 90;
 
         this.previewView = previewView;
         this.previewView.setImplementationMode(PreviewView.ImplementationMode.COMPATIBLE);
         this.previewView.getPreviewStreamState().observe(this.context, streamState -> {
-            EventBus.getDefault().post(new CameraAvailabilityChangeEvent(this.previewView.getPreviewStreamState().getValue() == PreviewView.StreamState.STREAMING));
+            this.isCameraAvailable = this.previewView.getPreviewStreamState().getValue() == PreviewView.StreamState.STREAMING;
+            EventBus.getDefault().post(new CameraAvailabilityChangeEvent(this.isCameraAvailable));
         });
         this.startCamera(currentLensOrientation);
 
@@ -151,6 +156,9 @@ public class CameraProviderView {
         this.provider = ProcessCameraProvider.getInstance(this.context);
         this.provider.addListener(() -> {
             try {
+                ProcessCameraProvider cameraProvider = this.provider.get();
+                cameraProvider.unbindAll(); //Clear usecases
+
                 //Camera Selector
                 CameraSelector cameraSelector = new CameraSelector.Builder().requireLensFacing(currentLensOrientation).build();
 
@@ -171,8 +179,7 @@ public class CameraProviderView {
                                     .setOutputImageRotationEnabled(true)
                                     .setTargetResolution(new Size(240, 320)) //Default: 480x640
                                     .build();
-                this.imageAnalysis.setAnalyzer(Executors.newSingleThreadExecutor(), this::analyze);
-
+                this.imageAnalysis.setAnalyzer(this.analyzeExecutor, this::analyze);
 
                 UseCaseGroup useCaseGroup = new UseCaseGroup.Builder()
                                             .addUseCase(this.preview)
@@ -181,8 +188,6 @@ public class CameraProviderView {
                                             .setViewPort(this.previewView.getViewPort())
                                             .build();
 
-                ProcessCameraProvider cameraProvider = this.provider.get();
-                cameraProvider.unbindAll(); //Clear usecases
                 this.camera = cameraProvider.bindToLifecycle(this.context, cameraSelector, useCaseGroup);
             } catch (Exception e) {
                 e.printStackTrace();
@@ -260,7 +265,6 @@ public class CameraProviderView {
                             image.close();
                             EventBus.getDefault().postSticky(new ImageSavedEvent("success", picturePublicUri));
                         } catch (Exception e) {
-                            e.printStackTrace();
                             //Remove the allocated space in the MediaStore if the picture can't be saved
                             context.getContentResolver().delete(picturePublicUri, new Bundle());
                             EventBus.getDefault().postSticky(new ImageSavedEvent(e.getMessage(), picturePublicUri));
@@ -285,43 +289,39 @@ public class CameraProviderView {
      */
     @SuppressLint({"UnsafeOptInUsageError", "RestrictedApi"})
     public void analyze(@NonNull ImageProxy imageProxy) {
-        if (!this.liveDetection) {
+        if (!this.liveDetection || !this.isCameraAvailable) {
             imageProxy.close();
             return;
         }
 
-        try {
-            final TensorImage tensorImage = new TensorImage();
-            tensorImage.load(imageProxy.getImage());
+        final TensorImage tensorImage = new TensorImage();
+        tensorImage.load(imageProxy.getImage());
 
-            final Size originalImageResolution = this.imageCapt.getResolutionInfo().getResolution();
-            final float analyzeImageWidth  = imageProxy.getWidth();
-            final float analyzeImageHeight = imageProxy.getHeight();
-            final float screenWidth  = this.previewView.getWidth();
-            final float screenHeight = this.previewView.getHeight();
+        final Size originalImageResolution = this.imageCapt.getResolutionInfo().getResolution();
+        final float analyzeImageWidth  = imageProxy.getWidth();
+        final float analyzeImageHeight = imageProxy.getHeight();
+        final float screenWidth  = this.previewView.getWidth();
+        final float screenHeight = this.previewView.getHeight();
 
-            final float translateX = this.flipNeeded ? 0.5F * (analyzeImageWidth - screenWidth) : 0.5F * (screenWidth - analyzeImageWidth);
-            final float translateY = 0.5F * (screenHeight - analyzeImageHeight);
-            float scaleX = originalImageResolution.getWidth()  / screenWidth;
-            float scaleY = originalImageResolution.getHeight() / screenHeight;
-            final float scalingFactor = scaleX > scaleY ? screenHeight / analyzeImageHeight : screenWidth / analyzeImageWidth;
+        final float translateX = this.flipNeeded ? 0.5F * (analyzeImageWidth - screenWidth) : 0.5F * (screenWidth - analyzeImageWidth);
+        final float translateY = 0.5F * (screenHeight - analyzeImageHeight);
+        float scaleX = originalImageResolution.getWidth()  / screenWidth;
+        float scaleY = originalImageResolution.getHeight() / screenHeight;
+        final float scalingFactor = scaleX > scaleY ? screenHeight / analyzeImageHeight : screenWidth / analyzeImageWidth;
 
-            //previewView's scale type is FILL_CENTER, so
-            //the transformations have the center of the previewView as the pivot
-            Matrix matrix = new Matrix();
-            matrix.preTranslate(translateX, translateY);
-            matrix.postScale(scalingFactor, scalingFactor, 0.5F * screenWidth, 0.5F * screenHeight);
+        //previewView's scale type is FILL_CENTER, so
+        //the transformations have the center of the previewView as the pivot
+        Matrix matrix = new Matrix();
+        matrix.preTranslate(translateX, translateY);
+        matrix.postScale(scalingFactor, scalingFactor, 0.5F * screenWidth, 0.5F * screenHeight);
 
-            long init = System.currentTimeMillis();
-            List<Detection> detections = objectDetector.detect(tensorImage);
-            println(System.currentTimeMillis() - init);
 
-            EventBus.getDefault().post(new UpdateDetectionsRectsEvent(detections, this.flipNeeded, matrix));
-        } catch (Exception e) {
-            e.printStackTrace();
-        } finally {
-            imageProxy.close();
-        }
+        long init = System.currentTimeMillis();
+        List<Detection> detections = CameraProviderView.objectDetector.detect(tensorImage);
+        println(System.currentTimeMillis() - init);
+
+        EventBus.getDefault().post(new UpdateDetectionsRectsEvent(detections, this.flipNeeded, matrix));
+        imageProxy.close();
     }
 
     /**
