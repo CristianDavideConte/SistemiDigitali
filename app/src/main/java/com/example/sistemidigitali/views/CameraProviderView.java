@@ -170,14 +170,12 @@ public class CameraProviderView {
                 this.imageCapt = new ImageCapture.Builder()
                                 .setCaptureMode(ImageCapture.CAPTURE_MODE_MINIMIZE_LATENCY)
                                 .setTargetRotation(Surface.ROTATION_0)
-                                //.setTargetResolution(new Size(1920, 1080))
                                 .build();
 
-                //Image Analysis
+                //Image Analysis (default resolution: 480x640 portrait, 640x480 landscape)
                 this.imageAnalysis = new ImageAnalysis.Builder()
                                     .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
                                     .setOutputImageRotationEnabled(true)
-                                    .setTargetResolution(new Size(240, 320)) //Default: 480x640
                                     .build();
                 this.imageAnalysis.setAnalyzer(this.analyzeExecutor, this::analyze);
 
