@@ -1,0 +1,170 @@
+[
+  {
+    "level_": 0,
+    "message_": "Start JSON generation. Platform version: 30 min SDK version: x86",
+    "file_": "F:\\gitHub Hosts\\SistemiDigitali\\openCV\\libcxx_helper\\CMakeLists.txt",
+    "tag_": "debug|x86",
+    "diagnosticCode_": 0,
+    "memoizedIsInitialized": 1,
+    "unknownFields": {
+      "fields": {},
+      "fieldsDescending": {}
+    },
+    "memoizedSize": -1,
+    "memoizedHashCode": -201184468
+  },
+  {
+    "level_": 0,
+    "message_": "rebuilding JSON F:\\gitHub Hosts\\SistemiDigitali\\openCV\\.cxx\\Debug\\2g5k1x4r\\x86\\android_gradle_build.json due to:",
+    "file_": "F:\\gitHub Hosts\\SistemiDigitali\\openCV\\libcxx_helper\\CMakeLists.txt",
+    "tag_": "debug|x86",
+    "diagnosticCode_": 0,
+    "memoizedIsInitialized": 1,
+    "unknownFields": {
+      "fields": {},
+      "fieldsDescending": {}
+    },
+    "memoizedSize": -1,
+    "memoizedHashCode": 892111666
+  },
+  {
+    "level_": 0,
+    "message_": "- expected json F:\\gitHub Hosts\\SistemiDigitali\\openCV\\.cxx\\Debug\\2g5k1x4r\\x86\\android_gradle_build.json file is not present, will remove stale json folder",
+    "file_": "F:\\gitHub Hosts\\SistemiDigitali\\openCV\\libcxx_helper\\CMakeLists.txt",
+    "tag_": "debug|x86",
+    "diagnosticCode_": 0,
+    "memoizedIsInitialized": 1,
+    "unknownFields": {
+      "fields": {},
+      "fieldsDescending": {}
+    },
+    "memoizedSize": -1,
+    "memoizedHashCode": 21953746
+  },
+  {
+    "level_": 0,
+    "message_": "- missing previous command file F:\\gitHub Hosts\\SistemiDigitali\\openCV\\.cxx\\Debug\\2g5k1x4r\\x86\\metadata_generation_command.txt, will remove stale json folder",
+    "file_": "F:\\gitHub Hosts\\SistemiDigitali\\openCV\\libcxx_helper\\CMakeLists.txt",
+    "tag_": "debug|x86",
+    "diagnosticCode_": 0,
+    "memoizedIsInitialized": 1,
+    "unknownFields": {
+      "fields": {},
+      "fieldsDescending": {}
+    },
+    "memoizedSize": -1,
+    "memoizedHashCode": 1489546768
+  },
+  {
+    "level_": 0,
+    "message_": "- command changed from previous, will remove stale json folder",
+    "file_": "F:\\gitHub Hosts\\SistemiDigitali\\openCV\\libcxx_helper\\CMakeLists.txt",
+    "tag_": "debug|x86",
+    "diagnosticCode_": 0,
+    "memoizedIsInitialized": 1,
+    "unknownFields": {
+      "fields": {},
+      "fieldsDescending": {}
+    },
+    "memoizedSize": -1,
+    "memoizedHashCode": -1577291842
+  },
+  {
+    "level_": 0,
+    "message_": "created folder \u0027F:\\gitHub Hosts\\SistemiDigitali\\openCV\\.cxx\\Debug\\2g5k1x4r\\x86\u0027",
+    "file_": "F:\\gitHub Hosts\\SistemiDigitali\\openCV\\libcxx_helper\\CMakeLists.txt",
+    "tag_": "debug|x86",
+    "diagnosticCode_": 0,
+    "memoizedIsInitialized": 1,
+    "unknownFields": {
+      "fields": {},
+      "fieldsDescending": {}
+    },
+    "memoizedSize": -1,
+    "memoizedHashCode": 1043806594
+  },
+  {
+    "level_": 0,
+    "message_": "executing cmake Executable : C:\\Users\\crist\\AppData\\Local\\Android\\Sdk\\cmake\\3.18.1\\bin\\cmake.exe\narguments : \n-HF:\\gitHub Hosts\\SistemiDigitali\\openCV\\libcxx_helper\n-DCMAKE_SYSTEM_NAME\u003dAndroid\n-DCMAKE_EXPORT_COMPILE_COMMANDS\u003dON\n-DCMAKE_SYSTEM_VERSION\u003d30\n-DANDROID_PLATFORM\u003dandroid-30\n-DANDROID_ABI\u003dx86\n-DCMAKE_ANDROID_ARCH_ABI\u003dx86\n-DANDROID_NDK\u003dC:\\Users\\crist\\AppData\\Local\\Android\\Sdk\\ndk\\21.4.7075529\n-DCMAKE_ANDROID_NDK\u003dC:\\Users\\crist\\AppData\\Local\\Android\\Sdk\\ndk\\21.4.7075529\n-DCMAKE_TOOLCHAIN_FILE\u003dC:\\Users\\crist\\AppData\\Local\\Android\\Sdk\\ndk\\21.4.7075529\\build\\cmake\\android.toolchain.cmake\n-DCMAKE_MAKE_PROGRAM\u003dC:\\Users\\crist\\AppData\\Local\\Android\\Sdk\\cmake\\3.18.1\\bin\\ninja.exe\n-DCMAKE_LIBRARY_OUTPUT_DIRECTORY\u003dF:\\gitHub Hosts\\SistemiDigitali\\openCV\\build\\intermediates\\cxx\\Debug\\2g5k1x4r\\obj\\x86\n-DCMAKE_RUNTIME_OUTPUT_DIRECTORY\u003dF:\\gitHub Hosts\\SistemiDigitali\\openCV\\build\\intermediates\\cxx\\Debug\\2g5k1x4r\\obj\\x86\n-DCMAKE_BUILD_TYPE\u003dDebug\n-BF:\\gitHub Hosts\\SistemiDigitali\\openCV\\.cxx\\Debug\\2g5k1x4r\\x86\n-GNinja\n-DANDROID_STL\u003dc++_shared\njvmArgs : \n\n",
+    "file_": "F:\\gitHub Hosts\\SistemiDigitali\\openCV\\libcxx_helper\\CMakeLists.txt",
+    "tag_": "debug|x86",
+    "diagnosticCode_": 0,
+    "memoizedIsInitialized": 1,
+    "unknownFields": {
+      "fields": {},
+      "fieldsDescending": {}
+    },
+    "memoizedSize": -1,
+    "memoizedHashCode": 1724692961
+  },
+  {
+    "level_": 0,
+    "message_": "Executable : C:\\Users\\crist\\AppData\\Local\\Android\\Sdk\\cmake\\3.18.1\\bin\\cmake.exe\narguments : \n-HF:\\gitHub Hosts\\SistemiDigitali\\openCV\\libcxx_helper\n-DCMAKE_SYSTEM_NAME\u003dAndroid\n-DCMAKE_EXPORT_COMPILE_COMMANDS\u003dON\n-DCMAKE_SYSTEM_VERSION\u003d30\n-DANDROID_PLATFORM\u003dandroid-30\n-DANDROID_ABI\u003dx86\n-DCMAKE_ANDROID_ARCH_ABI\u003dx86\n-DANDROID_NDK\u003dC:\\Users\\crist\\AppData\\Local\\Android\\Sdk\\ndk\\21.4.7075529\n-DCMAKE_ANDROID_NDK\u003dC:\\Users\\crist\\AppData\\Local\\Android\\Sdk\\ndk\\21.4.7075529\n-DCMAKE_TOOLCHAIN_FILE\u003dC:\\Users\\crist\\AppData\\Local\\Android\\Sdk\\ndk\\21.4.7075529\\build\\cmake\\android.toolchain.cmake\n-DCMAKE_MAKE_PROGRAM\u003dC:\\Users\\crist\\AppData\\Local\\Android\\Sdk\\cmake\\3.18.1\\bin\\ninja.exe\n-DCMAKE_LIBRARY_OUTPUT_DIRECTORY\u003dF:\\gitHub Hosts\\SistemiDigitali\\openCV\\build\\intermediates\\cxx\\Debug\\2g5k1x4r\\obj\\x86\n-DCMAKE_RUNTIME_OUTPUT_DIRECTORY\u003dF:\\gitHub Hosts\\SistemiDigitali\\openCV\\build\\intermediates\\cxx\\Debug\\2g5k1x4r\\obj\\x86\n-DCMAKE_BUILD_TYPE\u003dDebug\n-BF:\\gitHub Hosts\\SistemiDigitali\\openCV\\.cxx\\Debug\\2g5k1x4r\\x86\n-GNinja\n-DANDROID_STL\u003dc++_shared\njvmArgs : \n\n",
+    "file_": "F:\\gitHub Hosts\\SistemiDigitali\\openCV\\libcxx_helper\\CMakeLists.txt",
+    "tag_": "debug|x86",
+    "diagnosticCode_": 0,
+    "memoizedIsInitialized": 1,
+    "unknownFields": {
+      "fields": {},
+      "fieldsDescending": {}
+    },
+    "memoizedSize": -1,
+    "memoizedHashCode": 1832879712
+  },
+  {
+    "level_": 0,
+    "message_": "Exiting generation of F:\\gitHub Hosts\\SistemiDigitali\\openCV\\.cxx\\Debug\\2g5k1x4r\\x86\\compile_commands.json.bin normally",
+    "file_": "F:\\gitHub Hosts\\SistemiDigitali\\openCV\\libcxx_helper\\CMakeLists.txt",
+    "tag_": "debug|x86",
+    "diagnosticCode_": 0,
+    "memoizedIsInitialized": 1,
+    "unknownFields": {
+      "fields": {},
+      "fieldsDescending": {}
+    },
+    "memoizedSize": -1,
+    "memoizedHashCode": -662936584
+  },
+  {
+    "level_": 0,
+    "message_": "done executing cmake",
+    "file_": "F:\\gitHub Hosts\\SistemiDigitali\\openCV\\libcxx_helper\\CMakeLists.txt",
+    "tag_": "debug|x86",
+    "diagnosticCode_": 0,
+    "memoizedIsInitialized": 1,
+    "unknownFields": {
+      "fields": {},
+      "fieldsDescending": {}
+    },
+    "memoizedSize": -1,
+    "memoizedHashCode": -1889638093
+  },
+  {
+    "level_": 0,
+    "message_": "write command file F:\\gitHub Hosts\\SistemiDigitali\\openCV\\.cxx\\Debug\\2g5k1x4r\\x86\\metadata_generation_command.txt",
+    "file_": "F:\\gitHub Hosts\\SistemiDigitali\\openCV\\libcxx_helper\\CMakeLists.txt",
+    "tag_": "debug|x86",
+    "diagnosticCode_": 0,
+    "memoizedIsInitialized": 1,
+    "unknownFields": {
+      "fields": {},
+      "fieldsDescending": {}
+    },
+    "memoizedSize": -1,
+    "memoizedHashCode": 132420028
+  },
+  {
+    "level_": 0,
+    "message_": "JSON generation completed without problems",
+    "file_": "F:\\gitHub Hosts\\SistemiDigitali\\openCV\\libcxx_helper\\CMakeLists.txt",
+    "tag_": "debug|x86",
+    "diagnosticCode_": 0,
+    "memoizedIsInitialized": 1,
+    "unknownFields": {
+      "fields": {},
+      "fieldsDescending": {}
+    },
+    "memoizedSize": -1,
+    "memoizedHashCode": 48434991
+  }
+]

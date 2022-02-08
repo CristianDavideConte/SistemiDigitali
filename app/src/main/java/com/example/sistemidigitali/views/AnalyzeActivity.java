@@ -27,6 +27,7 @@ import com.example.sistemidigitali.customEvents.UpdateDetectionsRectsEvent;
 import com.example.sistemidigitali.enums.CustomObjectDetectorType;
 import com.example.sistemidigitali.model.CustomGestureDetector;
 import com.example.sistemidigitali.model.CustomObjectDetector;
+import com.example.sistemidigitali.model.DistanceCalculator;
 import com.example.sistemidigitali.model.ToastMessagesManager;
 import com.google.android.material.chip.Chip;
 
@@ -52,6 +53,7 @@ public class AnalyzeActivity extends AppCompatActivity {
     private ImageView analyzeView;
     private LiveDetectionView liveDetectionViewAnalyze;
     private Chip analyzeButton;
+    private Chip calcDistanceButton;
     private List<Detection> detections;
 
     private ImageMatrixTouchHandler zoomHandler;
@@ -61,6 +63,7 @@ public class AnalyzeActivity extends AppCompatActivity {
     private CustomGestureDetector customGestureDetector;
 
     private RelativeLayout loadingIndicator;
+    private DistanceCalculator distanceCalculator;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -72,8 +75,10 @@ public class AnalyzeActivity extends AppCompatActivity {
         this.analyzeView = findViewById(R.id.analyzeView);
         this.liveDetectionViewAnalyze = findViewById(R.id.liveDetectionViewAnalyze);
         this.analyzeButton = findViewById(R.id.analyzeButton);
+        this.calcDistanceButton = findViewById(R.id.calcDistanceButton);
         this.loadingIndicator = findViewById(R.id.loadingIndicatorPanel);
 
+        this.distanceCalculator = new DistanceCalculator();
         this.toastMessagesManager = new ToastMessagesManager(this, Toast.LENGTH_SHORT);
         this.analyzer = Executors.newSingleThreadExecutor();
         this.customGestureDetector = new CustomGestureDetector();
@@ -150,6 +155,12 @@ public class AnalyzeActivity extends AppCompatActivity {
             this.originalImageTensor = TensorImage.fromBitmap(originalImage);
             this.analyzeView.setImageBitmap(this.originalImage);
 
+            this.calcDistanceButton.setOnClickListener((view) -> {
+                if(this.calcDistanceButton.isChecked()){
+                    this.originalImage = this.distanceCalculator.calculate(this.originalImage);
+                    this.analyzeView.setImageBitmap(this.originalImage);
+                }
+            });
             this.zoomHandler = new ImageMatrixTouchHandler(this);
             this.analyzeView.setOnTouchListener((view, motionEvent) -> {
                 if(!this.customGestureDetector.shouldListenToTouchEvents()) return true;

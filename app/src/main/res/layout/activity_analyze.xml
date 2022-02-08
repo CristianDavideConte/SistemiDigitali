@@ -28,6 +28,21 @@
             android:layout_height="wrap_content" />
 
         <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:gravity="center_horizontal"
+            android:orientation="vertical">
+
+            <com.google.android.material.chip.Chip
+                android:id="@+id/calcDistanceButton"
+                android:layout_width="100dp"
+                android:layout_height="73dp"
+                android:checkable="true"
+                android:translationY="50dp"
+                app:chipBackgroundColor="@color/chip_bg_states_alt" />
+        </LinearLayout>
+
+        <LinearLayout
             android:id="@+id/linearLayout"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
