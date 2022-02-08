@@ -17,7 +17,6 @@ import androidx.appcompat.app.AppCompatActivity;
 import com.bogdwellers.pinchtozoom.ImageMatrixTouchHandler;
 import com.example.sistemidigitali.R;
 import com.example.sistemidigitali.customEvents.AllowUpdatePolicyChangeEvent;
-import com.example.sistemidigitali.customEvents.CameraAvailabilityChangeEvent;
 import com.example.sistemidigitali.customEvents.CustomObjectDetectorAvailableEvent;
 import com.example.sistemidigitali.customEvents.EndOfGestureEvent;
 import com.example.sistemidigitali.customEvents.GestureIsMoveEvent;
@@ -100,7 +99,6 @@ public class AnalyzeActivity extends AppCompatActivity {
         EventBus.getDefault().register(this);
         EventBus.getDefault().register(this.liveDetectionViewAnalyze);
         EventBus.getDefault().register(this.customGestureDetector);
-        EventBus.getDefault().removeStickyEvent(CameraAvailabilityChangeEvent.class);
     }
 
     /**

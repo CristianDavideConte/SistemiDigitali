@@ -1,12 +1,9 @@
 package com.example.sistemidigitali.views;
 
-import static com.example.sistemidigitali.debugUtility.Debug.println;
-
 import android.Manifest;
 import android.annotation.SuppressLint;
 import android.content.Intent;
 import android.net.Uri;
-import android.opengl.Visibility;
 import android.os.Bundle;
 import android.view.View;
 import android.view.WindowManager;
@@ -17,7 +14,6 @@ import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.appcompat.app.AppCompatActivity;
 
 import com.example.sistemidigitali.R;
-import com.example.sistemidigitali.customEvents.CameraAvailabilityChangeEvent;
 import com.example.sistemidigitali.customEvents.CustomObjectDetectorAvailableEvent;
 import com.example.sistemidigitali.customEvents.ImageSavedEvent;
 import com.example.sistemidigitali.customEvents.OverlayVisibilityChangeEvent;
@@ -127,12 +123,6 @@ public class MainActivity extends AppCompatActivity {
         this.liveDetectionSwitch.setOnCheckedChangeListener((view, isChecked) -> this.cameraProviderView.setLiveDetection(isChecked));
         this.liveDetectionSwitch.setCheckable(true);
         this.toastMessagesManager.hideToast();
-        EventBus.getDefault().removeStickyEvent(event);
-    }
-
-    @Subscribe(threadMode = ThreadMode.MAIN)
-    public void onCameraAvailabilityChange(CameraAvailabilityChangeEvent event) {
-        this.shutterButton.setClickable(event.isAvailable());
         EventBus.getDefault().removeStickyEvent(event);
     }
 

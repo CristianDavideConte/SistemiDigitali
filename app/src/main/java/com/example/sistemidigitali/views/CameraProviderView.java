@@ -32,19 +32,14 @@ import androidx.camera.core.Preview;
 import androidx.camera.core.UseCaseGroup;
 import androidx.camera.lifecycle.ProcessCameraProvider;
 import androidx.camera.view.PreviewView;
-import androidx.core.content.ContextCompat;
-import androidx.lifecycle.Observer;
 
 import com.example.sistemidigitali.customEvents.AllowUpdatePolicyChangeEvent;
-import com.example.sistemidigitali.customEvents.CameraAvailabilityChangeEvent;
 import com.example.sistemidigitali.customEvents.CustomObjectDetectorAvailableEvent;
 import com.example.sistemidigitali.customEvents.ImageSavedEvent;
 import com.example.sistemidigitali.customEvents.UpdateDetectionsRectsEvent;
 import com.example.sistemidigitali.enums.CustomObjectDetectorType;
 import com.example.sistemidigitali.model.CustomGestureDetector;
 import com.example.sistemidigitali.model.CustomObjectDetector;
-import com.example.sistemidigitali.views.AnalyzeActivity;
-import com.example.sistemidigitali.views.MainActivity;
 import com.google.common.util.concurrent.ListenableFuture;
 
 import org.greenrobot.eventbus.EventBus;
@@ -58,7 +53,6 @@ import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
-import java.util.Objects;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 
@@ -95,13 +89,10 @@ public class CameraProviderView {
 
         this.previewView = previewView;
         this.previewView.setImplementationMode(PreviewView.ImplementationMode.COMPATIBLE);
-        this.previewView.getPreviewStreamState().observe(this.context, streamState -> {
-            this.isCameraAvailable = this.previewView.getPreviewStreamState().getValue() == PreviewView.StreamState.STREAMING;
-            EventBus.getDefault().post(new CameraAvailabilityChangeEvent(this.isCameraAvailable));
-        });
+        this.previewView.getPreviewStreamState().observe(this.context, streamState -> this.isCameraAvailable = streamState == PreviewView.StreamState.STREAMING);
         this.startCamera(currentLensOrientation);
 
-        //Handler for the pintch-to-zoom gesture
+        //Handler for the pinch-to-zoom gesture
         ScaleGestureDetector scaleGestureDetector = new ScaleGestureDetector(this.context, new ScaleGestureDetector.SimpleOnScaleGestureListener() {
             @Override
             public boolean onScale(ScaleGestureDetector detector) {
@@ -157,7 +148,7 @@ public class CameraProviderView {
         this.provider.addListener(() -> {
             try {
                 ProcessCameraProvider cameraProvider = this.provider.get();
-                cameraProvider.unbindAll(); //Clear usecases
+                cameraProvider.unbindAll(); //Clear use cases
 
                 //Camera Selector
                 CameraSelector cameraSelector = new CameraSelector.Builder().requireLensFacing(currentLensOrientation).build();
@@ -213,8 +204,10 @@ public class CameraProviderView {
      */
     @SuppressLint({"UnsafeOptInUsageError, SimpleDateFormat", "RestrictedApi"})
     public void captureImage() {
-        EventBus.getDefault().postSticky(new CameraAvailabilityChangeEvent(false));
-        liveDetection = false;
+        if(!this.isCameraAvailable) return;
+
+        this.isCameraAvailable = false;
+        this.liveDetection = false;
 
         //Take the picture
         this.imageCapt.takePicture(
@@ -224,6 +217,7 @@ public class CameraProviderView {
                     public void onCaptureSuccess(@NonNull ImageProxy image) {
                         //Immediately open a new analyze activity which will handle any error
                         context.startActivity(new Intent(context, AnalyzeActivity.class));
+                        isCameraAvailable = true;
 
                         //Es. SISDIG_2021127_189230.jpg
                         final String pictureName = "SISDIG_" + new SimpleDateFormat("yyyyMMdd_HHmmss").format(new Date()) + ".jpeg";
