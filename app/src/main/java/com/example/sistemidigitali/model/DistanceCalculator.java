@@ -46,7 +46,7 @@ public class DistanceCalculator {
         int numDisparity = (int)(left.size().width/8);
 
         StereoSGBM stereoAlgo = StereoSGBM.create(
-                0,    // min DIsparities
+                0,    // min Disparities
                 numDisparity, // numDisparities
                 11,   // SADWindowSize
                 2*11*11,   // 8*number_of_image_channels*SADWindowSize*SADWindowSize   // p1
@@ -55,8 +55,8 @@ public class DistanceCalculator {
                 -1,   // disp12MaxDiff
                 63,   // prefilterCap
                 10,   // uniqueness ratio
-                0, // sreckleWindowSize
-                32, // spreckle Range
+                0, // speckleWindowSize
+                32, // speckle Range
                 0); // full DP
         // create the DisparityMap - SLOW: O(Width*height*numDisparity)
         stereoAlgo.compute(left, right, disparity);
