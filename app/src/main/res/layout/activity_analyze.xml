@@ -39,7 +39,8 @@
                 android:layout_height="73dp"
                 android:checkable="true"
                 android:translationY="50dp"
-                app:chipBackgroundColor="@color/chip_bg_states_alt" />
+                app:chipBackgroundColor="@color/chip_bg_states_alt"
+                app:chipIconVisible="false" />
         </LinearLayout>
 
         <LinearLayout
