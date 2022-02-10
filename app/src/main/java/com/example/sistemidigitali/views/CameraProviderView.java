@@ -214,12 +214,11 @@ public class CameraProviderView {
      * asynchronously passing it the picture's uri.
      */
     @SuppressLint({"UnsafeOptInUsageError, SimpleDateFormat", "RestrictedApi"})
-    public void captureImage(int maxNumberOfCaptures, int currentNumberOfCapture) {
-        if(!this.isCameraAvailable && currentNumberOfCapture == 1) return;
+    public void captureImage() {
+        if(!this.isCameraAvailable) return;
 
         this.isCameraAvailable = false;
         this.liveDetection = false;
-        boolean captureMorePicture = currentNumberOfCapture < maxNumberOfCaptures;
 
         //Take the picture
         this.imageCapt.takePicture(
@@ -231,10 +230,8 @@ public class CameraProviderView {
                          * Whenever the required amount of images have been captured,
                          * open a new analyze activity which will handle any error
                          */
-                        if(!captureMorePicture) {
-                            context.startActivity(new Intent(context, AnalyzeActivity.class));
-                            isCameraAvailable = true;
-                        }
+                        context.startActivity(new Intent(context, AnalyzeActivity.class));
+                        isCameraAvailable = true;
 
                         //Es. SISDIG_2021127_189230.jpg
                         final String pictureName = "SISDIG_" + new SimpleDateFormat("yyyyMMdd_HHmmss").format(new Date()) + ".jpeg";
@@ -273,10 +270,6 @@ public class CameraProviderView {
                             EventBus.getDefault().postSticky(new ImageSavedEvent("success", picturePublicUri));
                             stream.close();
                             imageProxy.close();
-
-                            if(captureMorePicture) {
-                                captureImage(maxNumberOfCaptures, currentNumberOfCapture + 1);
-                            }
                         } catch (Exception e) {
                             //Remove the allocated space in the MediaStore if the picture can't be saved
                             context.getContentResolver().delete(picturePublicUri, new Bundle());

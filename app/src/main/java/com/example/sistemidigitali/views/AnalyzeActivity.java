@@ -153,8 +153,8 @@ public class AnalyzeActivity extends AppCompatActivity {
 
         ImageDecoder.Source source = ImageDecoder.createSource(this.getContentResolver(), event.getUri());
 
-        if(this.frame1 == null) loadFrame1Components(source);
-        else loadFrame2Components(source);
+        loadAnalyzeComponents(source);
+        loadDistanceCalculationComponents(source);
     }
 
     /**
@@ -163,7 +163,7 @@ public class AnalyzeActivity extends AppCompatActivity {
      * @param source The Source of the image (frame1)
      */
     @SuppressLint("ClickableViewAccessibility")
-    private void loadFrame1Components(ImageDecoder.Source source) {
+    private void loadAnalyzeComponents(ImageDecoder.Source source) {
         try {
             this.frame1 = ImageDecoder.decodeBitmap(source).copy(Bitmap.Config.ARGB_8888, true);
             this.originalImageTensor = TensorImage.fromBitmap(frame1);
@@ -190,7 +190,7 @@ public class AnalyzeActivity extends AppCompatActivity {
      * set all the needed listeners accordingly.
      * @param source The Source of the image (frame2)
      */
-    private void loadFrame2Components(ImageDecoder.Source source) {
+    private void loadDistanceCalculationComponents(ImageDecoder.Source source) {
         try {
             this.frame2 = ImageDecoder.decodeBitmap(source).copy(Bitmap.Config.ARGB_8888, true);
             this.calcDistanceButton.setOnClickListener(view -> this.calculateDistance());
@@ -267,6 +267,8 @@ public class AnalyzeActivity extends AppCompatActivity {
                 });
                 //FOR TEST PURPOSES ONLY
                 this.frame1 = this.distanceCalculator.getDisparityMap(this.frame1, this.frame1);
+            } else {
+                this.frame1 = this.frame2;
             }
 
             //...

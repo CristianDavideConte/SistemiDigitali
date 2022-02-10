@@ -78,7 +78,7 @@ public class MainActivity extends AppCompatActivity {
         this.shutterButton = findViewById(R.id.shutterButton);
 
         this.cameraProviderView = new CameraProviderView(this,  findViewById(R.id.previewView), customGestureDetector);
-        this.shutterButton.setOnClickListener((view) -> this.cameraProviderView.captureImage(2, 1));
+        this.shutterButton.setOnClickListener((view) -> this.cameraProviderView.captureImage());
         this.switchCameraButton.setOnClickListener((view) -> this.cameraProviderView.switchCamera());
         this.liveDetectionSwitch.setOnClickListener((view) -> this.toastMessagesManager.showToastIfNeeded());
 

@@ -30,8 +30,8 @@ public class DistanceCalculator {
         Utils.bitmapToMat(frame1, frame1Mat);
         Utils.bitmapToMat(frame2, frame2Mat);
 
-        Mat croppedRight = getCropped(frame1Mat, 1.4F, +200, 0);
-        Mat croppedLeft  = getCropped(frame2Mat, 1.4F, -200, 0);
+        Mat croppedRight = getCropped(getResized(frame1Mat, 3), 1.2F, +200, 0);
+        Mat croppedLeft  = getCropped(getResized(frame1Mat, 3), 1.2F, -200, 0);
 
         Mat disparityMat = createDisparityMap(croppedLeft, croppedRight);
         //Mat disparityMat = createDisparityMap(frame1Mat, frame2Mat);
@@ -54,11 +54,12 @@ public class DistanceCalculator {
     private Mat getResized(Mat image, float scalingFactor) {
         int height = (int) (image.height() / scalingFactor);
         int width  = (int) (image.width()  / scalingFactor);
-        int left = image.width()  / 2 - width  / 2;
-        int top  = image.height() / 2 - height / 2;
 
-        Rect crop = new Rect(left, top, width, height);
-        return Imgproc.resize(image) new Mat(image, crop);
+        Size scale = new Size(width, height);
+        Mat resizeImage = new Mat();
+
+        Imgproc.resize(image, resizeImage, scale, 0,0, Imgproc.INTER_AREA);
+        return resizeImage;
     }
 
     private Mat getCropped(Mat image, float zoomingFactor, int traslationX, int traslationY) {
