@@ -193,7 +193,18 @@ public class AnalyzeActivity extends AppCompatActivity {
     private void loadDistanceCalculationComponents(ImageDecoder.Source source) {
         try {
             this.frame2 = ImageDecoder.decodeBitmap(source).copy(Bitmap.Config.ARGB_8888, true);
-            this.calcDistanceButton.setOnClickListener(view -> this.calculateDistance());
+            this.calcDistanceButton.setOnClickListener((view) -> {});
+            this.calcDistanceButton.setOnCheckedChangeListener((view, isChecked) -> {
+                if(isChecked) {
+                    this.calcDistanceButton.setText(". . .");
+                    this.calcDistanceButton.setCheckable(false);
+                    this.calculateDistance();
+                } else {
+                    this.frame1 = this.frame2;
+                    this.analyzeView.setImageBitmap(frame2);
+                    this.calcDistanceButton.setText("Measure");
+                }
+            });
             this.calcDistanceButton.setCheckable(true);
         } catch(IOException exception) {
             this.toastMessagesManager.showToast(exception.getMessage());
@@ -251,9 +262,9 @@ public class AnalyzeActivity extends AppCompatActivity {
 
             if(!this.analyzeButton.isCheckable()) {
                 runOnUiThread(() -> {
-                        this.loadingIndicator.setVisibility(View.GONE);
-                        this.analyzeButton.setText("Clear");
-                        this.analyzeButton.setCheckable(true);
+                    this.loadingIndicator.setVisibility(View.GONE);
+                    this.analyzeButton.setText("Clear");
+                    this.analyzeButton.setCheckable(true);
                 });
             }
         });
@@ -261,20 +272,12 @@ public class AnalyzeActivity extends AppCompatActivity {
 
     private void calculateDistance() {
         this.distanceCalculatorExecutor.execute(() -> {
-            if(this.calcDistanceButton.isChecked()){
-                runOnUiThread(() -> {
-                    this.calcDistanceButton.setText("...");
-                });
-                //FOR TEST PURPOSES ONLY
-                this.frame1 = this.distanceCalculator.getDisparityMap(this.frame1, this.frame1);
-            } else {
-                this.frame1 = this.frame2;
-            }
-
-            //...
+            //FOR TEST PURPOSES ONLY
+            this.frame1 = this.distanceCalculator.getDisparityMap(this.frame1, this.frame1);
             runOnUiThread(() -> {
-                this.analyzeView.setImageBitmap(this.frame1);
-                this.calcDistanceButton.setText("Done");
+                this.analyzeView.setImageBitmap(frame1);
+                this.calcDistanceButton.setText("Clear");
+                this.calcDistanceButton.setCheckable(true);
             });
         });
     }
