@@ -157,7 +157,7 @@ public class AnalyzeActivity extends AppCompatActivity {
 
             this.calcDistanceButton.setOnClickListener((view) -> {
                 if(this.calcDistanceButton.isChecked()){
-                    this.originalImage = this.distanceCalculator.calculate(this.originalImage);
+                    this.originalImage = this.distanceCalculator.getDisparityMap(this.originalImage, this.originalImage);
                     this.analyzeView.setImageBitmap(this.originalImage);
                 }
             });
