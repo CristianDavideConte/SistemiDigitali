@@ -4,11 +4,13 @@ import static com.example.sistemidigitali.debugUtility.Debug.println;
 
 import android.annotation.SuppressLint;
 import android.content.ContentValues;
+import android.content.Context;
 import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Matrix;
 import android.hardware.camera2.CameraCharacteristics;
+import android.hardware.camera2.CameraManager;
 import android.media.Image;
 import android.net.Uri;
 import android.os.Bundle;
@@ -21,6 +23,7 @@ import android.view.Surface;
 
 import androidx.annotation.NonNull;
 import androidx.camera.camera2.internal.compat.CameraManagerCompat;
+import androidx.camera.camera2.interop.Camera2CameraInfo;
 import androidx.camera.core.Camera;
 import androidx.camera.core.CameraSelector;
 import androidx.camera.core.FocusMeteringAction;
@@ -34,6 +37,7 @@ import androidx.camera.core.Preview;
 import androidx.camera.core.UseCaseGroup;
 import androidx.camera.lifecycle.ProcessCameraProvider;
 import androidx.camera.view.PreviewView;
+import androidx.lifecycle.LifecycleOwner;
 
 import com.example.sistemidigitali.customEvents.AllowUpdatePolicyChangeEvent;
 import com.example.sistemidigitali.customEvents.CustomObjectDetectorAvailableEvent;
@@ -59,6 +63,8 @@ import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 
 public class CameraProviderView {
+
+    public static CameraCharacteristics cameraCharacteristics;
 
     private static CustomObjectDetector objectDetector;
     private static int currentLensOrientation = CameraSelector.LENS_FACING_BACK;
@@ -139,7 +145,7 @@ public class CameraProviderView {
      * unbinding all the previous use cases.
      * @param lensOrientation An int that indicates the lens orientation.
      */
-    @SuppressLint("RestrictedApi")
+    @SuppressLint({"RestrictedApi", "UnsafeOptInUsageError"})
     public void startCamera(int lensOrientation) {
         EventBus.getDefault().post(new AllowUpdatePolicyChangeEvent(this.context,false));
 
@@ -180,6 +186,9 @@ public class CameraProviderView {
                                             .build();
 
                 this.camera = cameraProvider.bindToLifecycle(this.context, cameraSelector, useCaseGroup);
+
+                CameraManager cameraManager = (CameraManager) this.context.getSystemService(Context.CAMERA_SERVICE);
+                cameraCharacteristics = cameraManager.getCameraCharacteristics(Camera2CameraInfo.from(this.camera.getCameraInfo()).getCameraId());
             } catch (Exception e) {
                 e.printStackTrace();
             } finally {
@@ -205,21 +214,27 @@ public class CameraProviderView {
      * asynchronously passing it the picture's uri.
      */
     @SuppressLint({"UnsafeOptInUsageError, SimpleDateFormat", "RestrictedApi"})
-    public void captureImage() {
-        if(!this.isCameraAvailable) return;
+    public void captureImage(int maxNumberOfCaptures, int currentNumberOfCapture) {
+        if(!this.isCameraAvailable && currentNumberOfCapture == 1) return;
 
         this.isCameraAvailable = false;
         this.liveDetection = false;
+        boolean captureMorePicture = currentNumberOfCapture < maxNumberOfCaptures;
 
         //Take the picture
         this.imageCapt.takePicture(
                 this.imageCaptureExecutor,
                 new ImageCapture.OnImageCapturedCallback(){
                     @Override
-                    public void onCaptureSuccess(@NonNull ImageProxy image) {
-                        //Immediately open a new analyze activity which will handle any error
-                        context.startActivity(new Intent(context, AnalyzeActivity.class));
-                        isCameraAvailable = true;
+                    public void onCaptureSuccess(@NonNull ImageProxy imageProxy) {
+                        /*
+                         * Whenever the required amount of images have been captured,
+                         * open a new analyze activity which will handle any error
+                         */
+                        if(!captureMorePicture) {
+                            context.startActivity(new Intent(context, AnalyzeActivity.class));
+                            isCameraAvailable = true;
+                        }
 
                         //Es. SISDIG_2021127_189230.jpg
                         final String pictureName = "SISDIG_" + new SimpleDateFormat("yyyyMMdd_HHmmss").format(new Date()) + ".jpeg";
@@ -235,8 +250,8 @@ public class CameraProviderView {
                         newPictureDetails.put(MediaStore.Images.Media._ID, pictureName);
                         newPictureDetails.put(MediaStore.Images.Media.DISPLAY_NAME, pictureName);
                         newPictureDetails.put(MediaStore.Images.Media.MIME_TYPE, "image/jpeg");
-                        newPictureDetails.put(MediaStore.Images.Media.WIDTH, image.getWidth());
-                        newPictureDetails.put(MediaStore.Images.Media.HEIGHT, image.getHeight());
+                        newPictureDetails.put(MediaStore.Images.Media.WIDTH, imageProxy.getWidth());
+                        newPictureDetails.put(MediaStore.Images.Media.HEIGHT, imageProxy.getHeight());
                         newPictureDetails.put(MediaStore.Images.Media.RELATIVE_PATH, Environment.DIRECTORY_DCIM + "/SistemiDigitaliM");
 
                         //Add picture to MediaStore in order to make it accessible to other apps
@@ -247,17 +262,21 @@ public class CameraProviderView {
                         try {
                             OutputStream stream = context.getContentResolver().openOutputStream(picturePublicUri);
                             int rotationDirection = currentLensOrientation == CameraSelector.LENS_FACING_BACK ? 1 : -1;
-                            int constantRotation = image.getImageInfo().getRotationDegrees() - camera.getCameraInfo().getSensorRotationDegrees();
+                            int constantRotation = imageProxy.getImageInfo().getRotationDegrees() - camera.getCameraInfo().getSensorRotationDegrees();
                             int rotationDegree = camera.getCameraInfo().getSensorRotationDegrees() - currentDisplayRotation + constantRotation * rotationDirection;
 
-                            Bitmap bitmapImage = convertImageToBitmap(image.getImage(), rotationDegree,currentLensOrientation == CameraSelector.LENS_FACING_FRONT);
+                            Bitmap bitmapImage = convertImageToBitmap(imageProxy.getImage(), rotationDegree,currentLensOrientation == CameraSelector.LENS_FACING_FRONT);
                             if (!bitmapImage.compress(Bitmap.CompressFormat.JPEG, 100, stream)) {
                                 throw new Exception("Image compression failed");
                             }
 
-                            stream.close();
-                            image.close();
                             EventBus.getDefault().postSticky(new ImageSavedEvent("success", picturePublicUri));
+                            stream.close();
+                            imageProxy.close();
+
+                            if(captureMorePicture) {
+                                captureImage(maxNumberOfCaptures, currentNumberOfCapture + 1);
+                            }
                         } catch (Exception e) {
                             //Remove the allocated space in the MediaStore if the picture can't be saved
                             context.getContentResolver().delete(picturePublicUri, new Bundle());

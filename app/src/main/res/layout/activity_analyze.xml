@@ -37,8 +37,9 @@
                 android:id="@+id/calcDistanceButton"
                 android:layout_width="100dp"
                 android:layout_height="73dp"
-                android:checkable="true"
+                android:checkable="false"
                 android:translationY="50dp"
+                app:checkedIconEnabled="false"
                 app:chipBackgroundColor="@color/chip_bg_states_alt"
                 app:chipIconVisible="false" />
         </LinearLayout>

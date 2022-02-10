@@ -5,6 +5,7 @@ import static com.example.sistemidigitali.debugUtility.Debug.println;
 import android.annotation.SuppressLint;
 import android.graphics.Bitmap;
 import android.graphics.ImageDecoder;
+import android.net.Uri;
 import android.os.Bundle;
 import android.view.View;
 import android.view.WindowManager;
@@ -46,7 +47,7 @@ import java.util.concurrent.Executors;
 public class AnalyzeActivity extends AppCompatActivity {
     private static CustomObjectDetector objectDetector;
 
-    private Bitmap originalImage;
+    private Bitmap frame1, frame2;
     private TensorImage originalImageTensor;
 
     private View backgroundOverlayAnalyze;
@@ -57,7 +58,8 @@ public class AnalyzeActivity extends AppCompatActivity {
     private List<Detection> detections;
 
     private ImageMatrixTouchHandler zoomHandler;
-    private Executor analyzer;
+    private Executor distanceCalculatorExecutor;
+    private Executor analyzerExecutor;
 
     private ToastMessagesManager toastMessagesManager;
     private CustomGestureDetector customGestureDetector;
@@ -80,9 +82,11 @@ public class AnalyzeActivity extends AppCompatActivity {
 
         this.distanceCalculator = new DistanceCalculator();
         this.toastMessagesManager = new ToastMessagesManager(this, Toast.LENGTH_SHORT);
-        this.analyzer = Executors.newSingleThreadExecutor();
+        this.distanceCalculatorExecutor = Executors.newSingleThreadExecutor();
+        this.analyzerExecutor = Executors.newSingleThreadExecutor();
         this.customGestureDetector = new CustomGestureDetector();
         this.analyzeButton.setOnClickListener((view) -> this.toastMessagesManager.showToastIfNeeded());
+        this.calcDistanceButton.setOnClickListener((view) -> this.toastMessagesManager.showToastIfNeeded());
 
         new Thread(() -> {
             try {
@@ -137,30 +141,34 @@ public class AnalyzeActivity extends AppCompatActivity {
      * preview view of this AnalyzeActivity.
      * @param event An ImageSavedEvent that contains the result of the image saving operation.
      */
-    @SuppressLint("ClickableViewAccessibility")
     @Subscribe(sticky = true, threadMode = ThreadMode.MAIN)
     public void onImageSaved(ImageSavedEvent event) {
         //If the picture is not available, go back to previous activity
         if(!event.getError().equals("success")) {
-            println("CAMERA IS CLOSED ERROR");
             EventBus.getDefault().removeStickyEvent(event);
             this.toastMessagesManager.showToast(event.getError());
             this.finish();
             return;
         }
 
-        try {
-            ImageDecoder.Source source = ImageDecoder.createSource(this.getContentResolver(), event.getUri());
-            this.originalImage = ImageDecoder.decodeBitmap(source).copy(Bitmap.Config.ARGB_8888, true);
-            this.originalImageTensor = TensorImage.fromBitmap(originalImage);
-            this.analyzeView.setImageBitmap(this.originalImage);
+        ImageDecoder.Source source = ImageDecoder.createSource(this.getContentResolver(), event.getUri());
 
-            this.calcDistanceButton.setOnClickListener((view) -> {
-                if(this.calcDistanceButton.isChecked()){
-                    this.originalImage = this.distanceCalculator.getDisparityMap(this.originalImage, this.originalImage);
-                    this.analyzeView.setImageBitmap(this.originalImage);
-                }
-            });
+        if(this.frame1 == null) loadFrame1Components(source);
+        else loadFrame2Components(source);
+    }
+
+    /**
+     * Loads the first frame needed for generating a disparity map and
+     * sets the analyzeView's bitmap with all the needed listeners.
+     * @param source The Source of the image (frame1)
+     */
+    @SuppressLint("ClickableViewAccessibility")
+    private void loadFrame1Components(ImageDecoder.Source source) {
+        try {
+            this.frame1 = ImageDecoder.decodeBitmap(source).copy(Bitmap.Config.ARGB_8888, true);
+            this.originalImageTensor = TensorImage.fromBitmap(frame1);
+            this.analyzeView.setImageBitmap(this.frame1);
+
             this.zoomHandler = new ImageMatrixTouchHandler(this);
             this.analyzeView.setOnTouchListener((view, motionEvent) -> {
                 if(!this.customGestureDetector.shouldListenToTouchEvents()) return true;
@@ -177,6 +185,23 @@ public class AnalyzeActivity extends AppCompatActivity {
         }
     }
 
+    /**
+     * Loads the second frame needed for generating a disparity map and
+     * set all the needed listeners accordingly.
+     * @param source The Source of the image (frame2)
+     */
+    private void loadFrame2Components(ImageDecoder.Source source) {
+        try {
+            this.frame2 = ImageDecoder.decodeBitmap(source).copy(Bitmap.Config.ARGB_8888, true);
+            this.calcDistanceButton.setOnClickListener(view -> this.calculateDistance());
+            this.calcDistanceButton.setCheckable(true);
+        } catch(IOException exception) {
+            this.toastMessagesManager.showToast(exception.getMessage());
+            this.finish();
+        }
+    }
+
+
     @Subscribe(sticky = true, threadMode = ThreadMode.MAIN)
     public void onCustomObjectDetectorAvailable(CustomObjectDetectorAvailableEvent event) {
         if(event.getContext() != this) return;
@@ -192,7 +217,7 @@ public class AnalyzeActivity extends AppCompatActivity {
                 EventBus.getDefault().post(new AllowUpdatePolicyChangeEvent(this, false));
             }
         });
-        if(this.originalImage != null) this.analyzeButton.setCheckable(true);
+        if(this.frame1 != null) this.analyzeButton.setCheckable(true);
         this.toastMessagesManager.hideToast();
         EventBus.getDefault().removeStickyEvent(event);
     }
@@ -219,7 +244,7 @@ public class AnalyzeActivity extends AppCompatActivity {
     }
 
     private void detectObjects() {
-        this.analyzer.execute(() -> {
+        this.analyzerExecutor.execute(() -> {
             this.detections = objectDetector.detect(this.originalImageTensor);
             EventBus.getDefault().post(new UpdateDetectionsRectsEvent(detections, false, this.analyzeView.getImageMatrix()));
             EventBus.getDefault().post(new AllowUpdatePolicyChangeEvent(this, true));
@@ -231,6 +256,24 @@ public class AnalyzeActivity extends AppCompatActivity {
                         this.analyzeButton.setCheckable(true);
                 });
             }
+        });
+    }
+
+    private void calculateDistance() {
+        this.distanceCalculatorExecutor.execute(() -> {
+            if(this.calcDistanceButton.isChecked()){
+                runOnUiThread(() -> {
+                    this.calcDistanceButton.setText("...");
+                });
+                //FOR TEST PURPOSES ONLY
+                this.frame1 = this.distanceCalculator.getDisparityMap(this.frame1, this.frame1);
+            }
+
+            //...
+            runOnUiThread(() -> {
+                this.analyzeView.setImageBitmap(this.frame1);
+                this.calcDistanceButton.setText("Done");
+            });
         });
     }
 }

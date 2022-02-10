@@ -29,7 +29,13 @@ import org.greenrobot.eventbus.Subscribe;
 import org.greenrobot.eventbus.ThreadMode;
 import org.opencv.android.OpenCVLoader;
 
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ThreadPoolExecutor;
+
 public class MainActivity extends AppCompatActivity {
+    public static ExecutorService backgroundThreads = Executors.newFixedThreadPool(4);
+
     private final String [] permissions = {Manifest.permission.CAMERA, Manifest.permission.READ_EXTERNAL_STORAGE, Manifest.permission.WRITE_EXTERNAL_STORAGE};
 
     private Permission permission;
@@ -72,7 +78,7 @@ public class MainActivity extends AppCompatActivity {
         this.shutterButton = findViewById(R.id.shutterButton);
 
         this.cameraProviderView = new CameraProviderView(this,  findViewById(R.id.previewView), customGestureDetector);
-        this.shutterButton.setOnClickListener((view) -> this.cameraProviderView.captureImage());
+        this.shutterButton.setOnClickListener((view) -> this.cameraProviderView.captureImage(2, 1));
         this.switchCameraButton.setOnClickListener((view) -> this.cameraProviderView.switchCamera());
         this.liveDetectionSwitch.setOnClickListener((view) -> this.toastMessagesManager.showToastIfNeeded());
 

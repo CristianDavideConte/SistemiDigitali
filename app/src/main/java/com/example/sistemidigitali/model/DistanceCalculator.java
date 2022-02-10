@@ -25,23 +25,40 @@ public class DistanceCalculator {
     }
 
     public Bitmap getDisparityMap(Bitmap frame1, Bitmap frame2) {
-        Mat frame1Mat = new Mat(frame1.getWidth(), frame1.getHeight(), CvType.CV_8UC1);
+        Mat frame1Mat = new Mat(frame1.getWidth(), frame1.getHeight(), CvType.CV_8UC4);
+        Mat frame2Mat = new Mat(frame2.getWidth(), frame2.getHeight(), CvType.CV_8UC4);
         Utils.bitmapToMat(frame1, frame1Mat);
+        Utils.bitmapToMat(frame2, frame2Mat);
 
-        Mat croppedRight = getCropped(frame1Mat, 1.3F, +100, 0);
-        Mat croppedLeft  = getCropped(frame1Mat, 1.3F, -100, 0);
+        Mat croppedRight = getCropped(frame1Mat, 1.4F, +200, 0);
+        Mat croppedLeft  = getCropped(frame2Mat, 1.4F, -200, 0);
 
-        Mat disparity = createDisparityMap(croppedLeft, croppedRight);
+        Mat disparityMat = createDisparityMap(croppedLeft, croppedRight);
+        //Mat disparityMat = createDisparityMap(frame1Mat, frame2Mat);
+        disparityMat.convertTo(disparityMat, CvType.CV_8UC4);
 
-        disparity.convertTo(disparity, CvType.CV_8UC4);
-        frame1 = Bitmap.createBitmap(disparity.cols(), disparity.rows(), Bitmap.Config.ARGB_8888);
-        Utils.matToBitmap(disparity, frame1);
+        Bitmap disparityBitmap = Bitmap.createBitmap(disparityMat.cols(), disparityMat.rows(), Bitmap.Config.ARGB_8888);
+        Utils.matToBitmap(disparityMat, disparityBitmap);
 
-        return frame1;
+        return disparityBitmap;
     }
 
     public double getDistance(Point p1, Point p2) {
+
+        //cameraCharacteristics.get(CameraCharacteristics.LENS_INFO_AVAILABLE_FOCAL_LENGTHS);
+        //cameraCharacteristics.get(CameraCharacteristics.SENSOR_INFO_PHYSICAL_SIZE);
+
         return 0;
+    }
+
+    private Mat getResized(Mat image, float scalingFactor) {
+        int height = (int) (image.height() / scalingFactor);
+        int width  = (int) (image.width()  / scalingFactor);
+        int left = image.width()  / 2 - width  / 2;
+        int top  = image.height() / 2 - height / 2;
+
+        Rect crop = new Rect(left, top, width, height);
+        return Imgproc.resize(image) new Mat(image, crop);
     }
 
     private Mat getCropped(Mat image, float zoomingFactor, int traslationX, int traslationY) {
@@ -94,5 +111,4 @@ public class DistanceCalculator {
 
         return disparity;
     }
-
 }
