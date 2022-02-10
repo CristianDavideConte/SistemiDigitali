@@ -10,6 +10,7 @@ import org.opencv.calib3d.StereoSGBM;
 import org.opencv.core.Core;
 import org.opencv.core.CvType;
 import org.opencv.core.Mat;
+import org.opencv.core.Point;
 import org.opencv.core.Rect;
 import org.opencv.core.Scalar;
 import org.opencv.core.Size;
@@ -23,23 +24,27 @@ public class DistanceCalculator {
 
     }
 
-    public Bitmap calculate(Bitmap bitmap) {
-        Mat bitmapMat = new Mat(bitmap.getWidth(), bitmap.getHeight(), CvType.CV_8UC1);
-        Utils.bitmapToMat(bitmap, bitmapMat);
+    public Bitmap getDisparityMap(Bitmap frame1, Bitmap frame2) {
+        Mat frame1Mat = new Mat(frame1.getWidth(), frame1.getHeight(), CvType.CV_8UC1);
+        Utils.bitmapToMat(frame1, frame1Mat);
 
-        Mat croppedRight = getCropped(bitmapMat, 1.3F, +100, 0);
-        Mat croppedLeft  = getCropped(bitmapMat, 1.3F, -100, 0);
+        Mat croppedRight = getCropped(frame1Mat, 1.3F, +100, 0);
+        Mat croppedLeft  = getCropped(frame1Mat, 1.3F, -100, 0);
 
         Mat disparity = createDisparityMap(croppedLeft, croppedRight);
 
         disparity.convertTo(disparity, CvType.CV_8UC4);
-        bitmap = Bitmap.createBitmap(disparity.cols(), disparity.rows(), Bitmap.Config.ARGB_8888);
-        Utils.matToBitmap(disparity, bitmap);
+        frame1 = Bitmap.createBitmap(disparity.cols(), disparity.rows(), Bitmap.Config.ARGB_8888);
+        Utils.matToBitmap(disparity, frame1);
 
-        return bitmap;
+        return frame1;
     }
 
-    public Mat getCropped(Mat image, float zoomingFactor, int traslationX, int traslationY) {
+    public double getDistance(Point p1, Point p2) {
+        return 0;
+    }
+
+    private Mat getCropped(Mat image, float zoomingFactor, int traslationX, int traslationY) {
         int height = (int) (image.height() / zoomingFactor);
         int width  = (int) (image.width()  / zoomingFactor);
 
