@@ -3,17 +3,22 @@ package com.example.sistemidigitali.views;
 import static com.example.sistemidigitali.debugUtility.Debug.println;
 
 import android.annotation.SuppressLint;
+import android.content.ContentValues;
 import android.graphics.Bitmap;
 import android.graphics.ImageDecoder;
 import android.net.Uri;
 import android.os.Bundle;
+import android.os.Environment;
+import android.provider.MediaStore;
 import android.view.View;
 import android.view.WindowManager;
 import android.widget.ImageView;
+import android.widget.ProgressBar;
 import android.widget.RelativeLayout;
 import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.camera.core.CameraSelector;
 
 import com.bogdwellers.pinchtozoom.ImageMatrixTouchHandler;
 import com.example.sistemidigitali.R;
@@ -24,13 +29,16 @@ import com.example.sistemidigitali.customEvents.GestureIsMoveEvent;
 import com.example.sistemidigitali.customEvents.GestureIsZoomEvent;
 import com.example.sistemidigitali.customEvents.ImageSavedEvent;
 import com.example.sistemidigitali.customEvents.OverlayVisibilityChangeEvent;
+import com.example.sistemidigitali.customEvents.PictureTakenEvent;
 import com.example.sistemidigitali.customEvents.UpdateDetectionsRectsEvent;
 import com.example.sistemidigitali.enums.CustomObjectDetectorType;
 import com.example.sistemidigitali.model.CustomGestureDetector;
 import com.example.sistemidigitali.model.CustomObjectDetector;
 import com.example.sistemidigitali.model.DistanceCalculator;
+import com.example.sistemidigitali.model.ImageSaver;
 import com.example.sistemidigitali.model.ToastMessagesManager;
 import com.google.android.material.chip.Chip;
+import com.google.android.material.floatingactionbutton.FloatingActionButton;
 
 import org.greenrobot.eventbus.EventBus;
 import org.greenrobot.eventbus.Subscribe;
@@ -39,7 +47,10 @@ import org.tensorflow.lite.support.image.TensorImage;
 import org.tensorflow.lite.task.vision.detector.Detection;
 
 import java.io.IOException;
+import java.io.OutputStream;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
@@ -55,6 +66,7 @@ public class AnalyzeActivity extends AppCompatActivity {
     private LiveDetectionView liveDetectionViewAnalyze;
     private Chip analyzeButton;
     private Chip calcDistanceButton;
+    private FloatingActionButton saveImageButton;
     private List<Detection> detections;
 
     private ImageMatrixTouchHandler zoomHandler;
@@ -64,8 +76,10 @@ public class AnalyzeActivity extends AppCompatActivity {
     private ToastMessagesManager toastMessagesManager;
     private CustomGestureDetector customGestureDetector;
 
-    private RelativeLayout loadingIndicator;
+    private ProgressBar analyzeLoadingIndicator;
+    private ProgressBar saveLoadingIndicator;
     private DistanceCalculator distanceCalculator;
+    private ImageSaver imageSaver;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -78,8 +92,11 @@ public class AnalyzeActivity extends AppCompatActivity {
         this.liveDetectionViewAnalyze = findViewById(R.id.liveDetectionViewAnalyze);
         this.analyzeButton = findViewById(R.id.analyzeButton);
         this.calcDistanceButton = findViewById(R.id.calcDistanceButton);
-        this.loadingIndicator = findViewById(R.id.loadingIndicatorPanel);
+        this.saveImageButton = findViewById(R.id.saveImageButton);
+        this.analyzeLoadingIndicator = findViewById(R.id.analyzeLoadingIndicator);
+        this.saveLoadingIndicator = findViewById(R.id.saveLoadingIndicator);
 
+        this.imageSaver = new ImageSaver(this);
         this.distanceCalculator = new DistanceCalculator();
         this.toastMessagesManager = new ToastMessagesManager(this, Toast.LENGTH_SHORT);
         this.distanceCalculatorExecutor = Executors.newSingleThreadExecutor();
@@ -111,14 +128,14 @@ public class AnalyzeActivity extends AppCompatActivity {
     }
 
     /**
-     * Clears the screen when the application is resumed
-     * to avoid graphical artifacts
+     * Avoids graphical artifacts
      */
     @Override
     protected void onResume() {
         super.onResume();
         EventBus.getDefault().post(new UpdateDetectionsRectsEvent(new ArrayList<>(), false, null));
         if(this.analyzeButton.isChecked()) this.detectObjects();
+        if(this.calcDistanceButton.isChecked()) this.calculateDistance();
     }
 
     /**
@@ -142,7 +159,7 @@ public class AnalyzeActivity extends AppCompatActivity {
      * @param event An ImageSavedEvent that contains the result of the image saving operation.
      */
     @Subscribe(sticky = true, threadMode = ThreadMode.MAIN)
-    public void onImageSaved(ImageSavedEvent event) {
+    public void onPictureTaken(PictureTakenEvent event) {
         //If the picture is not available, go back to previous activity
         if(!event.getError().equals("success")) {
             EventBus.getDefault().removeStickyEvent(event);
@@ -151,65 +168,60 @@ public class AnalyzeActivity extends AppCompatActivity {
             return;
         }
 
-        ImageDecoder.Source source = ImageDecoder.createSource(this.getContentResolver(), event.getUri());
+        Bitmap image = event.getImage();
 
-        loadAnalyzeComponents(source);
-        loadDistanceCalculationComponents(source);
+        loadAnalyzeComponents(image);
+        loadDistanceCalculationComponents(image);
     }
 
     /**
      * Loads the first frame needed for generating a disparity map and
      * sets the analyzeView's bitmap with all the needed listeners.
-     * @param source The Source of the image (frame1)
+     * @param image The bitmap associated with the image (frame1)
      */
     @SuppressLint("ClickableViewAccessibility")
-    private void loadAnalyzeComponents(ImageDecoder.Source source) {
-        try {
-            this.frame1 = ImageDecoder.decodeBitmap(source).copy(Bitmap.Config.ARGB_8888, true);
-            this.originalImageTensor = TensorImage.fromBitmap(frame1);
-            this.analyzeView.setImageBitmap(this.frame1);
+    private void loadAnalyzeComponents(Bitmap image) {
+        this.frame1 = image.copy(Bitmap.Config.ARGB_8888, true);
+        this.originalImageTensor = TensorImage.fromBitmap(frame1);
+        this.analyzeView.setImageBitmap(this.frame1);
 
-            this.zoomHandler = new ImageMatrixTouchHandler(this);
-            this.analyzeView.setOnTouchListener((view, motionEvent) -> {
-                if(!this.customGestureDetector.shouldListenToTouchEvents()) return true;
+        this.saveImageButton.setOnClickListener((view) -> {
+            this.saveLoadingIndicator.setVisibility(View.VISIBLE);
+            this.imageSaver.saveImage(this.frame1);
+        });
+        this.zoomHandler = new ImageMatrixTouchHandler(this);
 
-                if(this.analyzeButton.isChecked()) customGestureDetector.update(motionEvent);
+        this.analyzeView.setOnTouchListener((view, motionEvent) -> {
+            if(!this.customGestureDetector.shouldListenToTouchEvents()) return true;
 
-                return zoomHandler.onTouch(view, motionEvent);
-            });
-            this.loadingIndicator.setVisibility(View.GONE);
-            if(objectDetector != null) this.analyzeButton.setCheckable(true);
-        } catch (IOException exception) {
-            this.toastMessagesManager.showToast(exception.getMessage());
-            this.finish();
-        }
+            if(this.analyzeButton.isChecked()) customGestureDetector.update(motionEvent);
+
+            return zoomHandler.onTouch(view, motionEvent);
+        });
+        if(objectDetector != null) this.analyzeButton.setCheckable(true);
+        this.analyzeLoadingIndicator.setVisibility(View.GONE);
     }
 
     /**
      * Loads the second frame needed for generating a disparity map and
      * set all the needed listeners accordingly.
-     * @param source The Source of the image (frame2)
+     * @param image The bitmap associated with the image (frame1)
      */
-    private void loadDistanceCalculationComponents(ImageDecoder.Source source) {
-        try {
-            this.frame2 = ImageDecoder.decodeBitmap(source).copy(Bitmap.Config.ARGB_8888, true);
-            this.calcDistanceButton.setOnClickListener((view) -> {});
-            this.calcDistanceButton.setOnCheckedChangeListener((view, isChecked) -> {
-                if(isChecked) {
-                    this.calcDistanceButton.setText(". . .");
-                    this.calcDistanceButton.setCheckable(false);
-                    this.calculateDistance();
-                } else {
-                    this.frame1 = this.frame2;
-                    this.analyzeView.setImageBitmap(frame2);
-                    this.calcDistanceButton.setText("Measure");
-                }
-            });
-            this.calcDistanceButton.setCheckable(true);
-        } catch(IOException exception) {
-            this.toastMessagesManager.showToast(exception.getMessage());
-            this.finish();
-        }
+    private void loadDistanceCalculationComponents(Bitmap image) {
+        this.frame2 = image.copy(Bitmap.Config.ARGB_8888, true);
+        this.calcDistanceButton.setOnClickListener((view) -> {});
+        this.calcDistanceButton.setOnCheckedChangeListener((view, isChecked) -> {
+            if(isChecked) {
+                this.calcDistanceButton.setText(". . .");
+                this.calcDistanceButton.setCheckable(false);
+                this.calculateDistance();
+            } else {
+                this.frame1 = this.frame2;
+                this.analyzeView.setImageBitmap(frame2);
+                this.calcDistanceButton.setText("Measure");
+            }
+        });
+        this.calcDistanceButton.setCheckable(true);
     }
 
 
@@ -219,7 +231,7 @@ public class AnalyzeActivity extends AppCompatActivity {
         this.analyzeButton.setOnClickListener((view) -> {});
         this.analyzeButton.setOnCheckedChangeListener((view, isChecked) -> {
             if(isChecked) {
-                this.loadingIndicator.setVisibility(View.VISIBLE);
+                this.analyzeLoadingIndicator.setVisibility(View.VISIBLE);
                 this.analyzeButton.setText(". . .");
                 this.analyzeButton.setCheckable(false);
                 this.detectObjects();
@@ -239,6 +251,11 @@ public class AnalyzeActivity extends AppCompatActivity {
         this.backgroundOverlayAnalyze.setVisibility(event.getVisibility());
     }
 
+    @Subscribe(threadMode = ThreadMode.MAIN)
+    public void onImageSaved(ImageSavedEvent event) {
+        this.saveLoadingIndicator.setVisibility(View.GONE);
+    }
+
     @Subscribe(threadMode = ThreadMode.ASYNC)
     public void onGestureIsZoom(GestureIsZoomEvent event) {
         EventBus.getDefault().post(new AllowUpdatePolicyChangeEvent(this, false));
@@ -254,6 +271,7 @@ public class AnalyzeActivity extends AppCompatActivity {
         this.detectObjects();
     }
 
+
     private void detectObjects() {
         this.analyzerExecutor.execute(() -> {
             this.detections = objectDetector.detect(this.originalImageTensor);
@@ -262,7 +280,7 @@ public class AnalyzeActivity extends AppCompatActivity {
 
             if(!this.analyzeButton.isCheckable()) {
                 runOnUiThread(() -> {
-                    this.loadingIndicator.setVisibility(View.GONE);
+                    this.analyzeLoadingIndicator.setVisibility(View.GONE);
                     this.analyzeButton.setText("Clear");
                     this.analyzeButton.setCheckable(true);
                 });

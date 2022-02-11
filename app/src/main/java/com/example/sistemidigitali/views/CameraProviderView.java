@@ -3,7 +3,6 @@ package com.example.sistemidigitali.views;
 import static com.example.sistemidigitali.debugUtility.Debug.println;
 
 import android.annotation.SuppressLint;
-import android.content.ContentValues;
 import android.content.Context;
 import android.content.Intent;
 import android.graphics.Bitmap;
@@ -12,17 +11,12 @@ import android.graphics.Matrix;
 import android.hardware.camera2.CameraCharacteristics;
 import android.hardware.camera2.CameraManager;
 import android.media.Image;
-import android.net.Uri;
-import android.os.Bundle;
-import android.os.Environment;
-import android.provider.MediaStore;
 import android.util.Size;
 import android.view.MotionEvent;
 import android.view.ScaleGestureDetector;
 import android.view.Surface;
 
 import androidx.annotation.NonNull;
-import androidx.camera.camera2.internal.compat.CameraManagerCompat;
 import androidx.camera.camera2.interop.Camera2CameraInfo;
 import androidx.camera.core.Camera;
 import androidx.camera.core.CameraSelector;
@@ -37,11 +31,10 @@ import androidx.camera.core.Preview;
 import androidx.camera.core.UseCaseGroup;
 import androidx.camera.lifecycle.ProcessCameraProvider;
 import androidx.camera.view.PreviewView;
-import androidx.lifecycle.LifecycleOwner;
 
 import com.example.sistemidigitali.customEvents.AllowUpdatePolicyChangeEvent;
 import com.example.sistemidigitali.customEvents.CustomObjectDetectorAvailableEvent;
-import com.example.sistemidigitali.customEvents.ImageSavedEvent;
+import com.example.sistemidigitali.customEvents.PictureTakenEvent;
 import com.example.sistemidigitali.customEvents.UpdateDetectionsRectsEvent;
 import com.example.sistemidigitali.enums.CustomObjectDetectorType;
 import com.example.sistemidigitali.model.CustomGestureDetector;
@@ -53,11 +46,8 @@ import org.tensorflow.lite.support.image.TensorImage;
 import org.tensorflow.lite.task.vision.detector.Detection;
 
 import java.io.IOException;
-import java.io.OutputStream;
 import java.nio.ByteBuffer;
-import java.text.SimpleDateFormat;
 import java.util.ArrayList;
-import java.util.Date;
 import java.util.List;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
@@ -233,54 +223,17 @@ public class CameraProviderView {
                         context.startActivity(new Intent(context, AnalyzeActivity.class));
                         isCameraAvailable = true;
 
-                        //Es. SISDIG_2021127_189230.jpg
-                        final String pictureName = "SISDIG_" + new SimpleDateFormat("yyyyMMdd_HHmmss").format(new Date()) + ".jpeg";
+                        int rotationDirection = currentLensOrientation == CameraSelector.LENS_FACING_BACK ? 1 : -1;
+                        int constantRotation = imageProxy.getImageInfo().getRotationDegrees() - camera.getCameraInfo().getSensorRotationDegrees();
+                        int rotationDegree = camera.getCameraInfo().getSensorRotationDegrees() - currentDisplayRotation + constantRotation * rotationDirection;
 
-                        //Sources:
-                        //https://stackoverflow.com/questions/56904485/how-to-save-an-image-in-android-q-using-mediastore
-                        //https://developer.android.com/reference/android/content/ContentResolver#insert(android.net.Uri,%20android.content.ContentValues)
-                        //https://developer.android.com/training/data-storage/use-cases#share-media-all
-                        //https://developer.android.com/reference/androidx/camera/core/ImageCapture.OnImageCapturedCallback
-
-                        //Create the picture's metadata
-                        ContentValues newPictureDetails = new ContentValues();
-                        newPictureDetails.put(MediaStore.Images.Media._ID, pictureName);
-                        newPictureDetails.put(MediaStore.Images.Media.DISPLAY_NAME, pictureName);
-                        newPictureDetails.put(MediaStore.Images.Media.MIME_TYPE, "image/jpeg");
-                        newPictureDetails.put(MediaStore.Images.Media.WIDTH, imageProxy.getWidth());
-                        newPictureDetails.put(MediaStore.Images.Media.HEIGHT, imageProxy.getHeight());
-                        newPictureDetails.put(MediaStore.Images.Media.RELATIVE_PATH, Environment.DIRECTORY_DCIM + "/SistemiDigitaliM");
-
-                        //Add picture to MediaStore in order to make it accessible to other apps
-                        //The result of the insert is the handle to the picture inside the MediaStore
-                        Uri picturePublicUri = context.getContentResolver().insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, newPictureDetails);
-
-                        //Saves the image in the background and post the result on the EventBus
-                        try {
-                            OutputStream stream = context.getContentResolver().openOutputStream(picturePublicUri);
-                            int rotationDirection = currentLensOrientation == CameraSelector.LENS_FACING_BACK ? 1 : -1;
-                            int constantRotation = imageProxy.getImageInfo().getRotationDegrees() - camera.getCameraInfo().getSensorRotationDegrees();
-                            int rotationDegree = camera.getCameraInfo().getSensorRotationDegrees() - currentDisplayRotation + constantRotation * rotationDirection;
-
-                            Bitmap bitmapImage = convertImageToBitmap(imageProxy.getImage(), rotationDegree,currentLensOrientation == CameraSelector.LENS_FACING_FRONT);
-                            if (!bitmapImage.compress(Bitmap.CompressFormat.JPEG, 100, stream)) {
-                                throw new Exception("Image compression failed");
-                            }
-
-                            EventBus.getDefault().postSticky(new ImageSavedEvent("success", picturePublicUri));
-                            stream.close();
-                            imageProxy.close();
-                        } catch (Exception e) {
-                            //Remove the allocated space in the MediaStore if the picture can't be saved
-                            context.getContentResolver().delete(picturePublicUri, new Bundle());
-                            EventBus.getDefault().postSticky(new ImageSavedEvent(e.getMessage(), picturePublicUri));
-                        }
+                        Bitmap bitmapImage = convertImageToBitmap(imageProxy.getImage(), rotationDegree,currentLensOrientation == CameraSelector.LENS_FACING_FRONT);
+                        EventBus.getDefault().postSticky(new PictureTakenEvent(bitmapImage, "success"));
                     }
 
                     @Override
                     public void onError(@NonNull ImageCaptureException exception) {
                         exception.printStackTrace();
-                        EventBus.getDefault().postSticky(new ImageSavedEvent(exception.getMessage(), Uri.parse("")));
                     }
                 }
         );

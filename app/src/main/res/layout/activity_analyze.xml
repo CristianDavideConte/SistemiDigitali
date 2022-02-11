@@ -38,6 +38,7 @@
                 android:layout_width="100dp"
                 android:layout_height="73dp"
                 android:checkable="false"
+                android:elevation="6dp"
                 android:gravity="center"
                 android:text="Measure"
                 android:textAlignment="center"
@@ -50,11 +51,10 @@
         </LinearLayout>
 
         <LinearLayout
-            android:id="@+id/linearLayout"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
             android:layout_weight="0"
-            android:gravity="bottom|center_horizontal|center_vertical"
+            android:gravity="bottom|center_horizontal"
             android:orientation="horizontal">
 
             <com.google.android.material.chip.Chip
@@ -88,6 +88,27 @@
 
         </LinearLayout>
 
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:layout_weight="0"
+            android:gravity="bottom|right"
+            android:orientation="horizontal">
+
+            <com.google.android.material.floatingactionbutton.FloatingActionButton
+                android:id="@+id/saveImageButton"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_weight="0"
+                android:clickable="true"
+                android:elevation="6dp"
+                android:translationX="-25dp"
+                android:translationY="-59dp"
+                app:backgroundTint="#FFFFFF"
+                app:srcCompat="@android:drawable/ic_menu_save" />
+
+        </LinearLayout>
+
         <View
             android:id="@+id/backgroundOverlayAnalyze"
             android:layout_width="wrap_content"
@@ -96,15 +117,32 @@
             android:visibility="gone" />
 
         <RelativeLayout
-            android:id="@+id/loadingIndicatorPanel"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
             android:gravity="center">
 
             <ProgressBar
+                android:id="@+id/analyzeLoadingIndicator"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:indeterminate="true" />
+
+        </RelativeLayout>
+
+        <RelativeLayout
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:gravity="bottom|right">
+
+            <ProgressBar
+                android:id="@+id/saveLoadingIndicator"
+                style="?android:attr/progressBarStyle"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_weight="0"
+                android:translationX="-29dp"
+                android:translationY="-62dp"
+                android:visibility="gone" />
         </RelativeLayout>
     </FrameLayout>
 
