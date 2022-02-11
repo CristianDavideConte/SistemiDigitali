@@ -29,10 +29,7 @@
     "intermediatesFolder": "F:\\gitHub Hosts\\SistemiDigitali\\openCV\\build\\intermediates\\cxx\\Debug\\2g5k1x4r",
     "isDebuggableEnabled": true,
     "validAbiList": [
-      "ARMEABI_V7A",
-      "ARM64_V8A",
-      "X86",
-      "X86_64"
+      "X86"
     ],
     "buildTargetSet": [
       "opencv_jni_shared"
@@ -133,6 +130,7 @@
         "rootBuildGradleFolder": "F:\\gitHub Hosts\\SistemiDigitali",
         "sdkFolder": "C:\\Users\\crist\\AppData\\Local\\Android\\Sdk",
         "isBuildOnlyTargetAbiEnabled": true,
+        "ideBuildTargetAbi": "x86",
         "isCmakeBuildCohabitationEnabled": false,
         "isPrefabEnabled": false
       },

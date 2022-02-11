@@ -18,6 +18,7 @@ import com.example.sistemidigitali.R;
 import com.example.sistemidigitali.customEvents.CustomObjectDetectorAvailableEvent;
 import com.example.sistemidigitali.customEvents.ImageSavedEvent;
 import com.example.sistemidigitali.customEvents.OverlayVisibilityChangeEvent;
+import com.example.sistemidigitali.customEvents.PictureTakenEvent;
 import com.example.sistemidigitali.model.CustomGestureDetector;
 import com.example.sistemidigitali.model.Permission;
 import com.example.sistemidigitali.model.ToastMessagesManager;
@@ -103,7 +104,7 @@ public class MainActivity extends AppCompatActivity {
         EventBus.getDefault().register(this);
         EventBus.getDefault().register(this.liveDetectionViewMain);
         EventBus.getDefault().register(this.customGestureDetector);
-        EventBus.getDefault().removeStickyEvent(ImageSavedEvent.class);
+        EventBus.getDefault().removeStickyEvent(PictureTakenEvent.class);
         this.cameraProviderView.setLiveDetection(this.liveDetectionSwitch.isChecked());
     }
 
