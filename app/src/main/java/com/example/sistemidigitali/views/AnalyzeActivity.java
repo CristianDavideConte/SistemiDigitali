@@ -3,22 +3,15 @@ package com.example.sistemidigitali.views;
 import static com.example.sistemidigitali.debugUtility.Debug.println;
 
 import android.annotation.SuppressLint;
-import android.content.ContentValues;
 import android.graphics.Bitmap;
-import android.graphics.ImageDecoder;
-import android.net.Uri;
 import android.os.Bundle;
-import android.os.Environment;
-import android.provider.MediaStore;
 import android.view.View;
 import android.view.WindowManager;
 import android.widget.ImageView;
 import android.widget.ProgressBar;
-import android.widget.RelativeLayout;
 import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
-import androidx.camera.core.CameraSelector;
 
 import com.bogdwellers.pinchtozoom.ImageMatrixTouchHandler;
 import com.example.sistemidigitali.R;
@@ -43,14 +36,12 @@ import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import org.greenrobot.eventbus.EventBus;
 import org.greenrobot.eventbus.Subscribe;
 import org.greenrobot.eventbus.ThreadMode;
+import org.opencv.core.Point;
 import org.tensorflow.lite.support.image.TensorImage;
 import org.tensorflow.lite.task.vision.detector.Detection;
 
 import java.io.IOException;
-import java.io.OutputStream;
-import java.text.SimpleDateFormat;
 import java.util.ArrayList;
-import java.util.Date;
 import java.util.List;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
@@ -188,6 +179,7 @@ public class AnalyzeActivity extends AppCompatActivity {
         this.saveImageButton.setOnClickListener((view) -> {
             this.saveLoadingIndicator.setVisibility(View.VISIBLE);
             this.imageSaver.saveImage(this.frame1);
+            this.imageSaver.saveImage(this.frame2);
         });
         this.zoomHandler = new ImageMatrixTouchHandler(this);
 
@@ -208,7 +200,8 @@ public class AnalyzeActivity extends AppCompatActivity {
      * @param image The bitmap associated with the image (frame1)
      */
     private void loadDistanceCalculationComponents(Bitmap image) {
-        this.frame2 = image.copy(Bitmap.Config.ARGB_8888, true);
+        this.frame2 = CameraProviderView.lastFrameCaptured;
+        //this.frame2 = image.copy(Bitmap.Config.ARGB_8888, true);
         this.calcDistanceButton.setOnClickListener((view) -> {});
         this.calcDistanceButton.setOnCheckedChangeListener((view, isChecked) -> {
             if(isChecked) {
@@ -291,7 +284,16 @@ public class AnalyzeActivity extends AppCompatActivity {
     private void calculateDistance() {
         this.distanceCalculatorExecutor.execute(() -> {
             //FOR TEST PURPOSES ONLY
-            this.frame1 = this.distanceCalculator.getDisparityMap(this.frame1, this.frame1);
+            Bitmap t = this.distanceCalculator.getDisparityMap(this.frame1, this.frame2);
+            //this.frame1 = this.distanceCalculator.getDisparityMap(this.frame1, this.frame2);
+            println(this.distanceCalculator.getDistance(
+                    new Point(t.getWidth() / 2, t.getHeight() / 2),
+                    new Point(t.getWidth() / 2 + 300, t.getHeight() / 2),
+                    160,
+                    this.distanceCalculator.getDisparity()
+                    )
+            );
+            this.frame1 = t;
             runOnUiThread(() -> {
                 this.analyzeView.setImageBitmap(frame1);
                 this.calcDistanceButton.setText("Clear");

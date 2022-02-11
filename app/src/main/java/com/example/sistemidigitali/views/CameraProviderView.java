@@ -50,11 +50,13 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.Executor;
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 public class CameraProviderView {
 
     public static CameraCharacteristics cameraCharacteristics;
+    public static Bitmap lastFrameCaptured;
 
     private static CustomObjectDetector objectDetector;
     private static int currentLensOrientation = CameraSelector.LENS_FACING_BACK;
@@ -72,7 +74,8 @@ public class CameraProviderView {
     private final int currentDisplayRotation;
     private final MainActivity context;
     private final CustomGestureDetector customGestureDetector;
-    private final Executor imageCaptureExecutor, analyzeExecutor;
+    private final Executor analyzeExecutor;
+    private final ExecutorService imageCaptureExecutors;
 
     private boolean isCameraAvailable;
 
@@ -81,7 +84,7 @@ public class CameraProviderView {
         this.context = context;
         this.liveDetection = false;
         this.customGestureDetector = customGestureDetector;
-        this.imageCaptureExecutor = Executors.newSingleThreadExecutor();
+        this.imageCaptureExecutors = Executors.newFixedThreadPool(2);
         this.analyzeExecutor = Executors.newSingleThreadExecutor();
         this.currentDisplayRotation = this.context.getDisplay().getRotation() * 90;
 
@@ -211,8 +214,24 @@ public class CameraProviderView {
         this.liveDetection = false;
 
         //Take the picture
+
         this.imageCapt.takePicture(
-                this.imageCaptureExecutor,
+                this.imageCaptureExecutors,
+                new ImageCapture.OnImageCapturedCallback() {
+                    @Override
+                    public void onCaptureSuccess(@NonNull ImageProxy imageProxy) {
+                        lastFrameCaptured = convertImageToBitmap(imageProxy.getImage(), getRotationDegree(imageProxy),currentLensOrientation == CameraSelector.LENS_FACING_FRONT);
+                        imageProxy.close();
+                    }
+
+                    @Override
+                    public void onError(@NonNull ImageCaptureException exception) {
+                        exception.printStackTrace();
+                    }
+                }
+        );
+        this.imageCapt.takePicture(
+                this.imageCaptureExecutors,
                 new ImageCapture.OnImageCapturedCallback(){
                     @Override
                     public void onCaptureSuccess(@NonNull ImageProxy imageProxy) {
@@ -223,11 +242,7 @@ public class CameraProviderView {
                         context.startActivity(new Intent(context, AnalyzeActivity.class));
                         isCameraAvailable = true;
 
-                        int rotationDirection = currentLensOrientation == CameraSelector.LENS_FACING_BACK ? 1 : -1;
-                        int constantRotation = imageProxy.getImageInfo().getRotationDegrees() - camera.getCameraInfo().getSensorRotationDegrees();
-                        int rotationDegree = camera.getCameraInfo().getSensorRotationDegrees() - currentDisplayRotation + constantRotation * rotationDirection;
-
-                        Bitmap bitmapImage = convertImageToBitmap(imageProxy.getImage(), rotationDegree,currentLensOrientation == CameraSelector.LENS_FACING_FRONT);
+                        Bitmap bitmapImage = convertImageToBitmap(imageProxy.getImage(), getRotationDegree(imageProxy),currentLensOrientation == CameraSelector.LENS_FACING_FRONT);
                         EventBus.getDefault().postSticky(new PictureTakenEvent(bitmapImage, "success"));
                     }
 
@@ -283,6 +298,12 @@ public class CameraProviderView {
         imageProxy.close();
     }
 
+    private int getRotationDegree(ImageProxy imageProxy) {
+        int rotationDirection = this.currentLensOrientation == CameraSelector.LENS_FACING_BACK ? 1 : -1;
+        int constantRotation = imageProxy.getImageInfo().getRotationDegrees() - this.camera.getCameraInfo().getSensorRotationDegrees();
+        return this.camera.getCameraInfo().getSensorRotationDegrees() - this.currentDisplayRotation + constantRotation * rotationDirection;
+    }
+
     /**
      * Converts the passed ImageProxy to a Bitmap image.
      * Source: https://stackoverflow.com/questions/56772967/converting-imageproxy-to-bitmap
@@ -310,4 +331,5 @@ public class CameraProviderView {
         bitmap = Bitmap.createBitmap(bitmap, 0, 0, width, height, matrix, flipNeeded);
         return bitmap;
     }
+
 }

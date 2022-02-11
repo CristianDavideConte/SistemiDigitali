@@ -32,11 +32,8 @@ import org.opencv.android.OpenCVLoader;
 
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.concurrent.ThreadPoolExecutor;
 
 public class MainActivity extends AppCompatActivity {
-    public static ExecutorService backgroundThreads = Executors.newFixedThreadPool(4);
-
     private final String [] permissions = {Manifest.permission.CAMERA, Manifest.permission.READ_EXTERNAL_STORAGE, Manifest.permission.WRITE_EXTERNAL_STORAGE};
 
     private Permission permission;
