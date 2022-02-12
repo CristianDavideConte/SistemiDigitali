@@ -56,7 +56,6 @@ import java.util.concurrent.Executors;
 public class CameraProviderView {
 
     public static CameraCharacteristics cameraCharacteristics;
-    public static Bitmap lastFrameCaptured;
 
     private static CustomObjectDetector objectDetector;
     private static int currentLensOrientation = CameraSelector.LENS_FACING_BACK;
@@ -83,6 +82,7 @@ public class CameraProviderView {
     public CameraProviderView(MainActivity context, PreviewView previewView, CustomGestureDetector customGestureDetector) {
         this.context = context;
         this.liveDetection = false;
+        this.isCameraAvailable = true;
         this.customGestureDetector = customGestureDetector;
         this.imageCaptureExecutors = Executors.newFixedThreadPool(2);
         this.analyzeExecutor = Executors.newSingleThreadExecutor();
@@ -90,7 +90,6 @@ public class CameraProviderView {
 
         this.previewView = previewView;
         this.previewView.setImplementationMode(PreviewView.ImplementationMode.COMPATIBLE);
-        this.previewView.getPreviewStreamState().observe(this.context, streamState -> this.isCameraAvailable = streamState == PreviewView.StreamState.STREAMING);
         this.startCamera(currentLensOrientation);
 
         //Handler for the pinch-to-zoom gesture
@@ -207,20 +206,20 @@ public class CameraProviderView {
      * asynchronously passing it the picture's uri.
      */
     @SuppressLint({"UnsafeOptInUsageError, SimpleDateFormat", "RestrictedApi"})
-    public void captureImage() {
-        if(!this.isCameraAvailable) return;
-
-        this.isCameraAvailable = false;
+    public synchronized void captureImage() {
+        if(!(this.isCameraAvailable = this.previewView.getPreviewStreamState().getValue() == PreviewView.StreamState.STREAMING)) return;
         this.liveDetection = false;
+        this.isCameraAvailable = false;
 
-        //Take the picture
+        ArrayList<Bitmap> frames = new ArrayList<>();
 
+        //Take the two pictures
         this.imageCapt.takePicture(
                 this.imageCaptureExecutors,
                 new ImageCapture.OnImageCapturedCallback() {
                     @Override
                     public void onCaptureSuccess(@NonNull ImageProxy imageProxy) {
-                        lastFrameCaptured = convertImageToBitmap(imageProxy.getImage(), getRotationDegree(imageProxy),currentLensOrientation == CameraSelector.LENS_FACING_FRONT);
+                        frames.add(convertImageToBitmap(imageProxy.getImage(), getRotationDegree(imageProxy),currentLensOrientation == CameraSelector.LENS_FACING_FRONT));
                         imageProxy.close();
                     }
 
@@ -239,11 +238,12 @@ public class CameraProviderView {
                          * Whenever the required amount of images have been captured,
                          * open a new analyze activity which will handle any error
                          */
-                        context.startActivity(new Intent(context, AnalyzeActivity.class));
                         isCameraAvailable = true;
+                        context.startActivity(new Intent(context, AnalyzeActivity.class));
 
-                        Bitmap bitmapImage = convertImageToBitmap(imageProxy.getImage(), getRotationDegree(imageProxy),currentLensOrientation == CameraSelector.LENS_FACING_FRONT);
-                        EventBus.getDefault().postSticky(new PictureTakenEvent(bitmapImage, "success"));
+                        frames.add(convertImageToBitmap(imageProxy.getImage(), getRotationDegree(imageProxy),currentLensOrientation == CameraSelector.LENS_FACING_FRONT));
+                        EventBus.getDefault().postSticky(new PictureTakenEvent(frames, "success"));
+                        imageProxy.close();
                     }
 
                     @Override
@@ -299,7 +299,7 @@ public class CameraProviderView {
     }
 
     private int getRotationDegree(ImageProxy imageProxy) {
-        int rotationDirection = this.currentLensOrientation == CameraSelector.LENS_FACING_BACK ? 1 : -1;
+        int rotationDirection = currentLensOrientation == CameraSelector.LENS_FACING_BACK ? 1 : -1;
         int constantRotation = imageProxy.getImageInfo().getRotationDegrees() - this.camera.getCameraInfo().getSensorRotationDegrees();
         return this.camera.getCameraInfo().getSensorRotationDegrees() - this.currentDisplayRotation + constantRotation * rotationDirection;
     }

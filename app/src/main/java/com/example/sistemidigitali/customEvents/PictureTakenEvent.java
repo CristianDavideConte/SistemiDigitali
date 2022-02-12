@@ -2,18 +2,20 @@ package com.example.sistemidigitali.customEvents;
 
 import android.graphics.Bitmap;
 
+import java.util.List;
+
 public class PictureTakenEvent {
 
     private String error;
-    Bitmap image;
+    private List<Bitmap> frames;
 
-    public PictureTakenEvent(Bitmap image, String error) {
-        this.image = image;
+    public PictureTakenEvent(List<Bitmap> frames, String error) {
+        this.frames = frames;
         this.error = error;
     }
 
-    public Bitmap getImage() {
-        return image;
+    public List<Bitmap> getFrames() {
+        return frames;
     }
 
     public String getError() {

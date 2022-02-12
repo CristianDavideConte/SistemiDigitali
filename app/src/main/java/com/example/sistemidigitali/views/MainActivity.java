@@ -76,9 +76,9 @@ public class MainActivity extends AppCompatActivity {
         this.shutterButton = findViewById(R.id.shutterButton);
 
         this.cameraProviderView = new CameraProviderView(this,  findViewById(R.id.previewView), customGestureDetector);
-        this.shutterButton.setOnClickListener((view) -> this.cameraProviderView.captureImage());
         this.switchCameraButton.setOnClickListener((view) -> this.cameraProviderView.switchCamera());
         this.liveDetectionSwitch.setOnClickListener((view) -> this.toastMessagesManager.showToastIfNeeded());
+        this.shutterButton.setOnClickListener((view) -> this.cameraProviderView.captureImage());
 
         //If the file picked is an image the analyze activity is launched
         ActivityResultLauncher<String> filePicker = registerForActivityResult(new ActivityResultContracts.GetContent(), this::showAnalyzeActivity);

@@ -159,10 +159,10 @@ public class AnalyzeActivity extends AppCompatActivity {
             return;
         }
 
-        Bitmap image = event.getImage();
+        List<Bitmap> frames = event.getFrames();
 
-        loadAnalyzeComponents(image);
-        loadDistanceCalculationComponents(image);
+        loadAnalyzeComponents(frames.get(0));
+        loadDistanceCalculationComponents(frames.get(1));
     }
 
     /**
@@ -200,7 +200,7 @@ public class AnalyzeActivity extends AppCompatActivity {
      * @param image The bitmap associated with the image (frame1)
      */
     private void loadDistanceCalculationComponents(Bitmap image) {
-        this.frame2 = CameraProviderView.lastFrameCaptured;
+        this.frame2 = image;
         //this.frame2 = image.copy(Bitmap.Config.ARGB_8888, true);
         this.calcDistanceButton.setOnClickListener((view) -> {});
         this.calcDistanceButton.setOnCheckedChangeListener((view, isChecked) -> {
