@@ -3,57 +3,52 @@ package com.example.sistemidigitali.model;
 import static com.example.sistemidigitali.debugUtility.Debug.println;
 
 import android.graphics.Bitmap;
-import android.graphics.BitmapFactory;
 import android.util.SizeF;
 
 import com.example.sistemidigitali.debugUtility.Debug;
 import com.example.sistemidigitali.views.CameraProviderView;
 
 import org.opencv.android.Utils;
-import org.opencv.calib3d.StereoBM;
 import org.opencv.calib3d.StereoSGBM;
 import org.opencv.core.Core;
 import org.opencv.core.CvType;
 import org.opencv.core.Mat;
 import org.opencv.core.Point;
 import org.opencv.core.Rect;
-import org.opencv.core.Scalar;
 import org.opencv.core.Size;
-import org.opencv.imgcodecs.Imgcodecs;
 import org.opencv.imgproc.Imgproc;
-import org.opencv.osgi.OpenCVInterface;
 
 import java.util.Arrays;
 
 public class DistanceCalculator {
 
-    private Mat disparity;
+    private Mat disparityMap;
 
     public DistanceCalculator() {
-
+        this.disparityMap = null;
     }
 
-    public Mat getDisparity() {
-        return disparity;
+    public Mat getDisparityMap() {
+        return disparityMap;
     }
 
-    public Bitmap getDisparityMap(Bitmap frame1, Bitmap frame2) {
-        Mat frame1Mat = new Mat(frame1.getWidth(), frame1.getHeight(), CvType.CV_8UC1);
-        Mat frame2Mat = new Mat(frame2.getWidth(), frame2.getHeight(), CvType.CV_8UC1);
-        Utils.bitmapToMat(frame1, frame1Mat);
-        Utils.bitmapToMat(frame2, frame2Mat);
+    public Bitmap getDisparityBitmap(Bitmap frame1, Bitmap frame2) {
+        if(this.disparityMap == null) {
+            Mat frame1Mat = new Mat(frame1.getWidth(), frame1.getHeight(), CvType.CV_8UC1);
+            Mat frame2Mat = new Mat(frame2.getWidth(), frame2.getHeight(), CvType.CV_8UC1);
+            Utils.bitmapToMat(frame1, frame1Mat);
+            Utils.bitmapToMat(frame2, frame2Mat);
 
-        Mat disparityMat = createDisparityMap(frame1Mat, frame2Mat);
-        //Mat disparityMat = createDisparityMap(getResized(frame1Mat, 1.5F), getResized(frame2Mat, 1.5F));
-        disparityMat.convertTo(disparityMat, CvType.CV_8UC1);
+            Mat disparityMat = createDisparityMap(frame1Mat, frame2Mat);
+            //Mat disparityMat = createDisparityMap(getResized(frame1Mat, 1.5F), getResized(frame2Mat, 1.5F));
+            disparityMat.convertTo(disparityMat, CvType.CV_8UC1);
 
-        this.disparity = disparityMat;
+            this.disparityMap = disparityMat;
+        }
 
-        Bitmap disparityBitmap = Bitmap.createBitmap(disparityMat.cols(), disparityMat.rows(), Bitmap.Config.ARGB_8888);
-        Utils.matToBitmap(disparityMat, disparityBitmap);
-        disparityMat.depth();
+        Bitmap disparityBitmap = Bitmap.createBitmap(this.disparityMap.cols(), this.disparityMap.rows(), Bitmap.Config.ARGB_8888);
+        Utils.matToBitmap(this.disparityMap, disparityBitmap);
 
-        disparityMat.get(3,2);
         return disparityBitmap;
     }
 
@@ -70,20 +65,9 @@ public class DistanceCalculator {
         double[] colors1 = disparity.get((int) Math.round(p1.x),(int)Math.round(p1.y));
         double[] colors2 = disparity.get((int) Math.round(p2.x),(int)Math.round(p2.y));
 
-        println("INIT", colors1.length, colors2.length);
-        Arrays.stream(colors1).forEach(Debug::println);
-        println("--------------------------");
-        Arrays.stream(colors2).forEach(Debug::println);
-
         double z1 =  (effective_focal_length * distance_in_pixel * 0.26) / colors1[0];
         double z2 =  (effective_focal_length * distance_in_pixel * 0.26) / colors2[0];
         double distance = Math.sqrt(Math.pow(p2.x-p1.x,2)+Math.pow(p2.y-p1.y,2)+Math.pow(z2-z1,2));
-        println(z2,
-                z1,
-                Math.pow(z2-z1,2),
-                Math.sqrt(-2),
-                Math.sqrt(Math.pow(100000000000000000000000000F,1000000000000000000000000000000000000F))
-        );
 
         return distance;
     }
@@ -142,12 +126,29 @@ public class DistanceCalculator {
                 10,   // uniqueness ratio
                 0, // sreckleWindowSize
                 32, // spreckle Range
-                0); // full DP
+                StereoSGBM.MODE_SGBM_3WAY);
         // create the DisparityMap - SLOW: O(Width*height*numDisparity)
 
         stereoAlgo.compute(left, right, disparity);
 
         Core.normalize(disparity, disparity, 0, 256, Core.NORM_MINMAX);
+
+        /*Mat kernel = new Mat(3,3, CvType.CV_32F) {
+            {
+                put(0, 0, -1);
+                put(0, 1, 0);
+                put(0, 2, 1);
+
+                put(1, 0 - 2);
+                put(1, 1, 0);
+                put(1, 2, 2);
+
+                put(2, 0, -1);
+                put(2, 1, 0);
+                put(2, 2, 1);
+            }
+        };
+        Imgproc.filter2D(disparity, disparity, -1, kernel);*/
 
         return disparity;
     }

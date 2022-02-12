@@ -44,6 +44,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.Executor;
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 public class AnalyzeActivity extends AppCompatActivity {
@@ -63,6 +64,7 @@ public class AnalyzeActivity extends AppCompatActivity {
     private ImageMatrixTouchHandler zoomHandler;
     private Executor distanceCalculatorExecutor;
     private Executor analyzerExecutor;
+    private ExecutorService imageSaverExecutors;
 
     private ToastMessagesManager toastMessagesManager;
     private CustomGestureDetector customGestureDetector;
@@ -92,6 +94,7 @@ public class AnalyzeActivity extends AppCompatActivity {
         this.toastMessagesManager = new ToastMessagesManager(this, Toast.LENGTH_SHORT);
         this.distanceCalculatorExecutor = Executors.newSingleThreadExecutor();
         this.analyzerExecutor = Executors.newSingleThreadExecutor();
+        this.imageSaverExecutors = Executors.newFixedThreadPool(6);
         this.customGestureDetector = new CustomGestureDetector();
         this.analyzeButton.setOnClickListener((view) -> this.toastMessagesManager.showToastIfNeeded());
         this.calcDistanceButton.setOnClickListener((view) -> this.toastMessagesManager.showToastIfNeeded());
@@ -178,8 +181,11 @@ public class AnalyzeActivity extends AppCompatActivity {
 
         this.saveImageButton.setOnClickListener((view) -> {
             this.saveLoadingIndicator.setVisibility(View.VISIBLE);
-            this.imageSaver.saveImage(this.frame1);
-            this.imageSaver.saveImage(this.frame2);
+            this.imageSaverExecutors.execute(() -> {
+                this.imageSaver.saveImage(this.frame1);
+                this.imageSaver.saveImage(this.frame2);
+                this.imageSaver.saveImage(this.distanceCalculator.getDisparityBitmap(this.frame1, this.frame2));
+            });
         });
         this.zoomHandler = new ImageMatrixTouchHandler(this);
 
@@ -209,8 +215,7 @@ public class AnalyzeActivity extends AppCompatActivity {
                 this.calcDistanceButton.setCheckable(false);
                 this.calculateDistance();
             } else {
-                this.frame1 = this.frame2;
-                this.analyzeView.setImageBitmap(frame2);
+                this.analyzeView.setImageBitmap(frame1);
                 this.calcDistanceButton.setText("Measure");
             }
         });
@@ -284,18 +289,17 @@ public class AnalyzeActivity extends AppCompatActivity {
     private void calculateDistance() {
         this.distanceCalculatorExecutor.execute(() -> {
             //FOR TEST PURPOSES ONLY
-            Bitmap t = this.distanceCalculator.getDisparityMap(this.frame1, this.frame2);
+            Bitmap disparityMap = this.distanceCalculator.getDisparityBitmap(this.frame1, this.frame2);
             //this.frame1 = this.distanceCalculator.getDisparityMap(this.frame1, this.frame2);
             println(this.distanceCalculator.getDistance(
-                    new Point(t.getWidth() / 2, t.getHeight() / 2),
-                    new Point(t.getWidth() / 2 + 300, t.getHeight() / 2),
+                    new Point(disparityMap.getWidth() / 2, disparityMap.getHeight() / 2),
+                    new Point(disparityMap.getWidth() / 2 + 300, disparityMap.getHeight() / 2),
                     160,
-                    this.distanceCalculator.getDisparity()
+                    this.distanceCalculator.getDisparityMap()
                     )
             );
-            this.frame1 = t;
             runOnUiThread(() -> {
-                this.analyzeView.setImageBitmap(frame1);
+                this.analyzeView.setImageBitmap(disparityMap);
                 this.calcDistanceButton.setText("Clear");
                 this.calcDistanceButton.setCheckable(true);
             });

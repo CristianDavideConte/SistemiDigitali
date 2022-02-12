@@ -18,16 +18,26 @@ import org.greenrobot.eventbus.EventBus;
 import java.io.OutputStream;
 import java.text.SimpleDateFormat;
 import java.util.Date;
+import java.util.List;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 
 public class ImageSaver {
-    Context context;
+    private Context context;
 
     public ImageSaver(Context context) {
         this.context = context;
     }
 
+
     @SuppressLint("SimpleDateFormat")
     public void saveImage(Bitmap image) {
+        if(image == null) {
+            EventBus.getDefault().post(new ImageSavedEvent("Bitmap is null", null));
+            return;
+        }
+
         //Es. SISDIG_2021127_189230.jpg
         final String pictureName = "SISDIG_" + new SimpleDateFormat("yyyyMMdd_HHmmss").format(new Date()) + ".jpeg";
 
@@ -50,7 +60,7 @@ public class ImageSaver {
         //The result of the insert is the handle to the picture inside the MediaStore
         Uri picturePublicUri = this.context.getContentResolver().insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, newPictureDetails);
 
-        //Saves the image in the background and post the result on the EventBus
+        //Saves the image and post the result on the EventBus
         try {
             OutputStream stream = this.context.getContentResolver().openOutputStream(picturePublicUri);
             boolean imageSavedCorrectly = image.compress(Bitmap.CompressFormat.JPEG, 95, stream);
