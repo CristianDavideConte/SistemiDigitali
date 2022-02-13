@@ -20,6 +20,7 @@ import androidx.annotation.NonNull;
 import androidx.camera.camera2.interop.Camera2CameraInfo;
 import androidx.camera.core.Camera;
 import androidx.camera.core.CameraSelector;
+import androidx.camera.core.CameraState;
 import androidx.camera.core.FocusMeteringAction;
 import androidx.camera.core.ImageAnalysis;
 import androidx.camera.core.ImageCapture;
@@ -89,6 +90,7 @@ public class CameraProviderView {
 
         this.previewView = previewView;
         this.previewView.setImplementationMode(PreviewView.ImplementationMode.COMPATIBLE);
+        this.previewView.getPreviewStreamState().observe(this.context, (streamState) -> this.isCameraAvailable = streamState == PreviewView.StreamState.STREAMING);
         this.startCamera(currentLensOrientation);
 
         //Handler for the pinch-to-zoom gesture
@@ -202,7 +204,6 @@ public class CameraProviderView {
      */
     @SuppressLint({"UnsafeOptInUsageError, SimpleDateFormat", "RestrictedApi"})
     public synchronized void captureImages(int numOfFrames) {
-        this.isCameraAvailable = this.previewView.getPreviewStreamState().getValue() == PreviewView.StreamState.STREAMING;
         if(!this.isCameraAvailable) return;
 
         int i = numOfFrames;
@@ -229,9 +230,7 @@ public class CameraProviderView {
                     }
 
                     @Override
-                    public void onError(@NonNull ImageCaptureException exception) {
-                        exception.printStackTrace();
-                    }
+                    public void onError(@NonNull ImageCaptureException exception) {}
                 }
             );
         }

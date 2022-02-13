@@ -1,5 +1,7 @@
 package com.example.sistemidigitali.views;
 
+import static com.example.sistemidigitali.debugUtility.Debug.println;
+
 import android.Manifest;
 import android.annotation.SuppressLint;
 import android.content.Intent;
