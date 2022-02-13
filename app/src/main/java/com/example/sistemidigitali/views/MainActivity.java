@@ -145,7 +145,7 @@ public class MainActivity extends AppCompatActivity {
     private void showAnalyzeActivity(List<Uri> picturePublicUri) {
         if(picturePublicUri.size() == 0) return;
         if(picturePublicUri.size() != 2) {
-            this.toastMessagesManager.showToast("Select 2 images");
+            this.toastMessagesManager.showToast("Select 2 stereo images");
             return;
         }
         try {
@@ -159,7 +159,7 @@ public class MainActivity extends AppCompatActivity {
             this.startActivity(intent);
         } catch (IOException e) {
             e.printStackTrace();
-            this.toastMessagesManager.showToast("Invalid Images");
+            this.toastMessagesManager.showToastIfNeeded("Invalid Images");
         }
     }
 
