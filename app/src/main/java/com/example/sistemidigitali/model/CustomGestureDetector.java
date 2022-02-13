@@ -14,13 +14,16 @@ import org.greenrobot.eventbus.Subscribe;
 import org.greenrobot.eventbus.ThreadMode;
 
 public class CustomGestureDetector {
-    private int MAX_MOVE_POINTS_FOR_EVENT_TRIGGER = 5;
+    private final static int MAX_MOVE_POINTS_FOR_EVENT_TRIGGER = 5;
 
     private boolean gestureIsZoom;
+    private boolean gestureIsMove;
     private boolean listenToTouchEvents;
+
     private int gestureMovePointsCounter;
 
     public CustomGestureDetector() {
+        this.gestureIsMove = false;
         this.gestureIsZoom = false;
         this.listenToTouchEvents = true;
         this.gestureMovePointsCounter = 0;
@@ -29,33 +32,37 @@ public class CustomGestureDetector {
     public void update(MotionEvent event) {
         if(!this.listenToTouchEvents) return;
 
-        int action = event.getAction();
-        boolean endOfGesture  = action == MotionEvent.ACTION_UP;
-        boolean gestureIsMove = action == MotionEvent.ACTION_MOVE;
-        boolean gestureIsTap  = action == MotionEvent.ACTION_DOWN || gestureIsMove || endOfGesture;
+        final int action = event.getAction();
+
+        final boolean endOfGesture  = action == MotionEvent.ACTION_UP;
+        final boolean gestureIsMove = action == MotionEvent.ACTION_MOVE || action == MotionEvent.EDGE_LEFT || action == MotionEvent.EDGE_RIGHT;
+        final boolean gestureIsTap  = endOfGesture && !this.gestureIsMove && !this.gestureIsZoom;
+        final boolean gestureIsZoom = event.getPointerCount() > 1;
 
         if(gestureIsMove) {
             this.gestureMovePointsCounter++;
             if(this.gestureMovePointsCounter == MAX_MOVE_POINTS_FOR_EVENT_TRIGGER) {
-                EventBus.getDefault().postSticky(new GestureIsMoveEvent());
+                this.gestureIsMove = true;
+                EventBus.getDefault().post(new GestureIsMoveEvent());
             }
         }
 
-        if(!gestureIsTap) {
+        if(gestureIsZoom) {
             this.gestureIsZoom = true;
-            EventBus.getDefault().postSticky(new GestureIsZoomEvent());
+            EventBus.getDefault().post(new GestureIsZoomEvent());
         }
 
         if(endOfGesture) {
             EventBus.getDefault().postSticky(new EndOfGestureEvent());
-            if(!this.gestureIsZoom) EventBus.getDefault().postSticky(event);
+            if(!this.gestureIsZoom) EventBus.getDefault().post(event);
+            this.gestureIsMove = false;
             this.gestureIsZoom = false;
             this.gestureMovePointsCounter = 0;
         }
     }
 
     @SuppressLint("WrongConstant")
-    @Subscribe(sticky = true, threadMode = ThreadMode.MAIN)
+    @Subscribe(sticky = true, threadMode = ThreadMode.ASYNC)
     public void onOverlayVisibilityChange(OverlayVisibilityChangeEvent event) {
         this.listenToTouchEvents = event.getVisibility() == View.GONE;
     }

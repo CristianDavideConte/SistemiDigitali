@@ -1,11 +1,8 @@
 package com.example.sistemidigitali.model;
 
-import static com.example.sistemidigitali.debugUtility.Debug.println;
-
 import android.graphics.Bitmap;
 import android.util.SizeF;
 
-import com.example.sistemidigitali.debugUtility.Debug;
 import com.example.sistemidigitali.views.CameraProviderView;
 
 import org.opencv.android.Utils;
@@ -18,21 +15,21 @@ import org.opencv.core.Rect;
 import org.opencv.core.Size;
 import org.opencv.imgproc.Imgproc;
 
-import java.util.Arrays;
-
 public class DistanceCalculator {
 
     private Mat disparityMap;
+    private Bitmap disparityBitmap;
 
     public DistanceCalculator() {
         this.disparityMap = null;
+        this.disparityBitmap = null;
     }
 
     public Mat getDisparityMap() {
         return disparityMap;
     }
 
-    public Bitmap getDisparityBitmap(Bitmap frame1, Bitmap frame2) {
+    public synchronized Bitmap getDisparityBitmap(Bitmap frame1, Bitmap frame2) {
         if(this.disparityMap == null) {
             Mat frame1Mat = new Mat(frame1.getWidth(), frame1.getHeight(), CvType.CV_8UC1);
             Mat frame2Mat = new Mat(frame2.getWidth(), frame2.getHeight(), CvType.CV_8UC1);
@@ -40,16 +37,14 @@ public class DistanceCalculator {
             Utils.bitmapToMat(frame2, frame2Mat);
 
             Mat disparityMat = createDisparityMap(frame1Mat, frame2Mat);
-            //Mat disparityMat = createDisparityMap(getResized(frame1Mat, 1.5F), getResized(frame2Mat, 1.5F));
             disparityMat.convertTo(disparityMat, CvType.CV_8UC1);
 
             this.disparityMap = disparityMat;
+            this.disparityBitmap = Bitmap.createBitmap(this.disparityMap.cols(), this.disparityMap.rows(), Bitmap.Config.ARGB_8888);
+            Utils.matToBitmap(this.disparityMap, disparityBitmap);
         }
 
-        Bitmap disparityBitmap = Bitmap.createBitmap(this.disparityMap.cols(), this.disparityMap.rows(), Bitmap.Config.ARGB_8888);
-        Utils.matToBitmap(this.disparityMap, disparityBitmap);
-
-        return disparityBitmap;
+        return this.disparityBitmap;
     }
 
     public double getDistance(Point p1, Point p2, float distance_in_pixel, Mat disparity) {
@@ -133,22 +128,6 @@ public class DistanceCalculator {
 
         Core.normalize(disparity, disparity, 0, 256, Core.NORM_MINMAX);
 
-        /*Mat kernel = new Mat(3,3, CvType.CV_32F) {
-            {
-                put(0, 0, -1);
-                put(0, 1, 0);
-                put(0, 2, 1);
-
-                put(1, 0 - 2);
-                put(1, 1, 0);
-                put(1, 2, 2);
-
-                put(2, 0, -1);
-                put(2, 1, 0);
-                put(2, 2, 1);
-            }
-        };
-        Imgproc.filter2D(disparity, disparity, -1, kernel);*/
 
         return disparity;
     }

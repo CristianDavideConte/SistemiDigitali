@@ -127,7 +127,7 @@ public class AnalyzeActivity extends AppCompatActivity {
     @Override
     protected void onResume() {
         super.onResume();
-        EventBus.getDefault().post(new UpdateDetectionsRectsEvent(new ArrayList<>(), false, null));
+        EventBus.getDefault().post(new UpdateDetectionsRectsEvent(this, new ArrayList<>(), false, null));
         if(this.analyzeButton.isChecked()) this.detectObjects();
         if(this.calcDistanceButton.isChecked()) this.calculateDistance();
     }
@@ -141,7 +141,6 @@ public class AnalyzeActivity extends AppCompatActivity {
         EventBus.getDefault().unregister(this);
         EventBus.getDefault().unregister(this.liveDetectionViewAnalyze);
         EventBus.getDefault().unregister(this.customGestureDetector);
-
         super.onStop();
     }
 
@@ -154,15 +153,15 @@ public class AnalyzeActivity extends AppCompatActivity {
      */
     @Subscribe(sticky = true, threadMode = ThreadMode.MAIN)
     public void onPictureTaken(PictureTakenEvent event) {
+        List<Bitmap> frames = event.getFrames();
+
         //If the picture is not available, go back to previous activity
-        if(!event.getError().equals("success")) {
+        if(!event.getError().equals("success") || frames.size() < 2) {
             EventBus.getDefault().removeStickyEvent(event);
             this.toastMessagesManager.showToast(event.getError());
             this.finish();
             return;
         }
-
-        List<Bitmap> frames = event.getFrames();
 
         loadAnalyzeComponents(frames.get(0));
         loadDistanceCalculationComponents(frames.get(1));
@@ -196,6 +195,7 @@ public class AnalyzeActivity extends AppCompatActivity {
 
             return zoomHandler.onTouch(view, motionEvent);
         });
+
         if(objectDetector != null) this.analyzeButton.setCheckable(true);
         this.analyzeLoadingIndicator.setVisibility(View.GONE);
     }
@@ -235,10 +235,12 @@ public class AnalyzeActivity extends AppCompatActivity {
                 this.detectObjects();
             } else {
                 this.analyzeButton.setText("Analyze");
-                EventBus.getDefault().post(new AllowUpdatePolicyChangeEvent(this, false));
+                EventBus.getDefault().post(new UpdateDetectionsRectsEvent(this, new ArrayList<>(), false, null));
             }
         });
+
         if(this.frame1 != null) this.analyzeButton.setCheckable(true);
+
         this.toastMessagesManager.hideToast();
         EventBus.getDefault().removeStickyEvent(event);
     }
@@ -256,16 +258,20 @@ public class AnalyzeActivity extends AppCompatActivity {
 
     @Subscribe(threadMode = ThreadMode.ASYNC)
     public void onGestureIsZoom(GestureIsZoomEvent event) {
-        EventBus.getDefault().post(new AllowUpdatePolicyChangeEvent(this, false));
+        EventBus.getDefault().post(new UpdateDetectionsRectsEvent(this, new ArrayList<>(), false, null));
     }
 
     @Subscribe(threadMode = ThreadMode.ASYNC)
     public void onGestureIsMove(GestureIsMoveEvent event) {
-        EventBus.getDefault().post(new AllowUpdatePolicyChangeEvent(this, false));
+        EventBus.getDefault().post(new UpdateDetectionsRectsEvent(this, new ArrayList<>(), false, null));
     }
 
     @Subscribe(threadMode = ThreadMode.ASYNC)
     public void onEndOfGesture(EndOfGestureEvent event) {
+        EventBus.getDefault().post(new AllowUpdatePolicyChangeEvent(this, false));
+        while(this.zoomHandler.isAnimating());
+        EventBus.getDefault().post(new UpdateDetectionsRectsEvent(this, new ArrayList<>(), false, null));
+        EventBus.getDefault().post(new AllowUpdatePolicyChangeEvent(this, true));
         this.detectObjects();
     }
 
@@ -273,8 +279,7 @@ public class AnalyzeActivity extends AppCompatActivity {
     private void detectObjects() {
         this.analyzerExecutor.execute(() -> {
             this.detections = objectDetector.detect(this.originalImageTensor);
-            EventBus.getDefault().post(new UpdateDetectionsRectsEvent(detections, false, this.analyzeView.getImageMatrix()));
-            EventBus.getDefault().post(new AllowUpdatePolicyChangeEvent(this, true));
+            EventBus.getDefault().post(new UpdateDetectionsRectsEvent(this, this.detections, false, this.analyzeView.getImageMatrix()));
 
             if(!this.analyzeButton.isCheckable()) {
                 runOnUiThread(() -> {

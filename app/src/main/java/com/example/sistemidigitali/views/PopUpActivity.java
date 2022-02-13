@@ -1,7 +1,5 @@
 package com.example.sistemidigitali.views;
 
-import static com.example.sistemidigitali.debugUtility.Debug.println;
-
 import android.content.Intent;
 import android.graphics.Rect;
 import android.graphics.drawable.GradientDrawable;
@@ -40,7 +38,6 @@ public class PopUpActivity extends AppCompatActivity {
         Rect windowBounds = this.getWindowManager().getCurrentWindowMetrics().getBounds();
         final int width = (int) Math.min(windowBounds.width() * 0.8, 960);   //1920 * 0.5 = 960
         final int height = (int) Math.max(windowBounds.height() * 0.2, 384); //1920 * 0.2 = 384
-        println(windowBounds.height() * 0.2);
         this.getWindow().setLayout(width, height);
 
         WindowManager.LayoutParams params = this.getWindow().getAttributes();

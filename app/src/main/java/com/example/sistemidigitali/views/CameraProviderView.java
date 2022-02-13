@@ -81,7 +81,6 @@ public class CameraProviderView {
     @SuppressLint("ClickableViewAccessibility")
     public CameraProviderView(MainActivity context, PreviewView previewView, CustomGestureDetector customGestureDetector) {
         this.context = context;
-        this.liveDetection = false;
         this.isCameraAvailable = true;
         this.customGestureDetector = customGestureDetector;
         this.imageCaptureExecutors = Executors.newFixedThreadPool(2);
@@ -128,7 +127,7 @@ public class CameraProviderView {
 
     public void setLiveDetection(boolean liveDetection) {
         this.liveDetection = liveDetection;
-        EventBus.getDefault().post(new UpdateDetectionsRectsEvent(new ArrayList<>(), false, null));
+        EventBus.getDefault().post(new UpdateDetectionsRectsEvent(this.context, new ArrayList<>(), false, null));
         EventBus.getDefault().post(new AllowUpdatePolicyChangeEvent(this.context, this.liveDetection));
     }
 
@@ -139,8 +138,6 @@ public class CameraProviderView {
      */
     @SuppressLint({"RestrictedApi", "UnsafeOptInUsageError"})
     public void startCamera(int lensOrientation) {
-        EventBus.getDefault().post(new AllowUpdatePolicyChangeEvent(this.context,false));
-
         currentLensOrientation = lensOrientation;
         this.flipNeeded = currentLensOrientation == CameraSelector.LENS_FACING_FRONT;
 
@@ -184,8 +181,7 @@ public class CameraProviderView {
             } catch (Exception e) {
                 e.printStackTrace();
             } finally {
-                EventBus.getDefault().post(new UpdateDetectionsRectsEvent(new ArrayList<>(), false, null));
-                EventBus.getDefault().post(new AllowUpdatePolicyChangeEvent(this.context,true));
+                EventBus.getDefault().post(new UpdateDetectionsRectsEvent(this.context, new ArrayList<>(), false, null));
             }
         }, this.context.getMainExecutor());
     }
@@ -200,50 +196,36 @@ public class CameraProviderView {
     }
 
     /**
-     * Take a picture of the current preview view frame and
-     * saves it to the phone gallery.
+     * Take numOfFrames pictures.
      * If the saving is successful an AnalyzeActivity is started by
      * asynchronously passing it the picture's uri.
      */
     @SuppressLint({"UnsafeOptInUsageError, SimpleDateFormat", "RestrictedApi"})
-    public synchronized void captureImage() {
-        if(!(this.isCameraAvailable = this.previewView.getPreviewStreamState().getValue() == PreviewView.StreamState.STREAMING)) return;
-        this.liveDetection = false;
-        this.isCameraAvailable = false;
+    public synchronized void captureImages(int numOfFrames) {
+        this.isCameraAvailable = this.previewView.getPreviewStreamState().getValue() == PreviewView.StreamState.STREAMING;
+        if(!this.isCameraAvailable) return;
 
+        int i = numOfFrames;
         ArrayList<Bitmap> frames = new ArrayList<>();
 
-        //Take the two pictures
-        this.imageCapt.takePicture(
+        //Take the required amount of pictures
+        while(i-- > 0) {
+            this.imageCapt.takePicture(
                 this.imageCaptureExecutors,
                 new ImageCapture.OnImageCapturedCallback() {
                     @Override
                     public void onCaptureSuccess(@NonNull ImageProxy imageProxy) {
-                        frames.add(convertImageToBitmap(imageProxy.getImage(), getRotationDegree(imageProxy),currentLensOrientation == CameraSelector.LENS_FACING_FRONT));
+                        frames.add(convertImageToBitmap(imageProxy.getImage(), getRotationDegree(imageProxy), currentLensOrientation == CameraSelector.LENS_FACING_FRONT));
                         imageProxy.close();
-                    }
 
-                    @Override
-                    public void onError(@NonNull ImageCaptureException exception) {
-                        exception.printStackTrace();
-                    }
-                }
-        );
-        this.imageCapt.takePicture(
-                this.imageCaptureExecutors,
-                new ImageCapture.OnImageCapturedCallback(){
-                    @Override
-                    public void onCaptureSuccess(@NonNull ImageProxy imageProxy) {
                         /*
                          * Whenever the required amount of images have been captured,
                          * open a new analyze activity which will handle any error
                          */
-                        isCameraAvailable = true;
-                        context.startActivity(new Intent(context, AnalyzeActivity.class));
-
-                        frames.add(convertImageToBitmap(imageProxy.getImage(), getRotationDegree(imageProxy),currentLensOrientation == CameraSelector.LENS_FACING_FRONT));
-                        EventBus.getDefault().postSticky(new PictureTakenEvent(frames, "success"));
-                        imageProxy.close();
+                        if (frames.size() == numOfFrames) {
+                            EventBus.getDefault().postSticky(new PictureTakenEvent(frames, "success"));
+                            context.startActivity(new Intent(context, AnalyzeActivity.class));
+                        }
                     }
 
                     @Override
@@ -251,7 +233,8 @@ public class CameraProviderView {
                         exception.printStackTrace();
                     }
                 }
-        );
+            );
+        }
     }
 
 
@@ -263,7 +246,8 @@ public class CameraProviderView {
      */
     @SuppressLint({"UnsafeOptInUsageError", "RestrictedApi"})
     public void analyze(@NonNull ImageProxy imageProxy) {
-        if (!this.liveDetection || !this.isCameraAvailable) {
+        if (!this.liveDetection) { //!cameraAvailable
+            EventBus.getDefault().post(new UpdateDetectionsRectsEvent(this.context, new ArrayList<>(), false, null));
             imageProxy.close();
             return;
         }
@@ -294,7 +278,7 @@ public class CameraProviderView {
         List<Detection> detections = CameraProviderView.objectDetector.detect(tensorImage);
         println(System.currentTimeMillis() - init);
 
-        EventBus.getDefault().post(new UpdateDetectionsRectsEvent(detections, this.flipNeeded, matrix));
+        EventBus.getDefault().post(new UpdateDetectionsRectsEvent(this.context, detections, this.flipNeeded, matrix));
         imageProxy.close();
     }
 
@@ -319,6 +303,7 @@ public class CameraProviderView {
 
         BitmapFactory.decodeByteArray(bytes, 0, bytes.length);
         BitmapFactory.Options decodeOptions = new BitmapFactory.Options();
+        decodeOptions.inSampleSize = 2; //Scale the original image by this factor in either dimension
         decodeOptions.inPreferredConfig = Bitmap.Config.ARGB_8888;
 
         Bitmap bitmap = BitmapFactory.decodeByteArray(bytes, 0, bytes.length, decodeOptions);
@@ -328,8 +313,7 @@ public class CameraProviderView {
 
         int width = Math.min(image.getWidth(), bitmap.getWidth());
         int height = Math.min(image.getHeight(), bitmap.getHeight());
-        bitmap = Bitmap.createBitmap(bitmap, 0, 0, width, height, matrix, flipNeeded);
-        return bitmap;
+        return Bitmap.createBitmap(bitmap, 0, 0, width, height, matrix, flipNeeded);
     }
 
 }

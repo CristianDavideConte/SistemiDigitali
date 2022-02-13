@@ -1,7 +1,5 @@
 package com.example.sistemidigitali.views;
 
-import static com.example.sistemidigitali.debugUtility.Debug.println;
-
 import android.annotation.SuppressLint;
 import android.content.Context;
 import android.content.Intent;
@@ -29,21 +27,15 @@ import java.util.List;
 
 public class LiveDetectionView extends View {
     private final float ROUNDING_RECTS_RADIUS = 70;
-    private final float MAX_FONT_SIZE = 50F;
 
     private boolean allowUpdate;
 
     private List<Detection> detections;
-    private float canvasCenter;
     private boolean flipNeeded;
     private Matrix flipperMatrix;
     private Matrix transformMatrix;
 
     private Paint boxPaint;
-    private Paint textPaint;
-
-    private long lastInvocationTime;
-    private float currentFps;
 
     public LiveDetectionView(Context context) {
         super(context);
@@ -72,22 +64,15 @@ public class LiveDetectionView extends View {
         this.flipperMatrix = new Matrix();
         this.transformMatrix = new Matrix();
         this.boxPaint = new Paint();
-        this.textPaint = new Paint();
 
         this.boxPaint.setStyle(Paint.Style.STROKE);
-        this.textPaint.setStyle(Paint.Style.FILL_AND_STROKE);
         this.boxPaint.setStrokeWidth(10);
-        this.textPaint.setStrokeWidth(2F);
-        this.textPaint.setTextSize(MAX_FONT_SIZE);
         this.boxPaint.setColor(Color.RED);
-        this.textPaint.setColor(Color.GREEN);
-
-        this.lastInvocationTime = System.currentTimeMillis();
-        this.currentFps = 0;
     }
 
     @Subscribe(threadMode = ThreadMode.ASYNC)
     public void onUpdateDetectionsRects(UpdateDetectionsRectsEvent event) {
+        if(this.getContext() != event.getContext()) return;
         this.detections = event.getDetections();
         this.flipNeeded = event.isFlipNeeded();
         this.transformMatrix = event.getTransformMatrix();
@@ -95,7 +80,7 @@ public class LiveDetectionView extends View {
         this.invalidate();
     }
 
-    @Subscribe(threadMode = ThreadMode.ASYNC)
+    @Subscribe(threadMode = ThreadMode.MAIN_ORDERED)
     public void onAllowUpdatePolicyChange(AllowUpdatePolicyChangeEvent event) {
         if(this.getContext() != event.getContext()) return;
         this.allowUpdate = event.isAllowUpdatePolicyChange();
@@ -106,12 +91,11 @@ public class LiveDetectionView extends View {
     public void onDraw(Canvas canvas) {
         super.onDraw(canvas);
         if(!this.allowUpdate) return;
-        this.canvasCenter = this.getWidth() / 2.0F;
 
         this.detections.parallelStream().forEach((detection) -> {
-            String[] labelParts = detection.getCategories().get(0).getLabel().split("_");
             WearingModeEnum wearingModeEnum;
             try{
+                String[] labelParts = detection.getCategories().get(0).getLabel().split("_");
                 wearingModeEnum = WearingModeEnum.valueOf(labelParts[0]);
             } catch (IllegalArgumentException e) { //Test mode
                 wearingModeEnum = WearingModeEnum.TEST;
@@ -121,7 +105,7 @@ public class LiveDetectionView extends View {
 
             //Flip on y-axis if necessary
             if(this.flipNeeded) {
-                this.flipperMatrix.preTranslate(2 * this.canvasCenter - (boundingBox.right + boundingBox.left), 0);
+                this.flipperMatrix.preTranslate(this.getWidth() - (boundingBox.right + boundingBox.left), 0);
                 this.flipperMatrix.mapRect(boundingBox);
             }
 
@@ -131,15 +115,6 @@ public class LiveDetectionView extends View {
             this.boxPaint.setColor(wearingModeEnum.getBackgroundColor());
             canvas.drawRoundRect(boundingBox, ROUNDING_RECTS_RADIUS, ROUNDING_RECTS_RADIUS, boxPaint);
         });
-
-        long currentTime = System.currentTimeMillis();
-        if(currentTime - this.lastInvocationTime < 1000) {
-            this.currentFps++;
-        } else {
-            //println(this.currentFps);
-            this.currentFps = 0;
-            this.lastInvocationTime = currentTime;
-        }
     }
 
     @SuppressLint("DefaultLocale")

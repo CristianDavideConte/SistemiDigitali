@@ -30,9 +30,6 @@ import org.greenrobot.eventbus.Subscribe;
 import org.greenrobot.eventbus.ThreadMode;
 import org.opencv.android.OpenCVLoader;
 
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-
 public class MainActivity extends AppCompatActivity {
     private final String [] permissions = {Manifest.permission.CAMERA, Manifest.permission.READ_EXTERNAL_STORAGE, Manifest.permission.WRITE_EXTERNAL_STORAGE};
 
@@ -78,7 +75,7 @@ public class MainActivity extends AppCompatActivity {
         this.cameraProviderView = new CameraProviderView(this,  findViewById(R.id.previewView), customGestureDetector);
         this.switchCameraButton.setOnClickListener((view) -> this.cameraProviderView.switchCamera());
         this.liveDetectionSwitch.setOnClickListener((view) -> this.toastMessagesManager.showToastIfNeeded());
-        this.shutterButton.setOnClickListener((view) -> this.cameraProviderView.captureImage());
+        this.shutterButton.setOnClickListener((view) -> this.cameraProviderView.captureImages(2));
 
         //If the file picked is an image the analyze activity is launched
         ActivityResultLauncher<String> filePicker = registerForActivityResult(new ActivityResultContracts.GetContent(), this::showAnalyzeActivity);
@@ -103,15 +100,6 @@ public class MainActivity extends AppCompatActivity {
         EventBus.getDefault().register(this.customGestureDetector);
         EventBus.getDefault().removeStickyEvent(PictureTakenEvent.class);
         this.cameraProviderView.setLiveDetection(this.liveDetectionSwitch.isChecked());
-    }
-
-    /**
-     * Synchronizes the live detection switch value with the current camera's live detection
-     * value set by the user. Otherwise they could diverge resulting in a graphical artifact
-     */
-    @Override
-    protected void onResume() {
-        super.onResume();
     }
 
     /**
