@@ -44,7 +44,6 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.Executor;
-import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 public class AnalyzeActivity extends AppCompatActivity {
@@ -64,7 +63,7 @@ public class AnalyzeActivity extends AppCompatActivity {
     private ImageMatrixTouchHandler zoomHandler;
     private Executor distanceCalculatorExecutor;
     private Executor analyzerExecutor;
-    private ExecutorService imageSaverExecutors;
+    private Executor imageSaverExecutor;
 
     private ToastMessagesManager toastMessagesManager;
     private CustomGestureDetector customGestureDetector;
@@ -94,7 +93,7 @@ public class AnalyzeActivity extends AppCompatActivity {
         this.toastMessagesManager = new ToastMessagesManager(this, Toast.LENGTH_SHORT);
         this.distanceCalculatorExecutor = Executors.newSingleThreadExecutor();
         this.analyzerExecutor = Executors.newSingleThreadExecutor();
-        this.imageSaverExecutors = Executors.newFixedThreadPool(6);
+        this.imageSaverExecutor = Executors.newSingleThreadExecutor();
         this.customGestureDetector = new CustomGestureDetector();
         this.analyzeButton.setOnClickListener((view) -> this.toastMessagesManager.showToastIfNeeded());
         this.calcDistanceButton.setOnClickListener((view) -> this.toastMessagesManager.showToastIfNeeded());
@@ -179,11 +178,14 @@ public class AnalyzeActivity extends AppCompatActivity {
         this.analyzeView.setImageBitmap(this.frame1);
 
         this.saveImageButton.setOnClickListener((view) -> {
+            this.saveImageButton.setClickable(false);
             this.saveLoadingIndicator.setVisibility(View.VISIBLE);
-            this.imageSaverExecutors.execute(() -> {
-                this.imageSaver.saveImage(this.frame1);
-                this.imageSaver.saveImage(this.frame2);
-                this.imageSaver.saveImage(this.distanceCalculator.getDisparityBitmap(this.frame1, this.frame2));
+            this.imageSaverExecutor.execute(() -> {
+                List<Bitmap> images = new ArrayList<>();
+                images.add(this.frame1);
+                images.add(this.frame2);
+                images.add(this.distanceCalculator.getDisparityBitmap(this.frame1, this.frame2));
+                this.imageSaver.saveImages(images);
             });
         });
         this.zoomHandler = new ImageMatrixTouchHandler(this);
@@ -254,6 +256,12 @@ public class AnalyzeActivity extends AppCompatActivity {
     @Subscribe(threadMode = ThreadMode.MAIN)
     public void onImageSaved(ImageSavedEvent event) {
         this.saveLoadingIndicator.setVisibility(View.GONE);
+        this.saveImageButton.setClickable(true);
+        if(!event.getError().equals("success")) {
+            this.saveImageButton.setOnClickListener((view) -> {
+                this.toastMessagesManager.showToast();
+            });
+        }
     }
 
     @Subscribe(threadMode = ThreadMode.ASYNC)

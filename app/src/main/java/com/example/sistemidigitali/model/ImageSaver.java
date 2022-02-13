@@ -15,7 +15,9 @@ import org.greenrobot.eventbus.EventBus;
 
 import java.io.OutputStream;
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
 import java.util.Date;
+import java.util.List;
 
 public class ImageSaver {
     private final Context context;
@@ -24,13 +26,27 @@ public class ImageSaver {
         this.context = context;
     }
 
+    public void saveImages(List<Bitmap> images) {
+        if(images.size() < 1) return;
+
+        List<ImageSavedEvent> savingResults = new ArrayList<>();
+        for(Bitmap image : images) {
+            savingResults.add(this.saveImage(image));
+        }
+
+        for(ImageSavedEvent savingResult : savingResults) {
+            if(!savingResult.getError().equals("success")) {
+                EventBus.getDefault().post(savingResult);
+                return;
+            }
+        }
+        EventBus.getDefault().post(savingResults.get(0));
+    }
+
 
     @SuppressLint("SimpleDateFormat")
-    public void saveImage(Bitmap image) {
-        if(image == null) {
-            EventBus.getDefault().post(new ImageSavedEvent("Bitmap is null", null));
-            return;
-        }
+    private ImageSavedEvent saveImage(Bitmap image) {
+        if(image == null) return new ImageSavedEvent("Bitmap is null", null);
 
         //Es. SISDIG_2021127_189230.jpg
         final String pictureName = "SISDIG_" + new SimpleDateFormat("yyyyMMdd_HHmmss").format(new Date()) + ".jpeg";
@@ -62,13 +78,13 @@ public class ImageSaver {
 
             if (!imageSavedCorrectly) throw new Exception("Image compression failed");
 
-            EventBus.getDefault().post(new ImageSavedEvent("success", picturePublicUri));
+            return new ImageSavedEvent("success", picturePublicUri);
         } catch (Exception e) {
             e.printStackTrace();
             //Remove the allocated space in the MediaStore if the picture can't be saved
             this.context.getContentResolver().delete(picturePublicUri, new Bundle());
 
-            EventBus.getDefault().post(new ImageSavedEvent(e.getMessage(), picturePublicUri));
+            return new ImageSavedEvent(e.getMessage(), picturePublicUri);
         }
     }
 

@@ -1,10 +1,10 @@
 package com.example.sistemidigitali.views;
 
-import static com.example.sistemidigitali.debugUtility.Debug.println;
-
 import android.Manifest;
 import android.annotation.SuppressLint;
 import android.content.Intent;
+import android.graphics.Bitmap;
+import android.graphics.ImageDecoder;
 import android.net.Uri;
 import android.os.Bundle;
 import android.util.Log;
@@ -18,7 +18,6 @@ import androidx.appcompat.app.AppCompatActivity;
 
 import com.example.sistemidigitali.R;
 import com.example.sistemidigitali.customEvents.CustomObjectDetectorAvailableEvent;
-import com.example.sistemidigitali.customEvents.ImageSavedEvent;
 import com.example.sistemidigitali.customEvents.OverlayVisibilityChangeEvent;
 import com.example.sistemidigitali.customEvents.PictureTakenEvent;
 import com.example.sistemidigitali.model.CustomGestureDetector;
@@ -31,6 +30,10 @@ import org.greenrobot.eventbus.EventBus;
 import org.greenrobot.eventbus.Subscribe;
 import org.greenrobot.eventbus.ThreadMode;
 import org.opencv.android.OpenCVLoader;
+
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 
 public class MainActivity extends AppCompatActivity {
     private final String [] permissions = {Manifest.permission.CAMERA, Manifest.permission.READ_EXTERNAL_STORAGE, Manifest.permission.WRITE_EXTERNAL_STORAGE};
@@ -79,10 +82,12 @@ public class MainActivity extends AppCompatActivity {
         this.liveDetectionSwitch.setOnClickListener((view) -> this.toastMessagesManager.showToastIfNeeded());
         this.shutterButton.setOnClickListener((view) -> this.cameraProviderView.captureImages(2));
 
-        //If the file picked is an image the analyze activity is launched
-        ActivityResultLauncher<String> filePicker = registerForActivityResult(new ActivityResultContracts.GetContent(), this::showAnalyzeActivity);
+
+        //If the files picked are two images the analyze activity is launched
+        ActivityResultLauncher<String> filePicker = registerForActivityResult(new ActivityResultContracts.GetMultipleContents(), this::showAnalyzeActivity);
         this.galleryButton.setOnClickListener((view) -> filePicker.launch("image/*")); //Shows the file picker for images only
         this.hideUIButton.setOnClickListener((view) -> this.changeUIVisibility());
+
 
         //Request all the permissions needed if not already available
         if(!this.permission.checkPermission(this, permissions)) {
@@ -137,13 +142,25 @@ public class MainActivity extends AppCompatActivity {
      * the given picture's uri if valid.
      * @param picturePublicUri A picture's Uri.
      */
-    private void showAnalyzeActivity(Uri picturePublicUri) {
-        if(picturePublicUri == null) return;
-
-        //Open a new activity and passes it the picture's uri
-        EventBus.getDefault().postSticky(new ImageSavedEvent("success", picturePublicUri));
-        Intent intent = new Intent(this, AnalyzeActivity.class);
-        this.startActivity(intent);
+    private void showAnalyzeActivity(List<Uri> picturePublicUri) {
+        if(picturePublicUri.size() == 0) return;
+        if(picturePublicUri.size() != 2) {
+            this.toastMessagesManager.showToast("Select 2 images");
+            return;
+        }
+        try {
+            List<Bitmap> frames = new ArrayList<>();
+            for(Uri uri : picturePublicUri) {
+                Bitmap frame = ImageDecoder.decodeBitmap(ImageDecoder.createSource(this.getContentResolver(), uri)).copy(Bitmap.Config.ARGB_8888, false);
+                frames.add(frame);
+            }
+            EventBus.getDefault().postSticky(new PictureTakenEvent(frames, "success"));
+            Intent intent = new Intent(this, AnalyzeActivity.class);
+            this.startActivity(intent);
+        } catch (IOException e) {
+            e.printStackTrace();
+            this.toastMessagesManager.showToast("Invalid Images");
+        }
     }
 
     private void changeUIVisibility() {
