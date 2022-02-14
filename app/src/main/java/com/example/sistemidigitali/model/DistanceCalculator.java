@@ -6,6 +6,7 @@ import android.util.SizeF;
 import com.example.sistemidigitali.views.CameraProviderView;
 
 import org.opencv.android.Utils;
+import org.opencv.calib3d.StereoMatcher;
 import org.opencv.calib3d.StereoSGBM;
 import org.opencv.core.Core;
 import org.opencv.core.CvType;
@@ -14,6 +15,7 @@ import org.opencv.core.Point;
 import org.opencv.core.Rect;
 import org.opencv.core.Size;
 import org.opencv.imgproc.Imgproc;
+import org.opencv.ximgproc.DisparityWLSFilter;
 
 public class DistanceCalculator {
 
@@ -105,30 +107,32 @@ public class DistanceCalculator {
         // Create a new image using the size and type of the left image
         Mat disparity = new Mat(left.size(), rectLeft.type());
 
-        int numDisparity = (int)(left.size().width / 16);
-        int SADWindowSize = 11;
+        final int minDisparity = -16;
+        final int numDisparity = left.width() / 16 + left.width() % 16;
+        final int blockSize = 11; //odd number >= 1
+        final int numberOfChannels = 1;
 
         //https://docs.opencv.org/3.4/javadoc/org/opencv/calib3d/StereoSGBM.html#create(int,int,int,int,int,int,int,int,int,int,int)
         StereoSGBM stereoAlgo = StereoSGBM.create(
-                0,    // min DIsparities
-                numDisparity, // numDisparities
-                SADWindowSize,   // SADWindowSize
-                8*SADWindowSize*SADWindowSize,   // 8*number_of_image_channels*SADWindowSize*SADWindowSize   // p1
-                8*SADWindowSize*SADWindowSize,  // 8*number_of_image_channels*SADWindowSize*SADWindowSize  // p2
-
-                -1,   // disp12MaxDiff
-                63,   // prefilterCap
-                10,   // uniqueness ratio
+                minDisparity, // min Disparities
+                numDisparity, // num Disparities
+                blockSize,    // block size
+                8 * numberOfChannels * blockSize * blockSize, // p1
+                16 * numberOfChannels * blockSize * blockSize, // p2
+                0,   // disp12MaxDiff
+                63,     // prefilterCap
+                5,  // uniqueness ratio
                 0, // sreckleWindowSize
-                32, // spreckle Range
+                32,    // spreckle Range
                 StereoSGBM.MODE_SGBM_3WAY);
         // create the DisparityMap - SLOW: O(Width*height*numDisparity)
 
         stereoAlgo.compute(left, right, disparity);
+        Core.normalize(disparity, disparity, 0.0, 255.0, Core.NORM_MINMAX, CvType.CV_8UC1);
 
-        Core.normalize(disparity, disparity, 0, 256, Core.NORM_MINMAX);
 
 
         return disparity;
     }
+
 }

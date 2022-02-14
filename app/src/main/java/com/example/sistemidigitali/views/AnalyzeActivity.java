@@ -182,8 +182,8 @@ public class AnalyzeActivity extends AppCompatActivity {
             this.saveLoadingIndicator.setVisibility(View.VISIBLE);
             this.imageSaverExecutor.execute(() -> {
                 List<Bitmap> images = new ArrayList<>();
-                images.add(this.frame1);
-                images.add(this.frame2);
+                //images.add(this.frame1);
+                //images.add(this.frame2);
                 images.add(this.distanceCalculator.getDisparityBitmap(this.frame1, this.frame2));
                 this.imageSaver.saveImages(images);
             });
