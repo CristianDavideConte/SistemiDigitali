@@ -11,6 +11,7 @@ import org.tensorflow.lite.task.vision.detector.ObjectDetector;
 import org.tensorflow.lite.task.vision.detector.ObjectDetector.ObjectDetectorOptions;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
 
 public class CustomObjectDetector {
@@ -45,6 +46,12 @@ public class CustomObjectDetector {
      * @return A list of Detection containing all informations about every detected object.
      */
     public List<Detection> detect(TensorImage image) {
-        return this.detector.detect(image);
+        List<Detection> detections = new ArrayList<>();
+        try {
+            detections = this.detector.detect(image);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return detections;
     }
 }

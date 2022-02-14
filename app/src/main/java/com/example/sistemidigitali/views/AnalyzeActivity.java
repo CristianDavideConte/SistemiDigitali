@@ -291,8 +291,6 @@ public class AnalyzeActivity extends AppCompatActivity {
 
     private void detectObjects() {
         this.analyzerExecutor.execute(() -> {
-            if(this.originalImageTensor == null) return;
-
             this.detections = objectDetector.detect(this.originalImageTensor);
             EventBus.getDefault().post(new UpdateDetectionsRectsEvent(this, this.detections, false, this.analyzeView.getImageMatrix()));
 
