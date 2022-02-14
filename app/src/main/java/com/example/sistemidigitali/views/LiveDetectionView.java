@@ -1,5 +1,7 @@
 package com.example.sistemidigitali.views;
 
+import static com.example.sistemidigitali.debugUtility.Debug.println;
+
 import android.annotation.SuppressLint;
 import android.content.Context;
 import android.content.Intent;
@@ -26,7 +28,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class LiveDetectionView extends View {
-    private final float ROUNDING_RECTS_RADIUS = 70;
+    private static final float ROUNDING_RECTS_RADIUS = 70;
 
     private boolean allowUpdate;
 
@@ -50,10 +52,6 @@ public class LiveDetectionView extends View {
     public LiveDetectionView(Context context, AttributeSet attrs, int defStyle) {
         super(context, attrs, defStyle);
         init();
-    }
-
-    public boolean isEnabled() {
-        return !this.detections.isEmpty();
     }
 
     public void init() {
@@ -142,8 +140,10 @@ public class LiveDetectionView extends View {
                     intent.putExtra(PopUpActivity.POP_UP_TEXT_1, wearingMode);
                     intent.putExtra(PopUpActivity.POP_UP_TEXT_2, maskType);
                     intent.putExtra(PopUpActivity.POP_UP_TEXT_3, accuracy);
-                    intent.putExtra(PopUpActivity.POP_UP_BACKGROUND_COLOR, String.valueOf(wearingModeEnum.getBackgroundColor()));
+
                     intent.putExtra(PopUpActivity.POP_UP_TEXT_COLOR, String.valueOf(wearingModeEnum.getTextColor()));
+                    intent.putExtra(PopUpActivity.POP_UP_BACKGROUND_COLOR, String.valueOf(wearingModeEnum.getBackgroundColor()));
+
                     this.getContext().startActivity(intent);
                     return true;
                 }

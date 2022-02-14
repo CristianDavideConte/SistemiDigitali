@@ -138,7 +138,7 @@ public class CameraProviderView {
      * @param lensOrientation An int that indicates the lens orientation.
      */
     @SuppressLint({"RestrictedApi", "UnsafeOptInUsageError"})
-    public void startCamera(int lensOrientation) {
+    private void startCamera(int lensOrientation) {
         currentLensOrientation = lensOrientation;
         this.flipNeeded = currentLensOrientation == CameraSelector.LENS_FACING_FRONT;
 
@@ -202,7 +202,7 @@ public class CameraProviderView {
      * asynchronously passing it the picture's uri.
      */
     @SuppressLint({"UnsafeOptInUsageError, SimpleDateFormat", "RestrictedApi"})
-    public synchronized void captureImages(int numOfFrames) {
+    public void captureImages(int numOfFrames) {
         if(!this.isCameraAvailable) return;
 
         int i = numOfFrames;

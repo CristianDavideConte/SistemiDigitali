@@ -250,18 +250,21 @@ public class AnalyzeActivity extends AppCompatActivity {
     @SuppressLint("WrongConstant")
     @Subscribe(sticky = true, threadMode = ThreadMode.MAIN)
     public void onOverlayVisibilityChange(OverlayVisibilityChangeEvent event) {
-        this.backgroundOverlayAnalyze.setVisibility(event.getVisibility());
+        int visibility = event.getVisibility();
+        if(visibility == View.VISIBLE) this.detectObjects(); //Fixes a multitasking related rects-displaying bug
+        this.backgroundOverlayAnalyze.setVisibility(visibility);
     }
 
     @Subscribe(threadMode = ThreadMode.MAIN)
     public void onImageSaved(ImageSavedEvent event) {
         this.saveLoadingIndicator.setVisibility(View.GONE);
         this.saveImageButton.setClickable(true);
-        if(!event.getError().equals("success")) {
-            this.saveImageButton.setOnClickListener((view) -> {
-                this.toastMessagesManager.showToast();
-            });
-        }
+
+        if(event.getError().equals("success")) return;
+
+        this.saveImageButton.setOnClickListener((view) -> {
+            this.toastMessagesManager.showToast();
+        });
     }
 
     @Subscribe(threadMode = ThreadMode.ASYNC)
@@ -276,15 +279,18 @@ public class AnalyzeActivity extends AppCompatActivity {
 
     @Subscribe(threadMode = ThreadMode.ASYNC)
     public void onEndOfGesture(EndOfGestureEvent event) {
-        EventBus.getDefault().post(new AllowUpdatePolicyChangeEvent(this, false));
-        while(this.zoomHandler.isAnimating());
-        EventBus.getDefault().post(new UpdateDetectionsRectsEvent(this, new ArrayList<>(), false, null));
-        EventBus.getDefault().post(new AllowUpdatePolicyChangeEvent(this, true));
+        if(this.zoomHandler.isAnimating()) {
+            EventBus.getDefault().post(new AllowUpdatePolicyChangeEvent(this, false));
+            while (this.zoomHandler.isAnimating());
+            EventBus.getDefault().post(new UpdateDetectionsRectsEvent(this, new ArrayList<>(), false, null));
+            EventBus.getDefault().post(new AllowUpdatePolicyChangeEvent(this, true));
+        }
         this.detectObjects();
     }
 
 
     private void detectObjects() {
+        println("DETECT");
         this.analyzerExecutor.execute(() -> {
             this.detections = objectDetector.detect(this.originalImageTensor);
             EventBus.getDefault().post(new UpdateDetectionsRectsEvent(this, this.detections, false, this.analyzeView.getImageMatrix()));
@@ -305,8 +311,8 @@ public class AnalyzeActivity extends AppCompatActivity {
             Bitmap disparityMap = this.distanceCalculator.getDisparityBitmap(this.frame1, this.frame2);
             //this.frame1 = this.distanceCalculator.getDisparityMap(this.frame1, this.frame2);
             println(this.distanceCalculator.getDistance(
-                    new Point(disparityMap.getWidth() / 2, disparityMap.getHeight() / 2),
-                    new Point(disparityMap.getWidth() / 2 + 300, disparityMap.getHeight() / 2),
+                    new Point(disparityMap.getWidth() / 2F, disparityMap.getHeight() / 2F),
+                    new Point(disparityMap.getWidth() / 2F + 300, disparityMap.getHeight() / 2F),
                     160,
                     this.distanceCalculator.getDisparityMap()
                     )
