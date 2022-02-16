@@ -23,21 +23,27 @@ public class CustomObjectDetector {
     private ObjectDetector detector;
     private CustomObjectDetectorType type;
 
-    public CustomObjectDetector(Context context, CustomObjectDetectorType type) throws IOException {
+    public CustomObjectDetector(Context context, CustomObjectDetectorType type) {
         this.context = context;
         this.type = type;
 
-        // Initialization
-        ObjectDetectorOptions options =
-                ObjectDetectorOptions.builder()
-                        .setBaseOptions(BaseOptions.builder().useGpu().build()) //<uses-native-library> tag is required in the AndroidManifest.xml to use the GPU
-                        //.setBaseOptions(BaseOptions.builder().useNnapi().build()) //used for testing on the Android Studio's emulator
-                        .setScoreThreshold(0.3f) //30% sicurezza sulla predizione
-                        .setMaxResults(10)
-                        .build();
+        try {
+            // Initialization
+            ObjectDetectorOptions options =
+                    ObjectDetectorOptions.builder()
+                            .setBaseOptions(BaseOptions.builder().useGpu().build()) //<uses-native-library> tag is required in the AndroidManifest.xml to use the GPU
+                            //.setBaseOptions(BaseOptions.builder().useNnapi().build()) //used for testing on the Android Studio's emulator
+                            .setScoreThreshold(0.3f) //30% sicurezza sulla predizione
+                            .setMaxResults(10)
+                            .build();
 
-        if(this.type == CustomObjectDetectorType.HIGH_ACCURACY) this.detector = ObjectDetector.createFromFileAndOptions(this.context, MODEL_FILE_F16, options);
-        else this.detector = ObjectDetector.createFromFileAndOptions(this.context, MODEL_FILE_IO8, options);
+            if (this.type == CustomObjectDetectorType.HIGH_ACCURACY)
+                this.detector = ObjectDetector.createFromFileAndOptions(this.context, MODEL_FILE_F16, options);
+            else
+                this.detector = ObjectDetector.createFromFileAndOptions(this.context, MODEL_FILE_IO8, options);
+        } catch (IOException e){
+            e.printStackTrace();
+        }
     }
 
     /**

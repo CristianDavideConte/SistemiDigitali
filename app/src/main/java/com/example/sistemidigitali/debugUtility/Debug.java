@@ -1,22 +1,24 @@
 package com.example.sistemidigitali.debugUtility;
 
+import android.util.Log;
+
 public class Debug {
 
     public Debug(){}
 
     public static void print(Object... objs) {
-        String s = "";
+        StringBuilder s = new StringBuilder();
         for(Object obj : objs) {
-            s += obj + " ";
+            s.append(obj).append(" ");
         }
-        System.out.print(s);
+        System.out.print(s.toString());
     }
 
     public static void println(Object... objs) {
-        String s = "";
+        StringBuilder s = new StringBuilder();
         for(Object obj : objs) {
-            s += obj + " ";
+            s.append(obj).append(" ");
         }
-        System.out.println(s);
+        System.out.println(s.toString());
     }
 }

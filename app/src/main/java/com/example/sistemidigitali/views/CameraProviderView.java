@@ -1,5 +1,6 @@
 package com.example.sistemidigitali.views;
 
+import static com.example.sistemidigitali.debugUtility.Debug.print;
 import static com.example.sistemidigitali.debugUtility.Debug.println;
 
 import android.annotation.SuppressLint;
@@ -7,6 +8,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
+import android.graphics.ImageFormat;
 import android.graphics.Matrix;
 import android.hardware.camera2.CameraCharacteristics;
 import android.hardware.camera2.CameraManager;
@@ -39,6 +41,7 @@ import com.example.sistemidigitali.customEvents.UpdateDetectionsRectsEvent;
 import com.example.sistemidigitali.enums.CustomObjectDetectorType;
 import com.example.sistemidigitali.model.CustomGestureDetector;
 import com.example.sistemidigitali.model.CustomObjectDetector;
+import com.example.sistemidigitali.model.CustomSensorManager;
 import com.google.common.util.concurrent.ListenableFuture;
 
 import org.greenrobot.eventbus.EventBus;
@@ -48,6 +51,7 @@ import org.tensorflow.lite.task.vision.detector.Detection;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.concurrent.Executor;
 import java.util.concurrent.ExecutorService;
@@ -59,6 +63,9 @@ public class CameraProviderView {
 
     private static CustomObjectDetector objectDetector;
     private static int currentLensOrientation = CameraSelector.LENS_FACING_BACK;
+
+    private final CustomGestureDetector customGestureDetector;
+    private final CustomSensorManager customSensorManager;
 
     private ListenableFuture<ProcessCameraProvider> provider;
     private Camera camera;
@@ -72,7 +79,6 @@ public class CameraProviderView {
 
     private final int currentDisplayRotation;
     private final MainActivity context;
-    private final CustomGestureDetector customGestureDetector;
     private final Executor analyzeExecutor;
     private final ExecutorService imageCaptureExecutors;
 
@@ -83,6 +89,7 @@ public class CameraProviderView {
         this.context = context;
         this.isCameraAvailable = true;
         this.customGestureDetector = customGestureDetector;
+        this.customSensorManager = new CustomSensorManager(this.context);
         this.imageCaptureExecutors = Executors.newFixedThreadPool(2);
         this.analyzeExecutor = Executors.newSingleThreadExecutor();
         this.currentDisplayRotation = this.context.getDisplay().getRotation() * 90;
@@ -117,12 +124,8 @@ public class CameraProviderView {
         });
 
         new Thread(() -> {
-            try {
-                if(objectDetector == null) objectDetector = new CustomObjectDetector(context, CustomObjectDetectorType.HIGH_PERFORMANCE);
-                EventBus.getDefault().postSticky(new CustomObjectDetectorAvailableEvent(context, objectDetector, CustomObjectDetectorType.HIGH_PERFORMANCE));
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
+            if(objectDetector == null) objectDetector = new CustomObjectDetector(context, CustomObjectDetectorType.HIGH_PERFORMANCE);
+            EventBus.getDefault().postSticky(new CustomObjectDetectorAvailableEvent(context, objectDetector, CustomObjectDetectorType.HIGH_PERFORMANCE));
         }).start();
     }
 
@@ -165,6 +168,7 @@ public class CameraProviderView {
                 this.imageAnalysis = new ImageAnalysis.Builder()
                                     .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
                                     .setOutputImageRotationEnabled(true)
+                                    .setOutputImageFormat(ImageAnalysis.OUTPUT_IMAGE_FORMAT_YUV_420_888)
                                     .build();
                 this.imageAnalysis.setAnalyzer(this.analyzeExecutor, this::analyze);
 
@@ -207,6 +211,9 @@ public class CameraProviderView {
 
         int i = numOfFrames;
         ArrayList<Bitmap> frames = new ArrayList<>();
+        HashMap<Bitmap, float[]> framesPositions = new HashMap<>();
+        this.customSensorManager.stopMonitoring();
+        this.customSensorManager.startMonitoring();
 
         //Take the required amount of pictures
         while(i-- > 0) {
@@ -215,7 +222,10 @@ public class CameraProviderView {
                 new ImageCapture.OnImageCapturedCallback() {
                     @Override
                     public void onCaptureSuccess(@NonNull ImageProxy imageProxy) {
-                        frames.add(convertImageToBitmap(imageProxy.getImage(), getRotationDegree(imageProxy), currentLensOrientation == CameraSelector.LENS_FACING_FRONT));
+                        Bitmap frame = convertImageToBitmap(imageProxy.getImage(), getRotationDegree(imageProxy), currentLensOrientation == CameraSelector.LENS_FACING_FRONT);
+                        frames.add(frame);
+                        framesPositions.put(frame, customSensorManager.getDeltaPositionsInPx(frames.size() < 1));
+
                         imageProxy.close();
 
                         /*
@@ -223,7 +233,8 @@ public class CameraProviderView {
                          * open a new analyze activity which will handle any error
                          */
                         if (frames.size() == numOfFrames) {
-                            EventBus.getDefault().postSticky(new PictureTakenEvent(frames, "success"));
+                            customSensorManager.stopMonitoring();
+                            EventBus.getDefault().postSticky(new PictureTakenEvent(frames, "success", framesPositions));
                             context.startActivity(new Intent(context, AnalyzeActivity.class));
                         }
                     }

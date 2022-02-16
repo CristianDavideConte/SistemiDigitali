@@ -1,5 +1,6 @@
 package com.example.sistemidigitali.views;
 
+import static com.example.sistemidigitali.debugUtility.Debug.print;
 import static com.example.sistemidigitali.debugUtility.Debug.println;
 
 import android.annotation.SuppressLint;
@@ -42,7 +43,9 @@ import org.tensorflow.lite.task.vision.detector.Detection;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 
@@ -50,6 +53,7 @@ public class AnalyzeActivity extends AppCompatActivity {
     private static CustomObjectDetector objectDetector;
 
     private Bitmap frame1, frame2;
+    private Map<Bitmap, float[]> framesPositions;
     private TensorImage originalImageTensor;
 
     private View backgroundOverlayAnalyze;
@@ -88,6 +92,7 @@ public class AnalyzeActivity extends AppCompatActivity {
         this.analyzeLoadingIndicator = findViewById(R.id.analyzeLoadingIndicator);
         this.saveLoadingIndicator = findViewById(R.id.saveLoadingIndicator);
 
+        this.framesPositions = new HashMap<>();
         this.imageSaver = new ImageSaver(this);
         this.distanceCalculator = new DistanceCalculator();
         this.toastMessagesManager = new ToastMessagesManager(this, Toast.LENGTH_SHORT);
@@ -99,12 +104,8 @@ public class AnalyzeActivity extends AppCompatActivity {
         this.calcDistanceButton.setOnClickListener((view) -> this.toastMessagesManager.showToastIfNeeded());
 
         new Thread(() -> {
-            try {
-                if(objectDetector == null) objectDetector = new CustomObjectDetector(this, CustomObjectDetectorType.HIGH_ACCURACY);
-                EventBus.getDefault().postSticky(new CustomObjectDetectorAvailableEvent(this, objectDetector, CustomObjectDetectorType.HIGH_ACCURACY));
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
+            if(objectDetector == null) objectDetector = new CustomObjectDetector(this, CustomObjectDetectorType.HIGH_ACCURACY);
+            EventBus.getDefault().postSticky(new CustomObjectDetectorAvailableEvent(this, objectDetector, CustomObjectDetectorType.HIGH_ACCURACY));
         }).start();
     }
 
@@ -162,8 +163,34 @@ public class AnalyzeActivity extends AppCompatActivity {
             return;
         }
 
-        loadAnalyzeComponents(frames.get(0));
-        loadDistanceCalculationComponents(frames.get(1));
+        Bitmap frame1 = frames.get(0);
+        Bitmap frame2 = frames.get(1);
+        this.framesPositions = event.getFramesPositions();
+        println("INIT ANALYZE");
+        if(this.framesPositions.containsKey(frame1) && this.framesPositions.containsKey(frame2)) {
+            final float x1 = this.framesPositions.get(frame1)[0];
+            final float x2 = this.framesPositions.get(frame2)[0];
+            final float y1 = this.framesPositions.get(frame1)[1];
+            final float y2 = this.framesPositions.get(frame2)[1];
+            final float z1 = this.framesPositions.get(frame1)[2];
+            final float z2 = this.framesPositions.get(frame2)[2];
+
+            println("xyz 1: ", x1, y1, z1);
+            println("xyz 2: ", x2, y2, z2);
+
+            println("DELTAX: ", x2 - x1);
+            println("DELTAY: ", y2 - y1);
+            println("DELTAZ: ", z2 - z1);
+
+            if(x1 > x2) {
+                loadAnalyzeComponents(frame2);
+                loadDistanceCalculationComponents(frame1);
+                return;
+            }
+        }
+
+        loadAnalyzeComponents(frame1);
+        loadDistanceCalculationComponents(frame2);
     }
 
     /**
@@ -182,8 +209,8 @@ public class AnalyzeActivity extends AppCompatActivity {
             this.saveLoadingIndicator.setVisibility(View.VISIBLE);
             this.imageSaverExecutor.execute(() -> {
                 List<Bitmap> images = new ArrayList<>();
-                //images.add(this.frame1);
-                //images.add(this.frame2);
+                images.add(this.frame1);
+                images.add(this.frame2);
                 images.add(this.distanceCalculator.getDisparityBitmap(this.frame1, this.frame2));
                 this.imageSaver.saveImages(images);
             });
@@ -309,13 +336,13 @@ public class AnalyzeActivity extends AppCompatActivity {
             //FOR TEST PURPOSES ONLY
             Bitmap disparityMap = this.distanceCalculator.getDisparityBitmap(this.frame1, this.frame2);
             //this.frame1 = this.distanceCalculator.getDisparityMap(this.frame1, this.frame2);
-            println(this.distanceCalculator.getDistance(
+            /*println(this.distanceCalculator.getDistance(
                     new Point(disparityMap.getWidth() / 2F, disparityMap.getHeight() / 2F),
                     new Point(disparityMap.getWidth() / 2F + 300, disparityMap.getHeight() / 2F),
                     160,
                     this.distanceCalculator.getDisparityMap()
                     )
-            );
+            );*/
             runOnUiThread(() -> {
                 this.analyzeView.setImageBitmap(disparityMap);
                 this.calcDistanceButton.setText("Clear");

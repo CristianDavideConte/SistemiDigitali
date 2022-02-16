@@ -6,6 +6,7 @@ import android.util.SizeF;
 import com.example.sistemidigitali.views.CameraProviderView;
 
 import org.opencv.android.Utils;
+import org.opencv.calib3d.StereoBM;
 import org.opencv.calib3d.StereoMatcher;
 import org.opencv.calib3d.StereoSGBM;
 import org.opencv.core.Core;
@@ -15,7 +16,6 @@ import org.opencv.core.Point;
 import org.opencv.core.Rect;
 import org.opencv.core.Size;
 import org.opencv.imgproc.Imgproc;
-import org.opencv.ximgproc.DisparityWLSFilter;
 
 public class DistanceCalculator {
 
@@ -47,6 +47,43 @@ public class DistanceCalculator {
         }
 
         return this.disparityBitmap;
+    }
+
+    private Mat createDisparityMap(Mat rectLeft, Mat rectRight){
+        // Converts the images to a proper type for stereoMatching
+        Mat left = new Mat();
+        Mat right = new Mat();
+
+        Imgproc.cvtColor(rectLeft, left, Imgproc.COLOR_RGBA2GRAY);
+        Imgproc.cvtColor(rectRight, right, Imgproc.COLOR_RGBA2GRAY);
+
+        // Create a new image using the size and type of the left image
+        Mat disparity = new Mat(left.size(), rectLeft.type());
+
+        final int minDisparity = 0;
+        final int numDisparity = (int)(left.size().width / 8);
+        final int blockSize = 11; //odd number >= 1
+        final int numberOfChannels = 1;
+
+        //https://docs.opencv.org/3.4/javadoc/org/opencv/calib3d/StereoSGBM.html#create(int,int,int,int,int,int,int,int,int,int,int)
+        //https://stackoverflow.com/questions/34477458/depth-map-stereo-image-in-android-with-opencv
+        StereoSGBM stereoAlgo = StereoSGBM.create(
+            minDisparity, // min Disparities
+            numDisparity, // num Disparities
+            blockSize,    // block size
+            2 * numberOfChannels * blockSize * blockSize, // p1
+            5 * numberOfChannels * blockSize * blockSize, // p2
+            -1,   // disp12MaxDiff
+            64,     // prefilterCap
+            10,  // uniqueness ratio
+            0, // sreckleWindowSize
+            32,    // spreckle Range
+            StereoSGBM.MODE_SGBM_3WAY
+        );
+        stereoAlgo.compute(left, right, disparity);
+        Core.normalize(disparity, disparity, 0.0, 256, Core.NORM_MINMAX);
+
+        return disparity;
     }
 
     public double getDistance(Point p1, Point p2, float distance_in_pixel, Mat disparity) {
@@ -95,44 +132,4 @@ public class DistanceCalculator {
         Rect crop = new Rect(left, top, width, height);
         return new Mat(image, crop);
     }
-
-    private Mat createDisparityMap(Mat rectLeft, Mat rectRight){
-        // Converts the images to a proper type for stereoMatching
-        Mat left = new Mat();
-        Mat right = new Mat();
-
-        Imgproc.cvtColor(rectLeft, left, Imgproc.COLOR_RGBA2GRAY);
-        Imgproc.cvtColor(rectRight, right, Imgproc.COLOR_RGBA2GRAY);
-
-        // Create a new image using the size and type of the left image
-        Mat disparity = new Mat(left.size(), rectLeft.type());
-
-        final int minDisparity = -16;
-        final int numDisparity = left.width() / 16 + left.width() % 16;
-        final int blockSize = 11; //odd number >= 1
-        final int numberOfChannels = 1;
-
-        //https://docs.opencv.org/3.4/javadoc/org/opencv/calib3d/StereoSGBM.html#create(int,int,int,int,int,int,int,int,int,int,int)
-        StereoSGBM stereoAlgo = StereoSGBM.create(
-                minDisparity, // min Disparities
-                numDisparity, // num Disparities
-                blockSize,    // block size
-                8 * numberOfChannels * blockSize * blockSize, // p1
-                16 * numberOfChannels * blockSize * blockSize, // p2
-                0,   // disp12MaxDiff
-                63,     // prefilterCap
-                5,  // uniqueness ratio
-                0, // sreckleWindowSize
-                32,    // spreckle Range
-                StereoSGBM.MODE_SGBM_3WAY);
-        // create the DisparityMap - SLOW: O(Width*height*numDisparity)
-
-        stereoAlgo.compute(left, right, disparity);
-        Core.normalize(disparity, disparity, 0.0, 255.0, Core.NORM_MINMAX, CvType.CV_8UC1);
-
-
-
-        return disparity;
-    }
-
 }
