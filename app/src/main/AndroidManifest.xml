@@ -14,7 +14,9 @@
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:theme="@style/Theme.SistemiDigitali">
-        <meta-data android:name="com.google.ar.core" android:value="optional" />
+
+        <meta-data android:name="com.google.ar.core"/> <!-- AR Core Support -->
+
         <uses-native-library
             android:name="libOpenCL.so"
             android:required="true"/>
