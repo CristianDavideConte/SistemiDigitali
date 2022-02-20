@@ -24,8 +24,10 @@ public class ARCore {
         ArCoreApk.Availability availability = ArCoreApk.getInstance().checkAvailability(this.context);
         switch (availability) {
             case SUPPORTED_INSTALLED:
+                Log.i("ARCORE", "INSTALLED");
                 return true;
             case SUPPORTED_APK_TOO_OLD:
+                Log.i("ARCORE", "ARCore TOO OLD");
                 return false;
             case SUPPORTED_NOT_INSTALLED:
                 try {
@@ -44,6 +46,7 @@ public class ARCore {
                 return false;
             case UNSUPPORTED_DEVICE_NOT_CAPABLE:
                 // This device is not supported for AR.
+                Log.i("ARCORE", "Unsupported");
                 return false;
         }
         return true;
