@@ -20,7 +20,7 @@ public class ARCore {
     }
 
     //Verify that ARCore is installed and using the current version
-    private boolean isARCoreSupportedAndUpToDate() {
+    public boolean isARCoreSupportedAndUpToDate() {
         ArCoreApk.Availability availability = ArCoreApk.getInstance().checkAvailability(this.context);
         switch (availability) {
             case SUPPORTED_INSTALLED:
