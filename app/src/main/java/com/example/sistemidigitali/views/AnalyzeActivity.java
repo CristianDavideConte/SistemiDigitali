@@ -1,5 +1,7 @@
 package com.example.sistemidigitali.views;
 
+import static com.example.sistemidigitali.debugUtility.Debug.println;
+
 import android.annotation.SuppressLint;
 import android.graphics.Bitmap;
 import android.os.Bundle;
@@ -45,6 +47,11 @@ import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 
 public class AnalyzeActivity extends AppCompatActivity {
+    private static final int TARGET_DEPTH_MAP_WIDTH = 512;
+    private static final int TARGET_DEPTH_MAP_HEIGHT = 512;
+    private static final int TARGET_DEPTH_BITMAP_WIDTH = 256;
+    private static final int TARGET_DEPTH_BITMAP_HEIGHT = 256;
+
     private static CustomObjectDetector objectDetector;
     private static CustomDepthEstimator depthEstimator;
 
@@ -182,7 +189,7 @@ public class AnalyzeActivity extends AppCompatActivity {
     private void loadAnalyzeComponents(Bitmap image) {
         this.frame = image.copy(Bitmap.Config.ARGB_8888, true);
         this.originalImageTensor = TensorImage.fromBitmap(this.frame);
-        this.originalImageBuffer = this.imageUtility.convertBitmapToBytebuffer(image);
+        this.originalImageBuffer = this.imageUtility.convertBitmapToBytebuffer(image, TARGET_DEPTH_MAP_WIDTH, TARGET_DEPTH_MAP_HEIGHT);
         this.analyzeView.setImageBitmap(this.frame);
 
         this.saveImageButton.setOnClickListener((view) -> {
@@ -312,7 +319,7 @@ public class AnalyzeActivity extends AppCompatActivity {
         this.distanceCalculatorExecutor.execute(() -> {
             //To show results take inspiration from:
             float[] outputs = depthEstimator.getDepthMap(originalImageBuffer);
-            this.depthMapImage = this.imageUtility.convertFloatArrayToBitmap(outputs, 256, 256);
+            this.depthMapImage = this.imageUtility.convertFloatArrayToBitmap(outputs, TARGET_DEPTH_BITMAP_WIDTH, TARGET_DEPTH_BITMAP_HEIGHT, false);
 
             runOnUiThread(() -> {
                 this.analyzeView.setImageBitmap(depthMapImage);

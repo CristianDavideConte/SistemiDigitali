@@ -1,5 +1,7 @@
 package com.example.sistemidigitali.model;
 
+import static com.example.sistemidigitali.debugUtility.Debug.println;
+
 import android.annotation.SuppressLint;
 import android.content.ContentValues;
 import android.content.Context;
@@ -47,31 +49,33 @@ public class ImageUtility {
      * @param height the height of the final bitmap
      * @return The corresponding Bitmap image
      */
-    public Bitmap convertFloatArrayToBitmap(float[] imgArray, int width, int height) {
-        float maxval = Float.NEGATIVE_INFINITY;
-        float minval = Float.POSITIVE_INFINITY;
+    public Bitmap convertFloatArrayToBitmap(float[] imgArray, int width, int height, boolean discardRightSide) {
+        final float widthMultiplier = discardRightSide ? 0.5F : 1;
+        float maxVal = Float.NEGATIVE_INFINITY;
+        float minVal = Float.POSITIVE_INFINITY;
         for (float cur : imgArray) {
-            maxval = Math.max(maxval, cur);
-            minval = Math.min(minval, cur);
+            maxVal = Math.max(maxVal, cur);
+            minVal = Math.min(minVal, cur);
         }
         float multiplier = 0;
-        if ((maxval - minval) > 0) multiplier = 255 / (maxval - minval);
+        if ((maxVal - minVal) > 0) multiplier = 255 / (maxVal - minVal);
 
         int[] imgNormalized = new int[imgArray.length];
         for (int i = 0; i < imgArray.length; ++i) {
-            float val = (float) (multiplier * (imgArray[i] - minval));
+            float val = (float) (multiplier * (imgArray[i] - minVal));
             imgNormalized[i] = (int) val;
         }
 
-        Bitmap bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.RGB_565);
+        Bitmap bitmap = Bitmap.createBitmap((int)(width * widthMultiplier), height, Bitmap.Config.ARGB_8888);
 
-        for (int ii = 0; ii < width; ii++) { //pass the screen pixels in 2 directions
-            for (int jj = 0; jj < height; jj++) {
-                //int val = img_normalized[ii + jj * width];
-                int index = (width - ii - 1) + (height - jj - 1) * width;
+        for (int ii = (int)(width * widthMultiplier - 1); ii > 0; ii--) { //pass the screen pixels in 2 directions
+            for (int jj = height - 1; jj > 0; jj--) {
+                int index = ii + jj * width;
                 if(index < imgArray.length) {
                     int val = imgNormalized[index];
                     bitmap.setPixel(ii, jj, Color.rgb(val, val, val));
+                } else {
+                    bitmap.setPixel(ii, jj, Color.rgb(255, 0, 0));
                 }
             }
         }
@@ -113,12 +117,12 @@ public class ImageUtility {
      * @param bitmap A Bitmap
      * @return The corresponding ByteBuffer
      */
-    public ByteBuffer convertBitmapToBytebuffer(Bitmap bitmap) {
+    public ByteBuffer convertBitmapToBytebuffer(Bitmap bitmap, int targetWidth, int targetHeight) {
         int cropSize = Math.min(bitmap.getWidth(), bitmap.getHeight());
         ImageProcessor imageProcessor =
                 new ImageProcessor.Builder()
-                        .add(new ResizeWithCropOrPadOp(cropSize, cropSize))
-                        .add(new ResizeOp(512, 512, ResizeOp.ResizeMethod.NEAREST_NEIGHBOR))
+                        //.add(new ResizeWithCropOrPadOp(cropSize, cropSize))
+                        .add(new ResizeOp(targetHeight, targetWidth, ResizeOp.ResizeMethod.NEAREST_NEIGHBOR))
                         .build();
 
         // Create a TensorImage object. This creates the tensor of the corresponding

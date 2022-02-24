@@ -12,7 +12,6 @@ import org.tensorflow.lite.task.vision.detector.Detection;
 import org.tensorflow.lite.task.vision.detector.ObjectDetector;
 import org.tensorflow.lite.task.vision.detector.ObjectDetector.ObjectDetectorOptions;
 
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
