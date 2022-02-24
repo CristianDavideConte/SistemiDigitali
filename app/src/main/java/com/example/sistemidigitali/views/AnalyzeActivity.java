@@ -49,6 +49,8 @@ public class AnalyzeActivity extends AppCompatActivity {
     private static CustomDepthEstimator depthEstimator;
 
     private Bitmap frame;
+    private float[] depthMap;
+    private Bitmap depthMapImage;
     private TensorImage originalImageTensor;
     private ByteBuffer originalImageBuffer;
 
@@ -189,6 +191,7 @@ public class AnalyzeActivity extends AppCompatActivity {
             this.imageSaverExecutor.execute(() -> {
                 List<Bitmap> images = new ArrayList<>();
                 images.add(this.frame);
+                if(this.depthMapImage != null) images.add(this.depthMapImage);
                 this.imageUtility.saveImages(images);
             });
         });
@@ -309,10 +312,10 @@ public class AnalyzeActivity extends AppCompatActivity {
         this.distanceCalculatorExecutor.execute(() -> {
             //To show results take inspiration from:
             float[] outputs = depthEstimator.getDepthMap(originalImageBuffer);
-            Bitmap bitmap = this.imageUtility.convertFloatArrayToBitmap(outputs, 256, 256);
+            this.depthMapImage = this.imageUtility.convertFloatArrayToBitmap(outputs, 256, 256);
 
             runOnUiThread(() -> {
-                this.analyzeView.setImageBitmap(bitmap);
+                this.analyzeView.setImageBitmap(depthMapImage);
                 this.calcDistanceButton.setText("Clear");
                 this.calcDistanceButton.setCheckable(true);
             });
