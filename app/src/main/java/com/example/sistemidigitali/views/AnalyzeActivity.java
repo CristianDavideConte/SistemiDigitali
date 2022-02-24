@@ -164,7 +164,6 @@ public class AnalyzeActivity extends AppCompatActivity {
         Bitmap frame = frames.get(0);
 
         loadAnalyzeComponents(frame);
-        loadDistanceCalculationComponents();
     }
 
     @Subscribe(sticky = true, threadMode = ThreadMode.MAIN)
