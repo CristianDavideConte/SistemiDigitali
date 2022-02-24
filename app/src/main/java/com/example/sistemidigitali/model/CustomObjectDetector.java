@@ -1,5 +1,7 @@
 package com.example.sistemidigitali.model;
 
+import static com.example.sistemidigitali.debugUtility.Debug.println;
+
 import android.content.Context;
 
 import com.example.sistemidigitali.enums.CustomObjectDetectorType;
@@ -19,30 +21,40 @@ public class CustomObjectDetector {
     private final String MODEL_FILE_F16 = "float_16_model_light.tflite";
     private final String MODEL_FILE_IO8 = "int_8_model_light.tflite";
 
-    private Context context;
     private ObjectDetector detector;
-    private CustomObjectDetectorType type;
 
     public CustomObjectDetector(Context context, CustomObjectDetectorType type) {
-        this.context = context;
-        this.type = type;
-
         try {
             // Initialization
             ObjectDetectorOptions options =
                     ObjectDetectorOptions.builder()
                             .setBaseOptions(BaseOptions.builder().useGpu().build()) //<uses-native-library> tag is required in the AndroidManifest.xml to use the GPU
-                            //.setBaseOptions(BaseOptions.builder().useNnapi().build()) //used for testing on the Android Studio's emulator
-                            .setScoreThreshold(0.3f) //30% sicurezza sulla predizione
+                            .setScoreThreshold(0.3f) //30% prediction minimum accuracy
                             .setMaxResults(10)
                             .build();
 
-            if (this.type == CustomObjectDetectorType.HIGH_ACCURACY)
-                this.detector = ObjectDetector.createFromFileAndOptions(this.context, MODEL_FILE_F16, options);
+            if (type == CustomObjectDetectorType.HIGH_ACCURACY)
+                this.detector = ObjectDetector.createFromFileAndOptions(context, MODEL_FILE_F16, options);
             else
-                this.detector = ObjectDetector.createFromFileAndOptions(this.context, MODEL_FILE_IO8, options);
-        } catch (IOException e){
-            e.printStackTrace();
+                this.detector = ObjectDetector.createFromFileAndOptions(context, MODEL_FILE_IO8, options);
+        } catch (Exception e) {
+            println("Object Detector: GPU NOT COMPATIBLE -> LOADING NNAPI");
+            try {
+                // Initialization
+                ObjectDetectorOptions options =
+                        ObjectDetectorOptions.builder()
+                                .setBaseOptions(BaseOptions.builder().useNnapi().build()) //used for testing on the Android Studio's emulator
+                                .setScoreThreshold(0.3f) //30% prediction minimum accuracy
+                                .setMaxResults(10)
+                                .build();
+
+                if (type == CustomObjectDetectorType.HIGH_ACCURACY)
+                    this.detector = ObjectDetector.createFromFileAndOptions(context, MODEL_FILE_F16, options);
+                else
+                    this.detector = ObjectDetector.createFromFileAndOptions(context, MODEL_FILE_IO8, options);
+            } catch (Exception e2) {
+                e2.printStackTrace();
+            }
         }
     }
 

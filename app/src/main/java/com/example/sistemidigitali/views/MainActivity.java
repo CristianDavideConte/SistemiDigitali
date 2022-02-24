@@ -7,7 +7,6 @@ import android.graphics.Bitmap;
 import android.graphics.ImageDecoder;
 import android.net.Uri;
 import android.os.Bundle;
-import android.util.Log;
 import android.view.View;
 import android.view.WindowManager;
 import android.widget.Toast;
@@ -29,13 +28,14 @@ import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import org.greenrobot.eventbus.EventBus;
 import org.greenrobot.eventbus.Subscribe;
 import org.greenrobot.eventbus.ThreadMode;
-import org.opencv.android.OpenCVLoader;
 
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
 public class MainActivity extends AppCompatActivity {
+    private static final int REQUIRED_NUMBER_OF_FRAMES = 1;
+
     private final String [] permissions = {Manifest.permission.CAMERA, Manifest.permission.READ_EXTERNAL_STORAGE, Manifest.permission.WRITE_EXTERNAL_STORAGE};
 
     private Permission permission;
@@ -62,10 +62,6 @@ public class MainActivity extends AppCompatActivity {
         setContentView(R.layout.activity_main);
         getWindow().setFlags(WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS, WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS);
 
-        if (OpenCVLoader.initDebug()) {
-            Log.d("myTag", "OpenCV loaded");
-        }
-
         this.permission = new Permission();
         this.customGestureDetector = new CustomGestureDetector();
         this.toastMessagesManager = new ToastMessagesManager(this, Toast.LENGTH_SHORT);
@@ -80,7 +76,7 @@ public class MainActivity extends AppCompatActivity {
         this.cameraProviderView = new CameraProviderView(this,  findViewById(R.id.previewView), customGestureDetector);
         this.switchCameraButton.setOnClickListener((view) -> this.cameraProviderView.switchCamera());
         this.liveDetectionSwitch.setOnClickListener((view) -> this.toastMessagesManager.showToastIfNeeded());
-        this.shutterButton.setOnClickListener((view) -> this.cameraProviderView.captureImages(2));
+        this.shutterButton.setOnClickListener((view) -> this.cameraProviderView.captureImages(REQUIRED_NUMBER_OF_FRAMES));
 
 
         //If the files picked are two images the analyze activity is launched
@@ -143,9 +139,10 @@ public class MainActivity extends AppCompatActivity {
      * @param picturePublicUri A picture's Uri.
      */
     private void showAnalyzeActivity(List<Uri> picturePublicUri) {
+        String pluralIfNeeded = REQUIRED_NUMBER_OF_FRAMES > 1 ? "s" : "";
         if(picturePublicUri.size() == 0) return;
-        if(picturePublicUri.size() != 2) {
-            this.toastMessagesManager.showToast("Select 2 stereo images");
+        if(picturePublicUri.size() != REQUIRED_NUMBER_OF_FRAMES) {
+            this.toastMessagesManager.showToast("Select " + REQUIRED_NUMBER_OF_FRAMES + " image" + pluralIfNeeded);
             return;
         }
         try {
@@ -159,7 +156,7 @@ public class MainActivity extends AppCompatActivity {
             this.startActivity(intent);
         } catch (IOException e) {
             e.printStackTrace();
-            this.toastMessagesManager.showToastIfNeeded("Invalid Images");
+            this.toastMessagesManager.showToastIfNeeded("Invalid image" + pluralIfNeeded);
         }
     }
 

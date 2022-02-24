@@ -59,7 +59,6 @@ dependencies {
 
     //Pinch-to-zoom: https://github.com/martinwithaar/PinchToZoom
     implementation('com.bogdwellers:pinchtozoom:0.1')
-    implementation project(path: ':openCV')
 
     //CameraX: https://developer.android.com/jetpack/androidx/releases/camera
     def cameraVersion = "1.1.0-beta01"

@@ -1,8 +1,5 @@
 package com.example.sistemidigitali.views;
 
-import static com.example.sistemidigitali.debugUtility.Debug.print;
-import static com.example.sistemidigitali.debugUtility.Debug.println;
-
 import android.annotation.SuppressLint;
 import android.graphics.Bitmap;
 import android.os.Bundle;
@@ -17,6 +14,7 @@ import androidx.appcompat.app.AppCompatActivity;
 import com.bogdwellers.pinchtozoom.ImageMatrixTouchHandler;
 import com.example.sistemidigitali.R;
 import com.example.sistemidigitali.customEvents.AllowUpdatePolicyChangeEvent;
+import com.example.sistemidigitali.customEvents.CustomDepthEstimatorAvailableEvent;
 import com.example.sistemidigitali.customEvents.CustomObjectDetectorAvailableEvent;
 import com.example.sistemidigitali.customEvents.EndOfGestureEvent;
 import com.example.sistemidigitali.customEvents.GestureIsMoveEvent;
@@ -26,10 +24,10 @@ import com.example.sistemidigitali.customEvents.OverlayVisibilityChangeEvent;
 import com.example.sistemidigitali.customEvents.PictureTakenEvent;
 import com.example.sistemidigitali.customEvents.UpdateDetectionsRectsEvent;
 import com.example.sistemidigitali.enums.CustomObjectDetectorType;
+import com.example.sistemidigitali.model.CustomDepthEstimator;
 import com.example.sistemidigitali.model.CustomGestureDetector;
 import com.example.sistemidigitali.model.CustomObjectDetector;
-import com.example.sistemidigitali.model.DistanceCalculator;
-import com.example.sistemidigitali.model.ImageSaver;
+import com.example.sistemidigitali.model.ImageUtility;
 import com.example.sistemidigitali.model.ToastMessagesManager;
 import com.google.android.material.chip.Chip;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
@@ -37,24 +35,22 @@ import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import org.greenrobot.eventbus.EventBus;
 import org.greenrobot.eventbus.Subscribe;
 import org.greenrobot.eventbus.ThreadMode;
-import org.opencv.core.Point;
 import org.tensorflow.lite.support.image.TensorImage;
 import org.tensorflow.lite.task.vision.detector.Detection;
 
-import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 
 public class AnalyzeActivity extends AppCompatActivity {
     private static CustomObjectDetector objectDetector;
+    private static CustomDepthEstimator depthEstimator;
 
-    private Bitmap frame1, frame2;
-    private Map<Bitmap, float[]> framesPositions;
+    private Bitmap frame;
     private TensorImage originalImageTensor;
+    private ByteBuffer originalImageBuffer;
 
     private View backgroundOverlayAnalyze;
     private ImageView analyzeView;
@@ -74,8 +70,7 @@ public class AnalyzeActivity extends AppCompatActivity {
 
     private ProgressBar analyzeLoadingIndicator;
     private ProgressBar saveLoadingIndicator;
-    private DistanceCalculator distanceCalculator;
-    private ImageSaver imageSaver;
+    private ImageUtility imageUtility;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -92,9 +87,7 @@ public class AnalyzeActivity extends AppCompatActivity {
         this.analyzeLoadingIndicator = findViewById(R.id.analyzeLoadingIndicator);
         this.saveLoadingIndicator = findViewById(R.id.saveLoadingIndicator);
 
-        this.framesPositions = new HashMap<>();
-        this.imageSaver = new ImageSaver(this);
-        this.distanceCalculator = new DistanceCalculator();
+        this.imageUtility = new ImageUtility(this);
         this.toastMessagesManager = new ToastMessagesManager(this, Toast.LENGTH_SHORT);
         this.distanceCalculatorExecutor = Executors.newSingleThreadExecutor();
         this.analyzerExecutor = Executors.newSingleThreadExecutor();
@@ -106,6 +99,11 @@ public class AnalyzeActivity extends AppCompatActivity {
         new Thread(() -> {
             if(objectDetector == null) objectDetector = new CustomObjectDetector(this, CustomObjectDetectorType.HIGH_ACCURACY);
             EventBus.getDefault().postSticky(new CustomObjectDetectorAvailableEvent(this, objectDetector, CustomObjectDetectorType.HIGH_ACCURACY));
+        }).start();
+
+        new Thread(() -> {
+            if(depthEstimator == null) depthEstimator = new CustomDepthEstimator(this);
+            EventBus.getDefault().postSticky(new CustomDepthEstimatorAvailableEvent(this, depthEstimator));
         }).start();
     }
 
@@ -156,41 +154,22 @@ public class AnalyzeActivity extends AppCompatActivity {
         List<Bitmap> frames = event.getFrames();
 
         //If the picture is not available, go back to previous activity
-        if(!event.getError().equals("success") || frames.size() < 2) {
+        if(!event.getError().equals("success")) {
             EventBus.getDefault().removeStickyEvent(event);
             this.toastMessagesManager.showToast(event.getError());
             this.finish();
             return;
         }
 
-        Bitmap frame1 = frames.get(0);
-        Bitmap frame2 = frames.get(1);
-        this.framesPositions = event.getFramesPositions();
-        println("INIT ANALYZE");
-        if(this.framesPositions.containsKey(frame1) && this.framesPositions.containsKey(frame2)) {
-            final float x1 = this.framesPositions.get(frame1)[0];
-            final float x2 = this.framesPositions.get(frame2)[0];
-            final float y1 = this.framesPositions.get(frame1)[1];
-            final float y2 = this.framesPositions.get(frame2)[1];
-            final float z1 = this.framesPositions.get(frame1)[2];
-            final float z2 = this.framesPositions.get(frame2)[2];
+        Bitmap frame = frames.get(0);
 
-            println("xyz 1: ", x1, y1, z1);
-            println("xyz 2: ", x2, y2, z2);
+        loadAnalyzeComponents(frame);
+        loadDistanceCalculationComponents();
+    }
 
-            println("DELTAX: ", x2 - x1);
-            println("DELTAY: ", y2 - y1);
-            println("DELTAZ: ", z2 - z1);
-
-            if(x1 > x2) {
-                loadAnalyzeComponents(frame2);
-                loadDistanceCalculationComponents(frame1);
-                return;
-            }
-        }
-
-        loadAnalyzeComponents(frame1);
-        loadDistanceCalculationComponents(frame2);
+    @Subscribe(sticky = true, threadMode = ThreadMode.MAIN)
+    public void onDepthEstimatorAvailable(CustomDepthEstimatorAvailableEvent event) {
+        loadDistanceCalculationComponents();
     }
 
     /**
@@ -200,19 +179,18 @@ public class AnalyzeActivity extends AppCompatActivity {
      */
     @SuppressLint("ClickableViewAccessibility")
     private void loadAnalyzeComponents(Bitmap image) {
-        this.frame1 = image.copy(Bitmap.Config.ARGB_8888, true);
-        this.originalImageTensor = TensorImage.fromBitmap(frame1);
-        this.analyzeView.setImageBitmap(this.frame1);
+        this.frame = image.copy(Bitmap.Config.ARGB_8888, true);
+        this.originalImageTensor = TensorImage.fromBitmap(this.frame);
+        this.originalImageBuffer = this.imageUtility.convertBitmapToBytebuffer(image);
+        this.analyzeView.setImageBitmap(this.frame);
 
         this.saveImageButton.setOnClickListener((view) -> {
             this.saveImageButton.setClickable(false);
             this.saveLoadingIndicator.setVisibility(View.VISIBLE);
             this.imageSaverExecutor.execute(() -> {
                 List<Bitmap> images = new ArrayList<>();
-                images.add(this.frame1);
-                images.add(this.frame2);
-                images.add(this.distanceCalculator.getDisparityBitmap(this.frame1, this.frame2));
-                this.imageSaver.saveImages(images);
+                images.add(this.frame);
+                this.imageUtility.saveImages(images);
             });
         });
         this.zoomHandler = new ImageMatrixTouchHandler(this);
@@ -230,13 +208,10 @@ public class AnalyzeActivity extends AppCompatActivity {
     }
 
     /**
-     * Loads the second frame needed for generating a disparity map and
+     * Loads the components needed for generating a depth map and
      * set all the needed listeners accordingly.
-     * @param image The bitmap associated with the image (frame1)
      */
-    private void loadDistanceCalculationComponents(Bitmap image) {
-        this.frame2 = image;
-        //this.frame2 = image.copy(Bitmap.Config.ARGB_8888, true);
+    private void loadDistanceCalculationComponents() {
         this.calcDistanceButton.setOnClickListener((view) -> {});
         this.calcDistanceButton.setOnCheckedChangeListener((view, isChecked) -> {
             if(isChecked) {
@@ -244,7 +219,7 @@ public class AnalyzeActivity extends AppCompatActivity {
                 this.calcDistanceButton.setCheckable(false);
                 this.calculateDistance();
             } else {
-                this.analyzeView.setImageBitmap(frame1);
+                this.analyzeView.setImageBitmap(frame);
                 this.calcDistanceButton.setText("Measure");
             }
         });
@@ -268,7 +243,7 @@ public class AnalyzeActivity extends AppCompatActivity {
             }
         });
 
-        if(this.frame1 != null) this.analyzeButton.setCheckable(true);
+        if(this.frame != null) this.analyzeButton.setCheckable(true);
 
         this.toastMessagesManager.hideToast();
         EventBus.getDefault().removeStickyEvent(event);
@@ -333,18 +308,12 @@ public class AnalyzeActivity extends AppCompatActivity {
 
     private void calculateDistance() {
         this.distanceCalculatorExecutor.execute(() -> {
-            //FOR TEST PURPOSES ONLY
-            Bitmap disparityMap = this.distanceCalculator.getDisparityBitmap(this.frame1, this.frame2);
-            //this.frame1 = this.distanceCalculator.getDisparityMap(this.frame1, this.frame2);
-            /*println(this.distanceCalculator.getDistance(
-                    new Point(disparityMap.getWidth() / 2F, disparityMap.getHeight() / 2F),
-                    new Point(disparityMap.getWidth() / 2F + 300, disparityMap.getHeight() / 2F),
-                    160,
-                    this.distanceCalculator.getDisparityMap()
-                    )
-            );*/
+            //To show results take inspiration from:
+            float[] outputs = depthEstimator.getDepthMap(originalImageBuffer);
+            Bitmap bitmap = this.imageUtility.convertFloatArrayToBitmap(outputs, 256, 256);
+
             runOnUiThread(() -> {
-                this.analyzeView.setImageBitmap(disparityMap);
+                this.analyzeView.setImageBitmap(bitmap);
                 this.calcDistanceButton.setText("Clear");
                 this.calcDistanceButton.setCheckable(true);
             });

@@ -15,11 +15,6 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.SistemiDigitali">
 
-        <meta-data android:name="com.google.ar.core" android:value="optional"/> <!-- AR Core Support -->
-
-        <uses-native-library
-            android:name="libOpenCL.so"
-            android:required="true"/>
         <activity
             android:name=".views.PopUpActivity"
             android:exported="false"

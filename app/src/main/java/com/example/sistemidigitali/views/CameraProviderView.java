@@ -1,18 +1,14 @@
 package com.example.sistemidigitali.views;
 
-import static com.example.sistemidigitali.debugUtility.Debug.print;
 import static com.example.sistemidigitali.debugUtility.Debug.println;
 
 import android.annotation.SuppressLint;
 import android.content.Context;
 import android.content.Intent;
 import android.graphics.Bitmap;
-import android.graphics.BitmapFactory;
-import android.graphics.ImageFormat;
 import android.graphics.Matrix;
 import android.hardware.camera2.CameraCharacteristics;
 import android.hardware.camera2.CameraManager;
-import android.media.Image;
 import android.util.Size;
 import android.view.MotionEvent;
 import android.view.ScaleGestureDetector;
@@ -41,17 +37,14 @@ import com.example.sistemidigitali.customEvents.UpdateDetectionsRectsEvent;
 import com.example.sistemidigitali.enums.CustomObjectDetectorType;
 import com.example.sistemidigitali.model.CustomGestureDetector;
 import com.example.sistemidigitali.model.CustomObjectDetector;
-import com.example.sistemidigitali.model.CustomSensorManager;
+import com.example.sistemidigitali.model.ImageUtility;
 import com.google.common.util.concurrent.ListenableFuture;
 
 import org.greenrobot.eventbus.EventBus;
 import org.tensorflow.lite.support.image.TensorImage;
 import org.tensorflow.lite.task.vision.detector.Detection;
 
-import java.io.IOException;
-import java.nio.ByteBuffer;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.concurrent.Executor;
 import java.util.concurrent.ExecutorService;
@@ -65,7 +58,7 @@ public class CameraProviderView {
     private static int currentLensOrientation = CameraSelector.LENS_FACING_BACK;
 
     private final CustomGestureDetector customGestureDetector;
-    private final CustomSensorManager customSensorManager;
+    private final ImageUtility imageUtility;
 
     private ListenableFuture<ProcessCameraProvider> provider;
     private Camera camera;
@@ -88,8 +81,8 @@ public class CameraProviderView {
     public CameraProviderView(MainActivity context, PreviewView previewView, CustomGestureDetector customGestureDetector) {
         this.context = context;
         this.isCameraAvailable = true;
+        this.imageUtility = new ImageUtility(this.context);
         this.customGestureDetector = customGestureDetector;
-        this.customSensorManager = new CustomSensorManager(this.context);
         this.imageCaptureExecutors = Executors.newFixedThreadPool(2);
         this.analyzeExecutor = Executors.newSingleThreadExecutor();
         this.currentDisplayRotation = this.context.getDisplay().getRotation() * 90;
@@ -211,9 +204,6 @@ public class CameraProviderView {
 
         int i = numOfFrames;
         ArrayList<Bitmap> frames = new ArrayList<>();
-        HashMap<Bitmap, float[]> framesPositions = new HashMap<>();
-        this.customSensorManager.stopMonitoring();
-        this.customSensorManager.startMonitoring();
 
         //Take the required amount of pictures
         while(i-- > 0) {
@@ -222,9 +212,8 @@ public class CameraProviderView {
                 new ImageCapture.OnImageCapturedCallback() {
                     @Override
                     public void onCaptureSuccess(@NonNull ImageProxy imageProxy) {
-                        Bitmap frame = convertImageToBitmap(imageProxy.getImage(), getRotationDegree(imageProxy), currentLensOrientation == CameraSelector.LENS_FACING_FRONT);
+                        Bitmap frame = imageUtility.convertImageToBitmap(imageProxy.getImage(), getRotationDegree(imageProxy), currentLensOrientation == CameraSelector.LENS_FACING_FRONT);
                         frames.add(frame);
-                        framesPositions.put(frame, customSensorManager.getDeltaPositionsInPx(frames.size() < 1));
 
                         imageProxy.close();
 
@@ -233,8 +222,7 @@ public class CameraProviderView {
                          * open a new analyze activity which will handle any error
                          */
                         if (frames.size() == numOfFrames) {
-                            customSensorManager.stopMonitoring();
-                            EventBus.getDefault().postSticky(new PictureTakenEvent(frames, "success", framesPositions));
+                            EventBus.getDefault().postSticky(new PictureTakenEvent(frames, "success"));
                             context.startActivity(new Intent(context, AnalyzeActivity.class));
                         }
                     }
@@ -296,33 +284,4 @@ public class CameraProviderView {
         int constantRotation = imageProxy.getImageInfo().getRotationDegrees() - this.camera.getCameraInfo().getSensorRotationDegrees();
         return this.camera.getCameraInfo().getSensorRotationDegrees() - this.currentDisplayRotation + constantRotation * rotationDirection;
     }
-
-    /**
-     * Converts the passed ImageProxy to a Bitmap image.
-     * Source: https://stackoverflow.com/questions/56772967/converting-imageproxy-to-bitmap
-     * @param image An ImageProxy
-     * @param flipNeeded True if image needs to be mirrored on the y-axis, false otherwise.
-     * @return The corresponding Bitmap image
-     */
-    private Bitmap convertImageToBitmap(@NonNull Image image, int rotationDegree, boolean flipNeeded) {
-        ByteBuffer byteBuffer = image.getPlanes()[0].getBuffer();
-        byteBuffer.rewind();
-        byte[] bytes = new byte[byteBuffer.capacity()];
-        byteBuffer.get(bytes);
-
-        BitmapFactory.decodeByteArray(bytes, 0, bytes.length);
-        BitmapFactory.Options decodeOptions = new BitmapFactory.Options();
-        decodeOptions.inSampleSize = 2; //Scale the original image by this factor in either dimension
-        decodeOptions.inPreferredConfig = Bitmap.Config.ARGB_8888;
-
-        Bitmap bitmap = BitmapFactory.decodeByteArray(bytes, 0, bytes.length, decodeOptions);
-        Matrix matrix = new Matrix();
-        matrix.postRotate(rotationDegree);
-        if(flipNeeded) matrix.preScale(1.0f, -1.0f); //flip the image on the y-axis
-
-        int width = Math.min(image.getWidth(), bitmap.getWidth());
-        int height = Math.min(image.getHeight(), bitmap.getHeight());
-        return Bitmap.createBitmap(bitmap, 0, 0, width, height, matrix, flipNeeded);
-    }
-
 }
