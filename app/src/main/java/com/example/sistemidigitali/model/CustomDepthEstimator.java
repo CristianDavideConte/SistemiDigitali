@@ -5,6 +5,7 @@ import static com.example.sistemidigitali.debugUtility.Debug.println;
 
 import android.content.Context;
 import android.content.res.AssetFileDescriptor;
+import android.graphics.RectF;
 
 import org.tensorflow.lite.DataType;
 import org.tensorflow.lite.Interpreter;
@@ -20,7 +21,13 @@ import java.nio.channels.FileChannel;
 
 
 public class CustomDepthEstimator {
-    private final String DEPTH_ESTIMATOR_FILE = "midas_small_2_1.tflite";//"model_opt.tflite"; //
+    private final String DEPTH_ESTIMATOR_FILE = "midas_small_2_1.tflite"; //"model_opt.tflite";
+    //private final String DEPTH_ESTIMATOR_FILE = "dense_depth.tflite"; //https://github.com/jojo13572001/DenseDepth
+    //private final String DEPTH_ESTIMATOR_FILE = "pydnet.tflite"; //https://github.com/FilippoAleotti/mobilePydnet
+
+    private static final float SFR_C_AVG = 170.0F;
+    private static final float SFR_D = 10.0F;
+
 
     private Context context;
     private Interpreter depthEstimator;
@@ -38,6 +45,7 @@ public class CustomDepthEstimator {
             MappedByteBuffer modelBuffer = loadModelFile(DEPTH_ESTIMATOR_FILE);
             this.depthEstimator = new Interpreter(modelBuffer, depthEstimatorOptions);
             outputProbabilityBuffer = TensorBuffer.createFixedSize(this.depthEstimator.getOutputTensor(0).shape(), DataType.FLOAT32);
+            //outputProbabilityBuffer = TensorBuffer.createFixedSize(new int[]{1, 1500, 2000, 3}, DataType.FLOAT32);
 
             MetadataExtractor metadataExtractor = new MetadataExtractor(modelBuffer);
             // Image shape is in the format of {1, height, width, 3}.
@@ -71,11 +79,13 @@ public class CustomDepthEstimator {
     //Sapendo la dimensione dimensione di un volto ad una distanza x scelta ed il suo valore di depth map (punto centrale del rettangolo o la media),
     //si può calcolare la distanza tra due volti (rettangoli e loro punti centrali) utilizzando la loro depth e i valori calcolati precedentemente (forse anche conversione px->cm).
     public float[] getDepthMap(ByteBuffer input) {
-        //3x512x512
-        this.depthEstimator.run(input, outputProbabilityBuffer.getBuffer().rewind());
+        try {
+            this.depthEstimator.run(input, outputProbabilityBuffer.getBuffer().rewind());
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
 
-
-        int test = 0;
+        /*int test = 0;
         print("[");
         for (float i: outputProbabilityBuffer.getFloatArray()) {
             if(test != 0 && test % 256 == 0) print(",\n");
@@ -85,9 +95,49 @@ public class CustomDepthEstimator {
             //if(test > 1000) break;
         }
         println("]");
-        println();
+        println();*/
 
         return outputProbabilityBuffer.getFloatArray(); //The outputs are relative depths between pixels
+    }
+
+    public float getDistancePhonePerson(float[] depthMap, float depthMapWidth, float depthMapHeight, float left, float width, float top, float height) {
+        //C(i,j) = depthMap[i][j]
+        //C(avg) = average depth in detection
+        //SFR = STANDARD_DETECTION_RECT
+        //distancePhonePerson = SFR.C(avg) * detection.C(avg) / SFR.C(avg)
+        float cAvg = this.getAverageDepthInDetection(depthMap, depthMapWidth, depthMapHeight, left, width, top, height);
+        return SFR_D * cAvg / SFR_C_AVG;
+    }
+
+    /**
+     * Given a depth map, calculate the average value (depth) within the given boundaries.
+     * @param depthMap The depth map containing the depth values.
+     * @param width The width of the detection.
+     * @param height The height of the detection.
+     * @return The average value (depth) within the given boundaries.
+     */
+    private float getAverageDepthInDetection(float[] depthMap, float depthMapWidth, float depthMapHeight, float left, float width, float top, float height) {
+        left = left < 0 ? 0 : Math.min(left, depthMapWidth - 1);
+        top  = top  < 0 ? 0 : Math.min(top, depthMapHeight - 1);
+        int availableWidth  = (int) Math.min(depthMapWidth  - 1, left + width);
+        int availableHeight = (int) Math.min(depthMapHeight - 1, top + height);
+
+        println("DET LEFT", left);
+        println("DET WIDTH", width);
+        println("DET TOP", top);
+        println("DET HEIGHT", height);
+        println("AVAIL WIDTH", availableWidth);
+        println("AVAIL HEIGHT", availableHeight);
+        println("ARRAY LENGTH", depthMap.length);
+
+
+        float averageDepth = 0.0F;
+        for (int i = (int) left; i < availableWidth; i++) {
+            for (int j = (int) top; j < availableHeight; j++) {
+                averageDepth += depthMap[(int)(i + j * depthMapWidth)];
+            }
+        }
+        return averageDepth / (width * height);
     }
 
     public int getImageSizeX() {
@@ -97,6 +147,7 @@ public class CustomDepthEstimator {
     public int getImageSizeY() {
         return imageSizeY;
     }
+
 
     /**
      * Return a MappedByteBuffer of a tflite model.

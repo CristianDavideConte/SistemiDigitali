@@ -49,8 +49,7 @@ public class ImageUtility {
      * @param height the height of the final bitmap
      * @return The corresponding Bitmap image
      */
-    public Bitmap convertFloatArrayToBitmap(float[] imgArray, int width, int height, boolean discardRightSide) {
-        final float widthMultiplier = discardRightSide ? 0.5F : 1;
+    public Bitmap convertFloatArrayToBitmap(float[] imgArray, int width, int height) {
         float maxVal = Float.NEGATIVE_INFINITY;
         float minVal = Float.POSITIVE_INFINITY;
         for (float cur : imgArray) {
@@ -58,21 +57,24 @@ public class ImageUtility {
             minVal = Math.min(minVal, cur);
         }
         float multiplier = 0;
-        if ((maxVal - minVal) > 0) multiplier = 255 / (maxVal - minVal);
+        if ((maxVal - minVal) > 0) multiplier = 255 / (maxVal - Math.abs(minVal));
 
         int[] imgNormalized = new int[imgArray.length];
         for (int i = 0; i < imgArray.length; ++i) {
-            float val = (float) (multiplier * (imgArray[i] - minVal));
-            imgNormalized[i] = (int) val;
+            float val = multiplier * (imgArray[i] - minVal);
+            imgNormalized[i] = (int) val; //always between 0..255
         }
 
-        Bitmap bitmap = Bitmap.createBitmap((int)(width * widthMultiplier), height, Bitmap.Config.ARGB_8888);
+        Bitmap bitmap = Bitmap.createBitmap(width / 2, height, Bitmap.Config.RGB_565);
 
-        for (int ii = (int)(width * widthMultiplier - 1); ii > 0; ii--) { //pass the screen pixels in 2 directions
-            for (int jj = height - 1; jj > 0; jj--) {
+        for (int ii = 0; ii < width / 2 - 1; ii++) { //pass the screen pixels in 2 directions
+            for (int jj = 0; jj < height - 1; jj++) {
                 int index = ii + jj * width;
                 if(index < imgArray.length) {
-                    int val = imgNormalized[index];
+                    //int val = (imgNormalized[index] + imgNormalized[index + width / 2]) / 2; //average of the two pictures
+                    //int val = (imgNormalized[index] + 255 - imgNormalized[index + width / 2]) / 2; //average of the two pictures
+                    //int val = imgNormalized[index + width / 2]; //Right image
+                    int val = imgNormalized[index]; //Left image
                     bitmap.setPixel(ii, jj, Color.rgb(val, val, val));
                 } else {
                     bitmap.setPixel(ii, jj, Color.rgb(255, 0, 0));
@@ -82,7 +84,6 @@ public class ImageUtility {
 
         return bitmap;
     }
-
 
     /**
      * Converts the passed Image to a Bitmap image.

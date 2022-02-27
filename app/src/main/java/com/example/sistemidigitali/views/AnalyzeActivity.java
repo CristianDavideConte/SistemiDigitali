@@ -47,10 +47,15 @@ import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 
 public class AnalyzeActivity extends AppCompatActivity {
-    private static final int TARGET_DEPTH_MAP_WIDTH = 512;
-    private static final int TARGET_DEPTH_MAP_HEIGHT = 512;
-    private static final int TARGET_DEPTH_BITMAP_WIDTH = 256;
-    private static final int TARGET_DEPTH_BITMAP_HEIGHT = 256;
+
+    private static final int TARGET_DEPTH_BITMAP_WIDTH = 256;//640;//256;
+    private static final int TARGET_DEPTH_BITMAP_HEIGHT = 256;//448;//256;
+    private static final int TARGET_DEPTH_MAP_WIDTH = 256*2;//TARGET_DEPTH_BITMAP_WIDTH*2;//640*2;//512;
+    private static final int TARGET_DEPTH_MAP_HEIGHT = 256*2;//TARGET_DEPTH_BITMAP_HEIGHT*2;//448*2;//512;
+    //private static final int TARGET_DEPTH_MAP_WIDTH = 480*2;//640*2;//512;
+    //private static final int TARGET_DEPTH_MAP_HEIGHT = 640*2;//448*2;//512;
+    //private static final int TARGET_DEPTH_BITMAP_WIDTH = 480;//640;//256;
+    //private static final int TARGET_DEPTH_BITMAP_HEIGHT = 640;//448;//256;
 
     private static CustomObjectDetector objectDetector;
     private static CustomDepthEstimator depthEstimator;
@@ -256,6 +261,8 @@ public class AnalyzeActivity extends AppCompatActivity {
 
         this.toastMessagesManager.hideToast();
         EventBus.getDefault().removeStickyEvent(event);
+
+        this.detectObjects(); //<----------------------------------------TEST ONLY
     }
 
     @SuppressLint("WrongConstant")
@@ -318,8 +325,10 @@ public class AnalyzeActivity extends AppCompatActivity {
     private void calculateDistance() {
         this.distanceCalculatorExecutor.execute(() -> {
             //To show results take inspiration from:
-            float[] outputs = depthEstimator.getDepthMap(originalImageBuffer);
-            this.depthMapImage = this.imageUtility.convertFloatArrayToBitmap(outputs, TARGET_DEPTH_BITMAP_WIDTH, TARGET_DEPTH_BITMAP_HEIGHT, false);
+            this.depthMap = depthEstimator.getDepthMap(originalImageBuffer);
+            this.depthMapImage = this.imageUtility.convertFloatArrayToBitmap(this.depthMap, TARGET_DEPTH_BITMAP_WIDTH, TARGET_DEPTH_BITMAP_HEIGHT);
+
+            this.printDistance();
 
             runOnUiThread(() -> {
                 this.analyzeView.setImageBitmap(depthMapImage);
@@ -327,5 +336,21 @@ public class AnalyzeActivity extends AppCompatActivity {
                 this.calcDistanceButton.setCheckable(true);
             });
         });
+    }
+
+    private void printDistance() {
+        final Detection detection = this.detections.get(0);
+        final float scaleX = (float) TARGET_DEPTH_MAP_WIDTH / (float) this.frame.getWidth();
+        final float scaleY = (float) TARGET_DEPTH_MAP_HEIGHT / (float) this.frame.getHeight();
+
+        println(scaleX, scaleY);
+        float depth = depthEstimator.getDistancePhonePerson(this.depthMap,
+                                                            TARGET_DEPTH_BITMAP_WIDTH,
+                                                            TARGET_DEPTH_BITMAP_HEIGHT,
+                                                            detection.getBoundingBox().left * scaleX,
+                                                      detection.getBoundingBox().width() * scaleX,
+                                                            detection.getBoundingBox().top * scaleY,
+                                                      detection.getBoundingBox().height() * scaleY);
+        println(depth);
     }
 }
