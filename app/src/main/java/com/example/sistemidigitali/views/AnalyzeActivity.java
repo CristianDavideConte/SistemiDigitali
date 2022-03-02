@@ -48,6 +48,8 @@ import java.util.concurrent.Executors;
 
 public class AnalyzeActivity extends AppCompatActivity {
 
+    private static final float PX_TO_METERS = 0.0002645833F;
+
     private static final int TARGET_DEPTH_BITMAP_WIDTH = 256;//640;//256;
     private static final int TARGET_DEPTH_BITMAP_HEIGHT = 256;//448;//256;
     private static final int TARGET_DEPTH_MAP_WIDTH = 256*2;//TARGET_DEPTH_BITMAP_WIDTH*2;//640*2;//512;
@@ -344,13 +346,18 @@ public class AnalyzeActivity extends AppCompatActivity {
         final float scaleY = (float) TARGET_DEPTH_MAP_HEIGHT / (float) this.frame.getHeight();
 
         println(scaleX, scaleY);
-        float depth = depthEstimator.getDistancePhonePerson(this.depthMap,
+        double ipotenusaZ1 = depthEstimator.getDistancePhonePerson(this.depthMap,
                                                             TARGET_DEPTH_BITMAP_WIDTH,
                                                             TARGET_DEPTH_BITMAP_HEIGHT,
                                                             detection.getBoundingBox().left * scaleX,
                                                       detection.getBoundingBox().width() * scaleX,
                                                             detection.getBoundingBox().top * scaleY,
                                                       detection.getBoundingBox().height() * scaleY);
-        println(depth);
+
+        double catetoZ1 = Math.abs((float) this.frame.getWidth() / 2 - detection.getBoundingBox().centerX()) * PX_TO_METERS;
+        double Z1 = Math.sqrt(ipotenusaZ1 * ipotenusaZ1 - catetoZ1 * catetoZ1);
+
+        println((float) this.frame.getWidth() / 2, detection.getBoundingBox().centerX(), PX_TO_METERS);
+        println(ipotenusaZ1, "\nZ (in m):", Z1);
     }
 }
