@@ -21,15 +21,13 @@ import java.nio.channels.FileChannel;
 
 
 public class CustomDepthEstimator {
-    private final String DEPTH_ESTIMATOR_FILE = "midas_small_2_1.tflite"; //"model_opt.tflite";
-    //private final String DEPTH_ESTIMATOR_FILE = "dense_depth.tflite"; //https://github.com/jojo13572001/DenseDepth
-    //private final String DEPTH_ESTIMATOR_FILE = "pydnet.tflite"; //https://github.com/FilippoAleotti/mobilePydnet
+    private final String DEPTH_ESTIMATOR_FILE = "midas_small_2_1.tflite";
 
-    private static final float SFR_C_AVG = 170.0F;
-    private static final float SFR_D = 10.0F;
+    private static final float SFR_C_AVG = 170.0F; //Standard Average Depth in SFR area
+    private static final float SFR_D = 1.0F;       //Standard Distance phone-person (in Meters)
 
 
-    private Context context;
+    private final Context context;
     private Interpreter depthEstimator;
     private TensorBuffer outputProbabilityBuffer;
     private int imageSizeX, imageSizeY;
@@ -45,11 +43,10 @@ public class CustomDepthEstimator {
             MappedByteBuffer modelBuffer = loadModelFile(DEPTH_ESTIMATOR_FILE);
             this.depthEstimator = new Interpreter(modelBuffer, depthEstimatorOptions);
             outputProbabilityBuffer = TensorBuffer.createFixedSize(this.depthEstimator.getOutputTensor(0).shape(), DataType.FLOAT32);
-            //outputProbabilityBuffer = TensorBuffer.createFixedSize(new int[]{1, 1500, 2000, 3}, DataType.FLOAT32);
 
-            MetadataExtractor metadataExtractor = new MetadataExtractor(modelBuffer);
             // Image shape is in the format of {1, height, width, 3}.
-            int[] imageShape = metadataExtractor.getInputTensorShape(/*inputIndex=*/ 0);
+            MetadataExtractor metadataExtractor = new MetadataExtractor(modelBuffer);
+            int[] imageShape = metadataExtractor.getInputTensorShape(0);
             imageSizeY = imageShape[1];
             imageSizeX = imageShape[2];
 
@@ -58,13 +55,21 @@ public class CustomDepthEstimator {
                 println(test++, " -> " ,i);
             }
         } catch (Exception e) {
-            println("Depth Estimator: GPU NOT COMPATIBLE -> LOADING CPU");
             try {
+                println("Depth Estimator: GPU NOT COMPATIBLE -> LOADING CPU");
+
                 Interpreter.Options depthEstimatorOptions = new Interpreter.Options();
                 depthEstimatorOptions.setNumThreads(4);
 
-                this.depthEstimator = new Interpreter(loadModelFile(DEPTH_ESTIMATOR_FILE), depthEstimatorOptions);
+                MappedByteBuffer modelBuffer = loadModelFile(DEPTH_ESTIMATOR_FILE);
+                this.depthEstimator = new Interpreter(modelBuffer, depthEstimatorOptions);
                 outputProbabilityBuffer = TensorBuffer.createFixedSize(this.depthEstimator.getOutputTensor(0).shape(), DataType.FLOAT32);
+
+                // Image shape is in the format of {1, height, width, 3}.
+                MetadataExtractor metadataExtractor = new MetadataExtractor(modelBuffer);
+                int[] imageShape = metadataExtractor.getInputTensorShape(0);
+                imageSizeY = imageShape[1];
+                imageSizeX = imageShape[2];
             } catch (Exception e2) {
                 e2.printStackTrace();
             }
@@ -123,6 +128,7 @@ public class CustomDepthEstimator {
         int availableWidth  = (int) Math.min(depthMapWidth  - 1, left + width);
         int availableHeight = (int) Math.min(depthMapHeight - 1, top + height);
 
+        /*
         println("DET LEFT", left);
         println("DET WIDTH", width);
         println("DET TOP", top);
@@ -130,11 +136,11 @@ public class CustomDepthEstimator {
         println("AVAIL WIDTH", availableWidth);
         println("AVAIL HEIGHT", availableHeight);
         println("ARRAY LENGTH", depthMap.length);
-
+        */
 
         float averageDepth = 0.0F;
-        for (int i = (int) left; i < availableWidth; i++) {
-            for (int j = (int) top; j < availableHeight; j++) {
+        for (int j = (int) top; j < availableHeight; j++) {
+            for (int i = (int) left; i < availableWidth; i++) {
                 averageDepth += depthMap[(int)(i + j * depthMapWidth)];
             }
         }

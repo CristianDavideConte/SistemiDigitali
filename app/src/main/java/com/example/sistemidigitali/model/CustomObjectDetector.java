@@ -17,8 +17,10 @@ import java.util.List;
 
 public class CustomObjectDetector {
     private final String TEST_MODEL_FILE = "ssd_mobilenet_v1_1_metadata_1.tflite";
-    private final String MODEL_FILE_F16 = "float_16_model_light.tflite";
+    //private final String MODEL_FILE_F16 = "float_16_model_light.tflite";
+    private final String MODEL_FILE_F16 = "float_16_model_heavy.tflite";
     private final String MODEL_FILE_IO8 = "int_8_model_light.tflite";
+    //private final String MODEL_FILE_IO8 = "int_8_model_heavy.tflite";
 
     private ObjectDetector detector;
 
@@ -27,8 +29,9 @@ public class CustomObjectDetector {
             // Initialization
             ObjectDetectorOptions options =
                     ObjectDetectorOptions.builder()
-                            .setBaseOptions(BaseOptions.builder().useGpu().build()) //<uses-native-library> tag is required in the AndroidManifest.xml to use the GPU
-                            .setScoreThreshold(0.3f) //30% prediction minimum accuracy
+                            //.setBaseOptions(BaseOptions.builder().useGpu().build()) //<uses-native-library> tag is required in the AndroidManifest.xml to use the GPU
+                            .setBaseOptions(BaseOptions.builder().setNumThreads(4).build())
+                            .setScoreThreshold(0.23f) //23% prediction minimum accuracy
                             .setMaxResults(10)
                             .build();
 

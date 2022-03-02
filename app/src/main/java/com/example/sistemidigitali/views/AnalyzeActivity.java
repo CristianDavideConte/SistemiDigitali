@@ -4,6 +4,8 @@ import static com.example.sistemidigitali.debugUtility.Debug.println;
 
 import android.annotation.SuppressLint;
 import android.graphics.Bitmap;
+import android.graphics.Matrix;
+import android.graphics.RectF;
 import android.os.Bundle;
 import android.view.View;
 import android.view.WindowManager;
@@ -37,7 +39,9 @@ import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import org.greenrobot.eventbus.EventBus;
 import org.greenrobot.eventbus.Subscribe;
 import org.greenrobot.eventbus.ThreadMode;
+import org.tensorflow.lite.support.image.ImageProcessor;
 import org.tensorflow.lite.support.image.TensorImage;
+import org.tensorflow.lite.support.image.ops.ResizeOp;
 import org.tensorflow.lite.task.vision.detector.Detection;
 
 import java.nio.ByteBuffer;
@@ -50,14 +54,10 @@ public class AnalyzeActivity extends AppCompatActivity {
 
     private static final float PX_TO_METERS = 0.0002645833F;
 
-    private static final int TARGET_DEPTH_BITMAP_WIDTH = 256;//640;//256;
-    private static final int TARGET_DEPTH_BITMAP_HEIGHT = 256;//448;//256;
-    private static final int TARGET_DEPTH_MAP_WIDTH = 256*2;//TARGET_DEPTH_BITMAP_WIDTH*2;//640*2;//512;
-    private static final int TARGET_DEPTH_MAP_HEIGHT = 256*2;//TARGET_DEPTH_BITMAP_HEIGHT*2;//448*2;//512;
-    //private static final int TARGET_DEPTH_MAP_WIDTH = 480*2;//640*2;//512;
-    //private static final int TARGET_DEPTH_MAP_HEIGHT = 640*2;//448*2;//512;
-    //private static final int TARGET_DEPTH_BITMAP_WIDTH = 480;//640;//256;
-    //private static final int TARGET_DEPTH_BITMAP_HEIGHT = 640;//448;//256;
+    private static final int TARGET_DEPTH_BITMAP_WIDTH = 256;
+    private static final int TARGET_DEPTH_BITMAP_HEIGHT = 256;
+    private static final int TARGET_DEPTH_MAP_WIDTH = 256*2;
+    private static final int TARGET_DEPTH_MAP_HEIGHT = 256*2;
 
     private static CustomObjectDetector objectDetector;
     private static CustomDepthEstimator depthEstimator;
@@ -196,7 +196,7 @@ public class AnalyzeActivity extends AppCompatActivity {
     private void loadAnalyzeComponents(Bitmap image) {
         this.frame = image.copy(Bitmap.Config.ARGB_8888, true);
         this.originalImageTensor = TensorImage.fromBitmap(this.frame);
-        this.originalImageBuffer = this.imageUtility.convertBitmapToBytebuffer(image, TARGET_DEPTH_MAP_WIDTH, TARGET_DEPTH_MAP_HEIGHT);
+        this.originalImageBuffer = this.imageUtility.convertBitmapToBytebuffer(this.frame, TARGET_DEPTH_MAP_WIDTH, TARGET_DEPTH_MAP_HEIGHT);
         this.analyzeView.setImageBitmap(this.frame);
 
         this.saveImageButton.setOnClickListener((view) -> {
@@ -311,6 +311,8 @@ public class AnalyzeActivity extends AppCompatActivity {
 
     private void detectObjects() {
         this.analyzerExecutor.execute(() -> {
+            this.originalImageTensor = TensorImage.fromBitmap(this.frame);
+
             this.detections = objectDetector.detect(this.originalImageTensor);
             EventBus.getDefault().post(new UpdateDetectionsRectsEvent(this, this.detections, false, this.analyzeView.getImageMatrix()));
 
@@ -330,7 +332,18 @@ public class AnalyzeActivity extends AppCompatActivity {
             this.depthMap = depthEstimator.getDepthMap(originalImageBuffer);
             this.depthMapImage = this.imageUtility.convertFloatArrayToBitmap(this.depthMap, TARGET_DEPTH_BITMAP_WIDTH, TARGET_DEPTH_BITMAP_HEIGHT);
 
-            this.printDistance();
+            if(detections.size() > 1) {
+                println("DISTANCE BETWEEN PEOPLE",
+                        getDistanceBetweenTwoPoints(
+                                this.detections.get(0).getBoundingBox().centerX() * PX_TO_METERS,
+                                this.detections.get(0).getBoundingBox().centerY() * PX_TO_METERS,
+                                this.getZ(this.detections.get(0)),
+                                this.detections.get(1).getBoundingBox().centerX() * PX_TO_METERS,
+                                this.detections.get(1).getBoundingBox().centerY() * PX_TO_METERS,
+                                this.getZ(this.detections.get(1))
+                        )
+                );
+            }
 
             runOnUiThread(() -> {
                 this.analyzeView.setImageBitmap(depthMapImage);
@@ -340,24 +353,33 @@ public class AnalyzeActivity extends AppCompatActivity {
         });
     }
 
-    private void printDistance() {
-        final Detection detection = this.detections.get(0);
-        final float scaleX = (float) TARGET_DEPTH_MAP_WIDTH / (float) this.frame.getWidth();
-        final float scaleY = (float) TARGET_DEPTH_MAP_HEIGHT / (float) this.frame.getHeight();
+    private double getZ(Detection detection) {
+        //Rectangle of the currently zoomed/scaled/translate AnalyzeView's image
+        final RectF imageRect = new RectF(0, 0, this.frame.getWidth(), this.frame.getHeight());
+        this.analyzeView.getImageMatrix().mapRect(imageRect);
 
-        println(scaleX, scaleY);
-        double ipotenusaZ1 = depthEstimator.getDistancePhonePerson(this.depthMap,
-                                                            TARGET_DEPTH_BITMAP_WIDTH,
-                                                            TARGET_DEPTH_BITMAP_HEIGHT,
-                                                            detection.getBoundingBox().left * scaleX,
-                                                      detection.getBoundingBox().width() * scaleX,
-                                                            detection.getBoundingBox().top * scaleY,
-                                                      detection.getBoundingBox().height() * scaleY);
+        //zoomed/scaled/translate detection Rect
+        final RectF boundingBox = detection.getBoundingBox();
 
-        double catetoZ1 = Math.abs((float) this.frame.getWidth() / 2 - detection.getBoundingBox().centerX()) * PX_TO_METERS;
-        double Z1 = Math.sqrt(ipotenusaZ1 * ipotenusaZ1 - catetoZ1 * catetoZ1);
+        final float scaleX = (float) TARGET_DEPTH_BITMAP_WIDTH  / (float) this.frame.getWidth();
+        final float scaleY = (float) TARGET_DEPTH_BITMAP_HEIGHT / (float) this.frame.getHeight();
 
-        println((float) this.frame.getWidth() / 2, detection.getBoundingBox().centerX(), PX_TO_METERS);
-        println(ipotenusaZ1, "\nZ (in m):", Z1);
+        final double hypotenuse = depthEstimator.getDistancePhonePerson(
+                this.depthMap,
+                TARGET_DEPTH_BITMAP_WIDTH,
+                TARGET_DEPTH_BITMAP_HEIGHT,
+                (boundingBox.left - imageRect.left) * scaleX,
+                boundingBox.width() * scaleX,
+                (boundingBox.top - imageRect.top) * scaleY,
+                boundingBox.height() * scaleY
+        ); //In meters
+
+        final double cathetus = Math.abs((float) this.frame.getWidth() / 2 - boundingBox.centerX()) * PX_TO_METERS; //In meters
+        return Math.sqrt(hypotenuse * hypotenuse - cathetus * cathetus);
+    }
+
+    private double getDistanceBetweenTwoPoints(double x1, double y1, double z1, double x2, double y2, double z2) {
+        println("SQRT", (x2 - x1) * (x2 - x1) + (y2 - y1) * (y2 - y1) + (z2 - z1) + (z2 - z1)); //<---------------------------- VIENE NEGATIVO (GUARDA IL PERCHÈ) / VEDI SE FORMULA È GIUSTA
+        return Math.sqrt((x2 - x1) * (x2 - x1) + (y2 - y1) * (y2 - y1) + (z2 - z1) + (z2 - z1)); //In meters
     }
 }
