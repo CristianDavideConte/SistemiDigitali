@@ -105,7 +105,8 @@ public class CustomDepthEstimator {
         //C(avg) = average depth in detection
         //SFR = STANDARD_DETECTION_RECT
         //distancePhonePerson = SFR.C(avg) * detection.C(avg) / SFR.C(avg)
-        float cAvg = this.getAverageDepthInDetection(depthMap, depthMapWidth, depthMapHeight, left, width, top, height);
+        final float cAvg = this.getAverageDepthInDetection(depthMap, depthMapWidth, depthMapHeight, left, width, top, height);
+        println("AVERAGE DEPTH", cAvg);
         return SFR_D * cAvg / SFR_C_AVG;
     }
 
