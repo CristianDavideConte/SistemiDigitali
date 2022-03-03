@@ -31,7 +31,8 @@
             android:layout_width="match_parent"
             android:layout_height="match_parent"
             android:gravity="center_horizontal"
-            android:orientation="vertical">
+            android:orientation="vertical"
+            android:animateLayoutChanges="true">
 
             <com.google.android.material.chip.Chip
                 android:id="@+id/calcDistanceButton"
@@ -45,6 +46,7 @@
                 android:textColor="#FFFFFF"
                 android:textSize="18sp"
                 android:translationY="50dp"
+                android:visibility="gone"
                 app:checkedIconEnabled="false"
                 app:chipBackgroundColor="@color/chip_bg_states_alt"
                 app:chipIconVisible="false" />
