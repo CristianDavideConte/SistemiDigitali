@@ -21,8 +21,8 @@ import java.nio.channels.FileChannel;
 public class CustomDepthEstimator {
     private final String DEPTH_ESTIMATOR_FILE = "midas_small_2_1.tflite";
 
-    private static final float SFR_C_AVG = 170.0F; //Standard Average Depth in SFR area
-    private static final float SFR_D = 1.0F;       //Standard Distance phone-person (in Meters)
+    private static final float SFR_C_AVG = 194.29F; //Standard Average Depth in SFR area
+    private static final float SFR_D = 1.0F;        //Standard Distance phone-person (in Meters)
 
 
     private final Context context;

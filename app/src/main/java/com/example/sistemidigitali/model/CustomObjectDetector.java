@@ -31,6 +31,7 @@ public class CustomObjectDetector {
                     ObjectDetectorOptions.builder()
                             //.setBaseOptions(BaseOptions.builder().useGpu().build()) //<uses-native-library> tag is required in the AndroidManifest.xml to use the GPU
                             .setBaseOptions(BaseOptions.builder().setNumThreads(4).build())
+                            //.setScoreThreshold(0.09f) //23% prediction minimum accuracy
                             .setScoreThreshold(0.23f) //23% prediction minimum accuracy
                             .setMaxResults(10)
                             .build();

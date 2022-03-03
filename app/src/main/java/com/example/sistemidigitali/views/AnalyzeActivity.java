@@ -49,7 +49,19 @@ import java.util.concurrent.Executors;
 
 public class AnalyzeActivity extends AppCompatActivity {
 
-    private static final float PX_TO_METERS = 0.0002645833F;
+    private static final double STANDARD_FACE_WIDTH_M = 0.147; //In Meters
+    private static final double STANDARD_FACE_HEIGHT_M = 0.234; //In Meters
+    private static final double STANDARD_FACE_WIDTH_PX = 211.67; //In Pixels
+    private static final double STANDARD_FACE_HEIGHT_PX = 333.9583; //In Pixels
+    private static final double PX_TO_METERS = 0.0002645833;
+    private static final double INCH_TO_M = 0.0254;
+
+    private static final double PX_TO_M_CONVERSION_FACTOR_V1 = 1 * STANDARD_FACE_WIDTH_M  / STANDARD_FACE_WIDTH_PX;
+    private static final double PX_TO_M_CONVERSION_FACTOR_V2 = 1 * STANDARD_FACE_HEIGHT_M / STANDARD_FACE_HEIGHT_PX;
+    private static final double PX_TO_M_CONVERSION_FACTOR = (PX_TO_M_CONVERSION_FACTOR_V1 + PX_TO_M_CONVERSION_FACTOR_V2) / 2.0;
+
+    private static double PPI;
+    private static double PX_WIDTH_M, PX_HEIGHT_M;
 
     private static final int TARGET_DEPTH_BITMAP_WIDTH = 256;
     private static final int TARGET_DEPTH_BITMAP_HEIGHT = 256;
@@ -90,6 +102,11 @@ public class AnalyzeActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_analyze);
         getWindow().setFlags(WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS, WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS);
+
+        PPI = this.getResources().getDisplayMetrics().density;
+        PX_WIDTH_M  = this.getResources().getDisplayMetrics().widthPixels  / PPI * INCH_TO_M;
+        PX_HEIGHT_M = this.getResources().getDisplayMetrics().heightPixels / PPI * INCH_TO_M;
+        println("FACTORS -------------------->", PX_TO_M_CONVERSION_FACTOR_V1, PX_TO_M_CONVERSION_FACTOR_V2);
 
         this.backgroundOverlayAnalyze = findViewById(R.id.backgroundOverlayAnalyze);
         this.analyzeView = findViewById(R.id.analyzeView);
@@ -331,18 +348,30 @@ public class AnalyzeActivity extends AppCompatActivity {
 
             if(this.detections.size() == 1) {
                 RectF boundingBoxDetection1 = this.detections.get(0).getBoundingBox();
+                println("FACE WIDTH", boundingBoxDetection1.width());
+                println("FACE HEIGHT", boundingBoxDetection1.height());
                 println("IN METERS", this.getZ(boundingBoxDetection1));
             } else if(this.detections.size() > 1) {
                 RectF boundingBoxDetection1 = this.detections.get(0).getBoundingBox();
                 RectF boundingBoxDetection2 = this.detections.get(1).getBoundingBox();
+
+                double depth1 = this.getZ(boundingBoxDetection1);
+                double depth2 = this.getZ(boundingBoxDetection2);
+
+                double x1px = Math.abs(this.getResources().getDisplayMetrics().widthPixels  / 2.0 - boundingBoxDetection1.centerX());
+                double y1px = Math.abs(this.getResources().getDisplayMetrics().heightPixels / 2.0 - boundingBoxDetection1.centerY());
+
+                double x2px = Math.abs(this.getResources().getDisplayMetrics().widthPixels  / 2.0 - boundingBoxDetection2.centerX());
+                double y2px = Math.abs(this.getResources().getDisplayMetrics().heightPixels / 2.0 - boundingBoxDetection2.centerY());
+
                 println("DISTANCE BETWEEN PEOPLE",
                         getDistanceBetweenTwoPoints(
-                                boundingBoxDetection1.centerX() * PX_TO_METERS, //NOT CORRECT <----- X scales with distance
-                                boundingBoxDetection1.centerY() * PX_TO_METERS, //NOT CORRECT <----- Y scales with distance
-                                this.getZ(boundingBoxDetection1),
-                                boundingBoxDetection2.centerX() * PX_TO_METERS, //NOT CORRECT <----- X scales with distance
-                                boundingBoxDetection2.centerY() * PX_TO_METERS, //NOT CORRECT <----- Y scales with distance
-                                this.getZ(boundingBoxDetection2)
+                                x1px * PX_TO_M_CONVERSION_FACTOR / depth1,
+                                y1px * PX_TO_M_CONVERSION_FACTOR / depth1,
+                                depth1,
+                                x2px * PX_TO_M_CONVERSION_FACTOR / depth2,
+                                y2px * PX_TO_M_CONVERSION_FACTOR / depth2,
+                                depth2
                         )
                 );
             }
