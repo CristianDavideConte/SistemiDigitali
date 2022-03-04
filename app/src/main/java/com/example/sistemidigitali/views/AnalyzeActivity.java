@@ -8,6 +8,7 @@ import android.graphics.Bitmap;
 import android.graphics.Color;
 import android.graphics.RectF;
 import android.os.Bundle;
+import android.view.MotionEvent;
 import android.view.View;
 import android.view.WindowManager;
 import android.widget.ImageView;
@@ -153,7 +154,7 @@ public class AnalyzeActivity extends AppCompatActivity {
     @Override
     protected void onResume() {
         super.onResume();
-        EventBus.getDefault().post(new UpdateDetectionsRectsEvent(this, new ArrayList<>(), false, null, new ArrayList<>()));
+        //EventBus.getDefault().post(new UpdateDetectionsRectsEvent(this, new ArrayList<>(), false, null, new ArrayList<>()));
         if(this.analyzeButton.isChecked()) this.detectObjects(this.calcDistanceButton.isChecked());
     }
 
@@ -210,6 +211,7 @@ public class AnalyzeActivity extends AppCompatActivity {
         });
         this.zoomHandler = new ImageMatrixTouchHandler(this);
 
+        this.backgroundOverlayAnalyze.setOnTouchListener((view, MotionEvent) -> true);
         this.analyzeView.setOnTouchListener((view, motionEvent) -> {
             if(!this.customGestureDetector.shouldListenToTouchEvents()) return true;
 
@@ -323,10 +325,11 @@ public class AnalyzeActivity extends AppCompatActivity {
             this.originalImageTensor = TensorImage.fromBitmap(this.frame);
 
             this.detections = objectDetector.detect(this.originalImageTensor);
+            this.detections.parallelStream().forEach(detection -> this.analyzeView.getImageMatrix().mapRect(detection.getBoundingBox()));
             this.detectionLines = new ArrayList<>();
-            EventBus.getDefault().post(new UpdateDetectionsRectsEvent(this, this.detections, false, this.analyzeView.getImageMatrix(), this.detectionLines));
 
             if(shouldAlsoCalculateDistances) calculateDistance();
+            else EventBus.getDefault().post(new UpdateDetectionsRectsEvent(this, this.detections, false, null, this.detectionLines));
 
             if(!this.analyzeButton.isCheckable()) {
                 runOnUiThread(() -> {
