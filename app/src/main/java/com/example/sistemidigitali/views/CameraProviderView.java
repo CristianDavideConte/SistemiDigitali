@@ -124,7 +124,7 @@ public class CameraProviderView {
 
     public void setLiveDetection(boolean liveDetection) {
         this.liveDetection = liveDetection;
-        EventBus.getDefault().post(new UpdateDetectionsRectsEvent(this.context, new ArrayList<>(), false, null));
+        EventBus.getDefault().post(new UpdateDetectionsRectsEvent(this.context, new ArrayList<>(), false, null, new ArrayList<>()));
         EventBus.getDefault().post(new AllowUpdatePolicyChangeEvent(this.context, this.liveDetection));
     }
 
@@ -179,7 +179,7 @@ public class CameraProviderView {
             } catch (Exception e) {
                 e.printStackTrace();
             } finally {
-                EventBus.getDefault().post(new UpdateDetectionsRectsEvent(this.context, new ArrayList<>(), false, null));
+                EventBus.getDefault().post(new UpdateDetectionsRectsEvent(this.context, new ArrayList<>(), false, null, new ArrayList<>()));
             }
         }, this.context.getMainExecutor());
     }
@@ -244,7 +244,7 @@ public class CameraProviderView {
     @SuppressLint({"UnsafeOptInUsageError", "RestrictedApi"})
     public void analyze(@NonNull ImageProxy imageProxy) {
         if (!this.liveDetection) { //!cameraAvailable
-            EventBus.getDefault().post(new UpdateDetectionsRectsEvent(this.context, new ArrayList<>(), false, null));
+            EventBus.getDefault().post(new UpdateDetectionsRectsEvent(this.context, new ArrayList<>(), false, null, new ArrayList<>()));
             imageProxy.close();
             return;
         }
@@ -275,7 +275,7 @@ public class CameraProviderView {
         List<Detection> detections = CameraProviderView.objectDetector.detect(tensorImage);
         println(System.currentTimeMillis() - init);
 
-        EventBus.getDefault().post(new UpdateDetectionsRectsEvent(this.context, detections, this.flipNeeded, matrix));
+        EventBus.getDefault().post(new UpdateDetectionsRectsEvent(this.context, detections, this.flipNeeded, matrix, new ArrayList<>()));
         imageProxy.close();
     }
 

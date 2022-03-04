@@ -3,7 +3,9 @@ package com.example.sistemidigitali.views;
 import static com.example.sistemidigitali.debugUtility.Debug.println;
 
 import android.annotation.SuppressLint;
+import android.content.Intent;
 import android.graphics.Bitmap;
+import android.graphics.Color;
 import android.graphics.RectF;
 import android.os.Bundle;
 import android.view.View;
@@ -26,10 +28,13 @@ import com.example.sistemidigitali.customEvents.ImageSavedEvent;
 import com.example.sistemidigitali.customEvents.OverlayVisibilityChangeEvent;
 import com.example.sistemidigitali.customEvents.PictureTakenEvent;
 import com.example.sistemidigitali.customEvents.UpdateDetectionsRectsEvent;
+import com.example.sistemidigitali.enums.ColorsEnum;
 import com.example.sistemidigitali.enums.CustomObjectDetectorType;
+import com.example.sistemidigitali.enums.WearingModeEnum;
 import com.example.sistemidigitali.model.CustomDepthEstimator;
 import com.example.sistemidigitali.model.CustomGestureDetector;
 import com.example.sistemidigitali.model.CustomObjectDetector;
+import com.example.sistemidigitali.model.DetectionLine;
 import com.example.sistemidigitali.model.ImageUtility;
 import com.example.sistemidigitali.model.ToastMessagesManager;
 import com.google.android.material.chip.Chip;
@@ -60,9 +65,6 @@ public class AnalyzeActivity extends AppCompatActivity {
     private static final double PX_TO_M_CONVERSION_FACTOR_V2 = 1 * STANDARD_FACE_HEIGHT_M / STANDARD_FACE_HEIGHT_PX;
     private static final double PX_TO_M_CONVERSION_FACTOR = (PX_TO_M_CONVERSION_FACTOR_V1 + PX_TO_M_CONVERSION_FACTOR_V2) / 2.0;
 
-    private static double PPI;
-    private static double PX_WIDTH_M, PX_HEIGHT_M;
-
     private static final int TARGET_DEPTH_BITMAP_WIDTH = 256;
     private static final int TARGET_DEPTH_BITMAP_HEIGHT = 256;
     private static final int TARGET_DEPTH_MAP_WIDTH = 256*2;
@@ -84,6 +86,7 @@ public class AnalyzeActivity extends AppCompatActivity {
     private Chip calcDistanceButton;
     private FloatingActionButton saveImageButton;
     private List<Detection> detections;
+    private List<DetectionLine> detectionLines;
 
     private ImageMatrixTouchHandler zoomHandler;
     private Executor distanceCalculatorExecutor;
@@ -102,11 +105,6 @@ public class AnalyzeActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_analyze);
         getWindow().setFlags(WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS, WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS);
-
-        PPI = this.getResources().getDisplayMetrics().density;
-        PX_WIDTH_M  = this.getResources().getDisplayMetrics().widthPixels  / PPI * INCH_TO_M;
-        PX_HEIGHT_M = this.getResources().getDisplayMetrics().heightPixels / PPI * INCH_TO_M;
-        println("FACTORS -------------------->", PX_TO_M_CONVERSION_FACTOR_V1, PX_TO_M_CONVERSION_FACTOR_V2);
 
         this.backgroundOverlayAnalyze = findViewById(R.id.backgroundOverlayAnalyze);
         this.analyzeView = findViewById(R.id.analyzeView);
@@ -155,9 +153,8 @@ public class AnalyzeActivity extends AppCompatActivity {
     @Override
     protected void onResume() {
         super.onResume();
-        EventBus.getDefault().post(new UpdateDetectionsRectsEvent(this, new ArrayList<>(), false, null));
-        if(this.analyzeButton.isChecked()) this.detectObjects();
-        if(this.calcDistanceButton.isChecked()) this.calculateDistance();
+        EventBus.getDefault().post(new UpdateDetectionsRectsEvent(this, new ArrayList<>(), false, null, new ArrayList<>()));
+        if(this.analyzeButton.isChecked()) this.detectObjects(this.calcDistanceButton.isChecked());
     }
 
     /**
@@ -239,11 +236,11 @@ public class AnalyzeActivity extends AppCompatActivity {
                 this.analyzeLoadingIndicator.setVisibility(View.VISIBLE);
                 this.analyzeButton.setText(". . .");
                 this.analyzeButton.setCheckable(false);
-                this.detectObjects();
+                this.detectObjects(false);
             } else {
                 this.analyzeButton.setText("Analyze");
                 this.calcDistanceButton.setVisibility(View.GONE);
-                EventBus.getDefault().post(new UpdateDetectionsRectsEvent(this, new ArrayList<>(), false, null));
+                EventBus.getDefault().post(new UpdateDetectionsRectsEvent(this, new ArrayList<>(), false, null, new ArrayList<>()));
             }
         });
 
@@ -267,8 +264,9 @@ public class AnalyzeActivity extends AppCompatActivity {
                 this.calcDistanceButton.setCheckable(false);
                 this.calculateDistance();
             } else {
-                //this.analyzeView.setImageBitmap(frame);
                 this.calcDistanceButton.setText("Measure");
+                this.detectionLines = new ArrayList<>();
+                EventBus.getDefault().post(new UpdateDetectionsRectsEvent(this, this.detections, false, null, this.detectionLines));
             }
         });
         this.calcDistanceButton.setCheckable(true);
@@ -279,7 +277,7 @@ public class AnalyzeActivity extends AppCompatActivity {
     @Subscribe(sticky = true, threadMode = ThreadMode.MAIN)
     public void onOverlayVisibilityChange(OverlayVisibilityChangeEvent event) {
         int visibility = event.getVisibility();
-        if(visibility == View.VISIBLE) this.detectObjects(); //Fixes a multitasking related rects-displaying bug
+        if(visibility == View.VISIBLE) this.detectObjects(this.calcDistanceButton.isChecked()); //Fixes a multitasking related rects-displaying bug
         this.backgroundOverlayAnalyze.setVisibility(visibility);
     }
 
@@ -297,12 +295,12 @@ public class AnalyzeActivity extends AppCompatActivity {
 
     @Subscribe(threadMode = ThreadMode.ASYNC)
     public void onGestureIsZoom(GestureIsZoomEvent event) {
-        EventBus.getDefault().post(new UpdateDetectionsRectsEvent(this, new ArrayList<>(), false, null));
+        EventBus.getDefault().post(new UpdateDetectionsRectsEvent(this, new ArrayList<>(), false, null, new ArrayList<>()));
     }
 
     @Subscribe(threadMode = ThreadMode.ASYNC)
     public void onGestureIsMove(GestureIsMoveEvent event) {
-        EventBus.getDefault().post(new UpdateDetectionsRectsEvent(this, new ArrayList<>(), false, null));
+        EventBus.getDefault().post(new UpdateDetectionsRectsEvent(this, new ArrayList<>(), false, null, new ArrayList<>()));
     }
 
     @Subscribe(threadMode = ThreadMode.ASYNC)
@@ -310,22 +308,25 @@ public class AnalyzeActivity extends AppCompatActivity {
         if(this.zoomHandler.isAnimating()) {
             EventBus.getDefault().post(new AllowUpdatePolicyChangeEvent(this, false));
             while (this.zoomHandler.isAnimating());
-            EventBus.getDefault().post(new UpdateDetectionsRectsEvent(this, new ArrayList<>(), false, null));
+            EventBus.getDefault().post(new UpdateDetectionsRectsEvent(this, new ArrayList<>(), false, null, new ArrayList<>()));
             EventBus.getDefault().post(new AllowUpdatePolicyChangeEvent(this, true));
         }
-        this.detectObjects();
+        if(this.analyzeButton.isChecked()) this.detectObjects(this.calcDistanceButton.isChecked());
     }
 
     /**
      * Starts (in background) the face detection on the analyzeView image and
      * once done, update all the needed components accordingly.
      */
-    private void detectObjects() {
+    private void detectObjects(boolean shouldAlsoCalculateDistances) {
         this.analyzerExecutor.execute(() -> {
             this.originalImageTensor = TensorImage.fromBitmap(this.frame);
 
             this.detections = objectDetector.detect(this.originalImageTensor);
-            EventBus.getDefault().post(new UpdateDetectionsRectsEvent(this, this.detections, false, this.analyzeView.getImageMatrix()));
+            this.detectionLines = new ArrayList<>();
+            EventBus.getDefault().post(new UpdateDetectionsRectsEvent(this, this.detections, false, this.analyzeView.getImageMatrix(), this.detectionLines));
+
+            if(shouldAlsoCalculateDistances) calculateDistance();
 
             if(!this.analyzeButton.isCheckable()) {
                 runOnUiThread(() -> {
@@ -357,6 +358,8 @@ public class AnalyzeActivity extends AppCompatActivity {
 
                 double depth1 = this.getZ(boundingBoxDetection1);
                 double depth2 = this.getZ(boundingBoxDetection2);
+                depth1 = this.getZ(boundingBoxDetection1);
+                depth2 = this.getZ(boundingBoxDetection2);
 
                 double x1px = Math.abs(this.getResources().getDisplayMetrics().widthPixels  / 2.0 - boundingBoxDetection1.centerX());
                 double y1px = Math.abs(this.getResources().getDisplayMetrics().heightPixels / 2.0 - boundingBoxDetection1.centerY());
@@ -364,20 +367,33 @@ public class AnalyzeActivity extends AppCompatActivity {
                 double x2px = Math.abs(this.getResources().getDisplayMetrics().widthPixels  / 2.0 - boundingBoxDetection2.centerX());
                 double y2px = Math.abs(this.getResources().getDisplayMetrics().heightPixels / 2.0 - boundingBoxDetection2.centerY());
 
-                println("DISTANCE BETWEEN PEOPLE",
-                        getDistanceBetweenTwoPoints(
-                                x1px * PX_TO_M_CONVERSION_FACTOR / depth1,
-                                y1px * PX_TO_M_CONVERSION_FACTOR / depth1,
-                                depth1,
-                                x2px * PX_TO_M_CONVERSION_FACTOR / depth2,
-                                y2px * PX_TO_M_CONVERSION_FACTOR / depth2,
-                                depth2
-                        )
+                double distance = getDistanceBetweenTwoPoints(
+                        x1px * PX_TO_M_CONVERSION_FACTOR / depth1,
+                        y1px * PX_TO_M_CONVERSION_FACTOR / depth1,
+                        depth1,
+                        x2px * PX_TO_M_CONVERSION_FACTOR / depth2,
+                        y2px * PX_TO_M_CONVERSION_FACTOR / depth2,
+                        depth2
                 );
+
+                println("DISTANCE BETWEEN PEOPLE", distance);
+
+                this.detectionLines = new ArrayList<DetectionLine>();
+                this.detectionLines.add(new DetectionLine(
+                                            boundingBoxDetection1.centerX(),
+                                            boundingBoxDetection1.centerY(),
+                                            boundingBoxDetection2.centerX(),
+                                            boundingBoxDetection2.centerY(),
+                                            ColorsEnum.TEST,
+                                            ColorsEnum.WHITE,
+                                            String.format("%.2f", distance) + "M"
+                                            )
+                                        );
+
+                EventBus.getDefault().post(new UpdateDetectionsRectsEvent(this, this.detections, false, null, this.detectionLines));
             }
 
             runOnUiThread(() -> {
-                //this.analyzeView.setImageBitmap(depthMapImage);
                 this.calcDistanceButton.setText("Clear");
                 this.calcDistanceButton.setCheckable(true);
             });
