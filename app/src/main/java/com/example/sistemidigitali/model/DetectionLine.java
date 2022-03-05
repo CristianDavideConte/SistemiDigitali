@@ -1,22 +1,23 @@
 package com.example.sistemidigitali.model;
 
-import com.example.sistemidigitali.enums.ColorsEnum;
-
 public class DetectionLine {
     private final float startX, startY;
     private final float endX, endY;
-    private final ColorsEnum lineColor;
-    private final ColorsEnum textColor;
     private final String info;
+    private final int lineColor;
+    private final int textColor;
+    private final float startLineWidthMultiplier, endLineWidthMultiplier;
 
-    public DetectionLine(float startX, float startY, float endX, float endY, ColorsEnum lineColor, ColorsEnum textColor, String info) {
+    public DetectionLine(float startX, float startY, float endX, float endY, String info, int lineColor, int textColor, float startLineWidthMultiplier, float endLineWidthMultiplier) {
         this.startX = startX;
         this.startY = startY;
         this.endX = endX;
         this.endY = endY;
+        this.info = info;
         this.textColor = textColor;
         this.lineColor = lineColor;
-        this.info = info;
+        this.startLineWidthMultiplier = startLineWidthMultiplier;
+        this.endLineWidthMultiplier = endLineWidthMultiplier;
     }
 
     public float getStartX() {
@@ -35,15 +36,23 @@ public class DetectionLine {
         return endY;
     }
 
-    public ColorsEnum getTextColorType() {
+    public String getInfo() {
+        return info;
+    }
+
+    public int getTextColor() {
         return textColor;
     }
 
-    public ColorsEnum getLineColorType() {
+    public int getLineColor() {
         return lineColor;
     }
 
-    public String getInfo() {
-        return info;
+    public float getStartLineWidthMultiplier() {
+        return startLineWidthMultiplier;
+    }
+
+    public float getEndLineWidthMultiplier() {
+        return endLineWidthMultiplier;
     }
 }

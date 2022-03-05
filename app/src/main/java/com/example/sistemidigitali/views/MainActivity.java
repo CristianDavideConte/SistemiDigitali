@@ -117,7 +117,7 @@ public class MainActivity extends AppCompatActivity {
         super.onStop();
     }
 
-    @Subscribe(sticky = true, threadMode = ThreadMode.MAIN)
+    @Subscribe(sticky = true, threadMode = ThreadMode.ASYNC)
     public void onCustomObjectDetectorAvailable(CustomObjectDetectorAvailableEvent event) {
         if(event.getContext() != this) return;
         this.liveDetectionSwitch.setOnClickListener((view) -> {});

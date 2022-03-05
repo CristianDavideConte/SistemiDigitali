@@ -1,7 +1,5 @@
 package com.example.sistemidigitali.views;
 
-import static com.example.sistemidigitali.debugUtility.Debug.println;
-
 import android.annotation.SuppressLint;
 import android.content.Context;
 import android.content.Intent;
@@ -9,6 +7,7 @@ import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Matrix;
 import android.graphics.Paint;
+import android.graphics.Path;
 import android.graphics.RectF;
 import android.util.AttributeSet;
 import android.view.MotionEvent;
@@ -30,7 +29,7 @@ import java.util.List;
 
 public class LiveDetectionView extends View {
     private static final float ROUNDING_RECTS_RADIUS = 70;
-    private static final float STROKE_WIDTH = 10;
+    public static final float STROKE_WIDTH = 10;
 
     private boolean allowUpdate;
 
@@ -40,6 +39,7 @@ public class LiveDetectionView extends View {
     private Matrix flipperMatrix;
     private Matrix transformMatrix;
 
+    private Path detectionLinesPath;
     private Paint boxPaint;
 
     public LiveDetectionView(Context context) {
@@ -65,6 +65,8 @@ public class LiveDetectionView extends View {
         this.flipNeeded = false;
         this.flipperMatrix = new Matrix();
         this.transformMatrix = new Matrix();
+
+        this.detectionLinesPath = new Path();
         this.boxPaint = new Paint();
 
         this.boxPaint.setStyle(Paint.Style.STROKE);
@@ -95,6 +97,25 @@ public class LiveDetectionView extends View {
         super.onDraw(canvas);
         if(!this.allowUpdate) return;
 
+        //Draws all the lines between the detections' rectangles
+        this.boxPaint.setStyle(Paint.Style.FILL);
+        this.detectionsLines.parallelStream().forEach((line) -> {
+            final float initialStrokeWidth = STROKE_WIDTH / 2 * line.getStartLineWidthMultiplier();
+            final float finalStrokeWidth = STROKE_WIDTH / 2 * line.getEndLineWidthMultiplier();
+
+            this.detectionLinesPath.reset();
+            this.detectionLinesPath.moveTo(line.getStartX(), line.getStartY() - initialStrokeWidth);
+            this.detectionLinesPath.lineTo(line.getStartX(), line.getStartY() + initialStrokeWidth);
+            this.detectionLinesPath.lineTo(line.getEndX(), line.getEndY() + finalStrokeWidth);
+            this.detectionLinesPath.lineTo(line.getEndX(), line.getEndY() - finalStrokeWidth);
+            this.detectionLinesPath.lineTo(line.getStartX(), line.getStartY() - initialStrokeWidth);
+
+            this.boxPaint.setColor(line.getLineColor());
+            canvas.drawPath(this.detectionLinesPath, this.boxPaint);
+        });
+
+        //Draws all the detections' rectangles
+        this.boxPaint.setStyle(Paint.Style.STROKE);
         this.detections.parallelStream().forEach((detection) -> {
             WearingModeEnum wearingModeEnum;
             try{
@@ -117,12 +138,6 @@ public class LiveDetectionView extends View {
 
             this.boxPaint.setColor(wearingModeEnum.getBackgroundColor());
             canvas.drawRoundRect(boundingBox, ROUNDING_RECTS_RADIUS, ROUNDING_RECTS_RADIUS, boxPaint);
-        });
-
-
-        this.detectionsLines.parallelStream().forEach((line) -> {
-            this.boxPaint.setColor(line.getLineColorType().getColor());
-            canvas.drawLine(line.getStartX(), line.getStartY(), line.getEndX(), line.getEndY(), this.boxPaint);
         });
     }
 
@@ -160,19 +175,23 @@ public class LiveDetectionView extends View {
                 }
             }
 
-            final float touchTollerance = 10 * STROKE_WIDTH;
+            final float touchToleranceY = 10 * STROKE_WIDTH;
             for(DetectionLine line : this.detectionsLines) {
                 //The Y that the detection line should have at the motion event's X
                 final float lineYatTouchX = (line.getEndY() - line.getStartY()) * (motionEvent.getX() - line.getStartX()) / (line.getEndX() - line.getStartX()) + line.getStartY();
 
-                if(lineYatTouchX + touchTollerance >= motionEvent.getY() && lineYatTouchX - touchTollerance <= motionEvent.getY()) {
+                if(lineYatTouchX - touchToleranceY <= motionEvent.getY() &&
+                   lineYatTouchX + touchToleranceY >= motionEvent.getY() &&
+                   line.getStartX() <= motionEvent.getX() &&
+                   line.getEndX() >= motionEvent.getX())
+                {
                     Intent intent = new Intent(this.getContext(), PopUpActivity.class);
                     intent.putExtra(PopUpActivity.POP_UP_TEXT_1, "Distance");
                     intent.putExtra(PopUpActivity.POP_UP_TEXT_2, "");
                     intent.putExtra(PopUpActivity.POP_UP_TEXT_3, line.getInfo());
 
-                    intent.putExtra(PopUpActivity.POP_UP_TEXT_COLOR, String.valueOf(line.getTextColorType().getColor()));
-                    intent.putExtra(PopUpActivity.POP_UP_BACKGROUND_COLOR, String.valueOf(line.getLineColorType().getColor()));
+                    intent.putExtra(PopUpActivity.POP_UP_TEXT_COLOR, String.valueOf(line.getTextColor()));
+                    intent.putExtra(PopUpActivity.POP_UP_BACKGROUND_COLOR, String.valueOf(line.getLineColor()));
 
                     this.getContext().startActivity(intent);
                     return true;
