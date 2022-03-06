@@ -182,8 +182,8 @@ public class LiveDetectionView extends View {
 
                 if(lineYatTouchX - touchToleranceY <= motionEvent.getY() &&
                    lineYatTouchX + touchToleranceY >= motionEvent.getY() &&
-                   line.getStartX() <= motionEvent.getX() &&
-                   line.getEndX() >= motionEvent.getX())
+                   Math.min(line.getStartX(), line.getEndX()) <= motionEvent.getX() &&
+                   Math.max(line.getStartX(), line.getEndX()) >= motionEvent.getX())
                 {
                     Intent intent = new Intent(this.getContext(), PopUpActivity.class);
                     intent.putExtra(PopUpActivity.POP_UP_TEXT_1, "Distance");

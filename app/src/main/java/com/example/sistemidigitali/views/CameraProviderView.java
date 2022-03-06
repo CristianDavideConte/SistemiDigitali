@@ -244,7 +244,6 @@ public class CameraProviderView {
     @SuppressLint({"UnsafeOptInUsageError", "RestrictedApi"})
     public void analyze(@NonNull ImageProxy imageProxy) {
         if (!this.liveDetection) { //!cameraAvailable
-            EventBus.getDefault().post(new UpdateDetectionsRectsEvent(this.context, new ArrayList<>(), false, null, new ArrayList<>()));
             imageProxy.close();
             return;
         }

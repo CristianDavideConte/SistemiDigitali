@@ -16,16 +16,54 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent">
 
-        <ImageView
-            android:id="@+id/analyzeView"
+        <com.otaliastudios.zoom.ZoomLayout
             android:layout_width="match_parent"
             android:layout_height="match_parent"
-            tools:srcCompat="@tools:sample/avatars" />
+            android:hapticFeedbackEnabled="true"
+            android:scrollbars="none"
+            app:alignment="center"
+            app:animationDuration="280"
+            app:flingEnabled="false"
+            app:hasClickableChildren="true"
+            app:horizontalPanEnabled="true"
+            app:maxZoom="3.5"
+            app:maxZoomType="zoom"
+            app:minZoom="1"
+            app:minZoomType="zoom"
+            app:oneFingerScrollEnabled="true"
+            app:overPinchable="true"
+            app:overScrollHorizontal="false"
+            app:overScrollVertical="false"
+            app:scrollEnabled="true"
+            app:threeFingersScrollEnabled="true"
+            app:transformation="centerInside"
+            app:transformationGravity="auto"
+            app:twoFingersScrollEnabled="false"
+            app:verticalPanEnabled="true"
+            app:zoomEnabled="true">
 
-        <com.example.sistemidigitali.views.LiveDetectionView
-            android:id="@+id/liveDetectionViewAnalyze"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content" />
+            <FrameLayout
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:animateLayoutChanges="true"
+                app:layout_constraintBottom_toBottomOf="parent"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toTopOf="parent">
+
+                <ImageView
+                    android:id="@+id/analyzeView"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    tools:srcCompat="@tools:sample/avatars" />
+
+                <com.example.sistemidigitali.views.LiveDetectionView
+                    android:id="@+id/liveDetectionViewAnalyze"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent" />
+
+            </FrameLayout>
+        </com.otaliastudios.zoom.ZoomLayout>
 
         <LinearLayout
             android:layout_width="match_parent"

@@ -1,10 +1,13 @@
 package com.example.sistemidigitali.views;
 
+import static java.sql.DriverManager.println;
+
 import android.annotation.SuppressLint;
 import android.graphics.Bitmap;
 import android.graphics.RectF;
 import android.os.Bundle;
 import android.util.DisplayMetrics;
+import android.view.MotionEvent;
 import android.view.View;
 import android.view.WindowManager;
 import android.widget.ImageView;
@@ -13,13 +16,9 @@ import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
 
-import com.bogdwellers.pinchtozoom.ImageMatrixTouchHandler;
 import com.example.sistemidigitali.R;
 import com.example.sistemidigitali.customEvents.CustomDepthEstimatorAvailableEvent;
 import com.example.sistemidigitali.customEvents.CustomObjectDetectorAvailableEvent;
-import com.example.sistemidigitali.customEvents.EndOfGestureEvent;
-import com.example.sistemidigitali.customEvents.GestureIsMoveEvent;
-import com.example.sistemidigitali.customEvents.GestureIsZoomEvent;
 import com.example.sistemidigitali.customEvents.ImageSavedEvent;
 import com.example.sistemidigitali.customEvents.OverlayVisibilityChangeEvent;
 import com.example.sistemidigitali.customEvents.PictureTakenEvent;
@@ -27,7 +26,6 @@ import com.example.sistemidigitali.customEvents.UpdateDetectionsRectsEvent;
 import com.example.sistemidigitali.enums.CustomObjectDetectorType;
 import com.example.sistemidigitali.enums.WearingModeEnum;
 import com.example.sistemidigitali.model.CustomDepthEstimator;
-import com.example.sistemidigitali.model.CustomGestureDetector;
 import com.example.sistemidigitali.model.CustomObjectDetector;
 import com.example.sistemidigitali.model.DetectionLine;
 import com.example.sistemidigitali.model.ImageUtility;
@@ -83,13 +81,11 @@ public class AnalyzeActivity extends AppCompatActivity {
     private List<Detection> detections;
     private List<DetectionLine> detectionLines;
 
-    private ImageMatrixTouchHandler zoomHandler;
     private Executor distanceCalculatorExecutor;
     private Executor analyzerExecutor;
     private Executor imageSaverExecutor;
 
     private ToastMessagesManager toastMessagesManager;
-    private CustomGestureDetector customGestureDetector;
 
     private ProgressBar analyzeLoadingIndicator;
     private ProgressBar saveLoadingIndicator;
@@ -115,7 +111,6 @@ public class AnalyzeActivity extends AppCompatActivity {
         this.distanceCalculatorExecutor = Executors.newSingleThreadExecutor();
         this.analyzerExecutor = Executors.newSingleThreadExecutor();
         this.imageSaverExecutor = Executors.newSingleThreadExecutor();
-        this.customGestureDetector = new CustomGestureDetector();
         this.analyzeButton.setOnClickListener((view) -> this.toastMessagesManager.showToastIfNeeded());
         this.calcDistanceButton.setOnClickListener((view) -> this.toastMessagesManager.showToastIfNeeded());
 
@@ -139,7 +134,6 @@ public class AnalyzeActivity extends AppCompatActivity {
         super.onStart();
         EventBus.getDefault().register(this);
         EventBus.getDefault().register(this.liveDetectionViewAnalyze);
-        EventBus.getDefault().register(this.customGestureDetector);
     }
 
     /**
@@ -159,7 +153,7 @@ public class AnalyzeActivity extends AppCompatActivity {
     public void onStop() {
         EventBus.getDefault().unregister(this);
         EventBus.getDefault().unregister(this.liveDetectionViewAnalyze);
-        EventBus.getDefault().unregister(this.customGestureDetector);
+        //EventBus.getDefault().unregister(this.customGestureDetector);
         super.onStop();
     }
 
@@ -202,17 +196,14 @@ public class AnalyzeActivity extends AppCompatActivity {
                 this.imageUtility.saveImages(images);
             });
         });
-        this.zoomHandler = new ImageMatrixTouchHandler(this);
 
         this.backgroundOverlayAnalyze.setOnTouchListener((view, MotionEvent) -> true);
         this.analyzeView.setOnTouchListener((view, motionEvent) -> {
-            if(!this.customGestureDetector.shouldListenToTouchEvents()) return true;
-
-            if(this.analyzeButton.isChecked()) customGestureDetector.update(motionEvent);
-
-            return zoomHandler.onTouch(view, motionEvent);
+            if(motionEvent.getAction() == MotionEvent.ACTION_UP) {
+                EventBus.getDefault().post(motionEvent);
+            }
+            return true;
         });
-
         if(objectDetector != null) this.analyzeButton.setCheckable(true);
         this.analyzeLoadingIndicator.setVisibility(View.GONE);
     }
@@ -227,6 +218,7 @@ public class AnalyzeActivity extends AppCompatActivity {
         if(event.getContext() != this) return;
         this.analyzeButton.setOnClickListener((view) -> {});
         this.analyzeButton.setOnCheckedChangeListener((view, isChecked) -> {
+            println("ANALYZE CLICKED");
             if(isChecked) {
                 this.analyzeLoadingIndicator.setVisibility(View.VISIBLE);
                 this.analyzeButton.setText(". . .");
@@ -286,26 +278,6 @@ public class AnalyzeActivity extends AppCompatActivity {
         this.saveImageButton.setOnClickListener((view) -> {
             this.toastMessagesManager.showToast();
         });
-    }
-
-    @Subscribe(threadMode = ThreadMode.ASYNC)
-    public void onGestureIsZoom(GestureIsZoomEvent event) {
-        EventBus.getDefault().post(new UpdateDetectionsRectsEvent(this, new ArrayList<>(), false, null, new ArrayList<>()));
-    }
-
-    @Subscribe(threadMode = ThreadMode.ASYNC)
-    public void onGestureIsMove(GestureIsMoveEvent event) {
-        float[] values = new float[9];
-        this.analyzeView.getImageMatrix().getValues(values);
-        if(values[0] != this.zoomHandler.getImageMatrixCorrector().getInnerFitScale()) { //Hide the drawings only when the image is zoomed and the user moves it
-            EventBus.getDefault().post(new UpdateDetectionsRectsEvent(this, new ArrayList<>(), false, null, new ArrayList<>()));
-        }
-    }
-
-    @Subscribe(threadMode = ThreadMode.ASYNC)
-    public void onEndOfGesture(EndOfGestureEvent event) {
-        if(!this.analyzeButton.isChecked()) return;
-        this.detectObjects(this.calcDistanceButton.isChecked());
     }
 
     /**

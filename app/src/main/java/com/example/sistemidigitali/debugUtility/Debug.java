@@ -1,5 +1,7 @@
 package com.example.sistemidigitali.debugUtility;
 
+import android.util.Log;
+
 public class Debug {
 
     public Debug(){}
@@ -15,6 +17,6 @@ public class Debug {
         for(Object obj : objs) {
             s.append(obj).append(" ");
         }
-        System.out.println(s.toString());
+        Log.println(Log.DEBUG,"DEBUG", s.toString());
     }
 }

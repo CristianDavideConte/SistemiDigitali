@@ -44,9 +44,6 @@ android {
 }
 
 dependencies {
-    //ArCore
-    implementation 'com.google.ar:core:1.29.0'
-
     //UI dependencies
     implementation 'androidx.appcompat:appcompat:1.4.1'
     implementation 'com.google.android.material:material:1.5.0'
@@ -57,8 +54,8 @@ dependencies {
     //EventBus: https://github.com/greenrobot/EventBus
     implementation("org.greenrobot:eventbus:3.3.1")
 
-    //Pinch-to-zoom: https://github.com/martinwithaar/PinchToZoom
-    implementation('com.bogdwellers:pinchtozoom:0.1')
+    //Pinch-to-zoom: https://github.com/natario1/ZoomLayout
+    implementation("com.otaliastudios:zoomlayout:1.9.0")
 
     //CameraX: https://developer.android.com/jetpack/androidx/releases/camera
     def cameraVersion = "1.1.0-beta02"
