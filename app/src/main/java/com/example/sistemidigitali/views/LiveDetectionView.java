@@ -149,18 +149,26 @@ public class LiveDetectionView extends View {
             canvas.drawRoundRect(boundingBox, ROUNDING_RECTS_RADIUS, ROUNDING_RECTS_RADIUS, boxPaint);
         }
 
-        //Draws all the lines between the detections' rectangles
+        //Draws the connecting lines of the detections' rectangles
         this.boxPaint.setStyle(Paint.Style.FILL);
         for(DetectionLine line : this.detectionsLines) {
             final float initialStrokeWidth = STROKE_WIDTH / 2 * line.getStartLineWidthMultiplier();
             final float finalStrokeWidth = STROKE_WIDTH / 2 * line.getEndLineWidthMultiplier();
+            final int startFixSign, endFixSign;
+            if(line.getStartX() > line.getEndX()) {
+                startFixSign = -1;
+                endFixSign = +1;
+            } else {
+                startFixSign = +1;
+                endFixSign = -1;
+            }
 
             this.detectionLinesPath.reset();
-            this.detectionLinesPath.moveTo(line.getStartX(), line.getStartY() - initialStrokeWidth);
-            this.detectionLinesPath.lineTo(line.getStartX(), line.getStartY() + initialStrokeWidth);
-            this.detectionLinesPath.lineTo(line.getEndX(), line.getEndY() + finalStrokeWidth);
-            this.detectionLinesPath.lineTo(line.getEndX(), line.getEndY() - finalStrokeWidth);
-            this.detectionLinesPath.lineTo(line.getStartX(), line.getStartY() - initialStrokeWidth);
+            this.detectionLinesPath.moveTo(line.getStartX() + STROKE_WIDTH * startFixSign, line.getStartY() - initialStrokeWidth);
+            this.detectionLinesPath.lineTo(line.getStartX() + STROKE_WIDTH * startFixSign, line.getStartY() + initialStrokeWidth);
+            this.detectionLinesPath.lineTo(line.getEndX() + STROKE_WIDTH * endFixSign, line.getEndY() + finalStrokeWidth);
+            this.detectionLinesPath.lineTo(line.getEndX() + STROKE_WIDTH * endFixSign, line.getEndY() - finalStrokeWidth);
+            this.detectionLinesPath.lineTo(line.getStartX() + STROKE_WIDTH * startFixSign, line.getStartY() - initialStrokeWidth);
 
             this.boxPaint.setColor(line.getLineColor());
             canvas.drawPath(this.detectionLinesPath, this.boxPaint);
@@ -190,6 +198,30 @@ public class LiveDetectionView extends View {
     @Subscribe(threadMode = ThreadMode.ASYNC)
     public boolean onTap(MotionEvent motionEvent) {
         if(this.allowUpdate) {
+            final float touchToleranceY = 5 * STROKE_WIDTH;
+            for(DetectionLine line : this.detectionsLines) {
+                //The Y that the detection line should have at the motion event's X
+                final float lineYatTouchX = (line.getEndY() - line.getStartY()) * (motionEvent.getX() - line.getStartX()) / (line.getEndX() - line.getStartX()) + line.getStartY();
+
+                if(lineYatTouchX - touchToleranceY <= motionEvent.getY() &&
+                        lineYatTouchX + touchToleranceY >= motionEvent.getY() &&
+                        Math.min(line.getStartX(), line.getEndX()) <= motionEvent.getX() &&
+                        Math.max(line.getStartX(), line.getEndX()) >= motionEvent.getX())
+                {
+                    Intent intent = new Intent(this.getContext(), PopUpActivity.class);
+                    intent.putExtra(PopUpActivity.POP_UP_TEXT_1, "Distance");
+                    intent.putExtra(PopUpActivity.POP_UP_TEXT_2, "");
+                    intent.putExtra(PopUpActivity.POP_UP_TEXT_3, line.getInfo());
+
+                    intent.putExtra(PopUpActivity.POP_UP_TEXT_COLOR, String.valueOf(line.getTextColor()));
+                    intent.putExtra(PopUpActivity.POP_UP_BACKGROUND_COLOR, String.valueOf(line.getLineColor()));
+
+                    this.customVibrator.vibrateMedium();
+                    this.getContext().startActivity(intent);
+                    return true;
+                }
+            }
+
             final Optional<Detection> detectionOptional = this.getDetectionAtPoint(motionEvent.getX(), motionEvent.getY());
             if(detectionOptional.isPresent()) {
                 final Detection detection = detectionOptional.get();
@@ -216,30 +248,6 @@ public class LiveDetectionView extends View {
 
                     intent.putExtra(PopUpActivity.POP_UP_TEXT_COLOR, String.valueOf(wearingModeEnum.getTextColor()));
                     intent.putExtra(PopUpActivity.POP_UP_BACKGROUND_COLOR, String.valueOf(wearingModeEnum.getBackgroundColor()));
-
-                    this.customVibrator.vibrateMedium();
-                    this.getContext().startActivity(intent);
-                    return true;
-                }
-            }
-
-            final float touchToleranceY = 10 * STROKE_WIDTH;
-            for(DetectionLine line : this.detectionsLines) {
-                //The Y that the detection line should have at the motion event's X
-                final float lineYatTouchX = (line.getEndY() - line.getStartY()) * (motionEvent.getX() - line.getStartX()) / (line.getEndX() - line.getStartX()) + line.getStartY();
-
-                if(lineYatTouchX - touchToleranceY <= motionEvent.getY() &&
-                   lineYatTouchX + touchToleranceY >= motionEvent.getY() &&
-                   Math.min(line.getStartX(), line.getEndX()) <= motionEvent.getX() &&
-                   Math.max(line.getStartX(), line.getEndX()) >= motionEvent.getX())
-                {
-                    Intent intent = new Intent(this.getContext(), PopUpActivity.class);
-                    intent.putExtra(PopUpActivity.POP_UP_TEXT_1, "Distance");
-                    intent.putExtra(PopUpActivity.POP_UP_TEXT_2, "");
-                    intent.putExtra(PopUpActivity.POP_UP_TEXT_3, line.getInfo());
-
-                    intent.putExtra(PopUpActivity.POP_UP_TEXT_COLOR, String.valueOf(line.getTextColor()));
-                    intent.putExtra(PopUpActivity.POP_UP_BACKGROUND_COLOR, String.valueOf(line.getLineColor()));
 
                     this.customVibrator.vibrateMedium();
                     this.getContext().startActivity(intent);
