@@ -27,6 +27,7 @@ import com.example.sistemidigitali.enums.CustomObjectDetectorType;
 import com.example.sistemidigitali.enums.WearingModeEnum;
 import com.example.sistemidigitali.model.CustomDepthEstimator;
 import com.example.sistemidigitali.model.CustomObjectDetector;
+import com.example.sistemidigitali.model.CustomVibrator;
 import com.example.sistemidigitali.model.DetectionLine;
 import com.example.sistemidigitali.model.ImageUtility;
 import com.example.sistemidigitali.model.ToastMessagesManager;
@@ -92,6 +93,7 @@ public class AnalyzeActivity extends AppCompatActivity {
     private ImageUtility imageUtility;
 
     private boolean gestureWasHold;
+    private CustomVibrator customVibrator;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -108,6 +110,7 @@ public class AnalyzeActivity extends AppCompatActivity {
         this.saveLoadingIndicator = findViewById(R.id.saveLoadingIndicator);
 
         this.gestureWasHold = false;
+        this.customVibrator = new CustomVibrator(this);
         this.imageUtility = new ImageUtility(this);
         this.toastMessagesManager = new ToastMessagesManager(this, Toast.LENGTH_SHORT);
         this.distanceCalculatorExecutor = Executors.newSingleThreadExecutor();
@@ -187,6 +190,7 @@ public class AnalyzeActivity extends AppCompatActivity {
         this.analyzeView.setImageBitmap(this.frame);
 
         this.saveImageButton.setOnClickListener((view) -> {
+            this.customVibrator.vibrateLight();
             this.saveImageButton.setClickable(false);
             this.saveLoadingIndicator.setVisibility(View.VISIBLE);
             this.imageSaverExecutor.execute(() -> {
@@ -233,6 +237,7 @@ public class AnalyzeActivity extends AppCompatActivity {
         if(event.getContext() != this) return;
         this.analyzeButton.setOnClickListener((view) -> {});
         this.analyzeButton.setOnCheckedChangeListener((view, isChecked) -> {
+            this.customVibrator.vibrateLight();
             if(isChecked) {
                 this.analyzeLoadingIndicator.setVisibility(View.VISIBLE);
                 this.analyzeButton.setText(". . .");

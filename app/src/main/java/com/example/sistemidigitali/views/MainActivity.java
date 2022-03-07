@@ -19,6 +19,7 @@ import com.example.sistemidigitali.R;
 import com.example.sistemidigitali.customEvents.CustomObjectDetectorAvailableEvent;
 import com.example.sistemidigitali.customEvents.OverlayVisibilityChangeEvent;
 import com.example.sistemidigitali.customEvents.PictureTakenEvent;
+import com.example.sistemidigitali.model.CustomVibrator;
 import com.example.sistemidigitali.model.Permission;
 import com.example.sistemidigitali.model.ToastMessagesManager;
 import com.google.android.material.chip.Chip;
@@ -53,6 +54,7 @@ public class MainActivity extends AppCompatActivity {
     private int isUIVisible;
 
     private ToastMessagesManager toastMessagesManager;
+    private CustomVibrator customVibrator;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -61,6 +63,7 @@ public class MainActivity extends AppCompatActivity {
         getWindow().setFlags(WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS, WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS);
 
         this.permission = new Permission();
+        this.customVibrator = new CustomVibrator(this);
         this.toastMessagesManager = new ToastMessagesManager(this, Toast.LENGTH_SHORT);
         this.backgroundOverlayMain = findViewById(R.id.backgroundOverlayMain);
         this.liveDetectionViewMain = findViewById(R.id.liveDetectionViewMain);
@@ -71,15 +74,27 @@ public class MainActivity extends AppCompatActivity {
         this.shutterButton = findViewById(R.id.shutterButton);
 
         this.cameraProviderView = new CameraProviderView(this,  findViewById(R.id.previewView));
-        this.switchCameraButton.setOnClickListener((view) -> this.cameraProviderView.switchCamera());
         this.liveDetectionSwitch.setOnClickListener((view) -> this.toastMessagesManager.showToastIfNeeded());
-        this.shutterButton.setOnClickListener((view) -> this.cameraProviderView.captureImages(REQUIRED_NUMBER_OF_FRAMES));
+        this.switchCameraButton.setOnClickListener((view) -> {
+            this.customVibrator.vibrateLight();
+            this.cameraProviderView.switchCamera();
+        });
+        this.shutterButton.setOnClickListener((view) -> {
+            this.customVibrator.vibrateLight();
+            this.cameraProviderView.captureImages(REQUIRED_NUMBER_OF_FRAMES);
+        });
 
 
         //If the files picked are two images the analyze activity is launched
         ActivityResultLauncher<String> filePicker = registerForActivityResult(new ActivityResultContracts.GetMultipleContents(), this::showAnalyzeActivity);
-        this.galleryButton.setOnClickListener((view) -> filePicker.launch("image/*")); //Shows the file picker for images only
-        this.hideUIButton.setOnClickListener((view) -> this.changeUIVisibility());
+        this.galleryButton.setOnClickListener((view) -> {
+            this.customVibrator.vibrateLight();
+            filePicker.launch("image/*");
+        }); //Shows the file picker for images only
+        this.hideUIButton.setOnClickListener((view) -> {
+            this.customVibrator.vibrateLight();
+            this.changeUIVisibility();
+        });
 
 
         //Request all the permissions needed if not already available
@@ -116,7 +131,10 @@ public class MainActivity extends AppCompatActivity {
     public void onCustomObjectDetectorAvailable(CustomObjectDetectorAvailableEvent event) {
         if(event.getContext() != this) return;
         this.liveDetectionSwitch.setOnClickListener((view) -> {});
-        this.liveDetectionSwitch.setOnCheckedChangeListener((view, isChecked) -> this.cameraProviderView.setLiveDetection(isChecked));
+        this.liveDetectionSwitch.setOnCheckedChangeListener((view, isChecked) -> {
+            this.customVibrator.vibrateLight();
+            this.cameraProviderView.setLiveDetection(isChecked);
+        });
         this.liveDetectionSwitch.setCheckable(true);
         this.toastMessagesManager.hideToast();
         EventBus.getDefault().removeStickyEvent(event);

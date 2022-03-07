@@ -20,14 +20,14 @@ public class CustomVibrator {
     public void vibrateLight() {
         if(this.lightVibrationIsSupported) {
             this.vibrator.cancel();
-            this.vibrator.vibrate(VibrationEffect.createOneShot(70, 1));
+            this.vibrator.vibrate(VibrationEffect.createOneShot(85, 255));
         }
     }
 
     public void vibrateMedium() {
         if(this.lightVibrationIsSupported) {
             this.vibrator.cancel();
-            this.vibrator.vibrate(VibrationEffect.createOneShot(100, 80));
+            this.vibrator.vibrate(VibrationEffect.createOneShot(100, 255));
         }
     }
 
