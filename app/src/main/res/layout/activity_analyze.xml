@@ -17,6 +17,7 @@
         app:layout_constraintTop_toTopOf="parent">
 
         <com.otaliastudios.zoom.ZoomLayout
+            android:id="@+id/AnalyzeZoomLayout"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
             android:hapticFeedbackEnabled="true"
@@ -64,31 +65,6 @@
 
             </FrameLayout>
         </com.otaliastudios.zoom.ZoomLayout>
-
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="match_parent"
-            android:gravity="center_horizontal"
-            android:orientation="vertical"
-            android:animateLayoutChanges="true">
-
-            <com.google.android.material.chip.Chip
-                android:id="@+id/calcDistanceButton"
-                android:layout_width="100dp"
-                android:layout_height="73dp"
-                android:checkable="false"
-                android:elevation="6dp"
-                android:gravity="center"
-                android:text="Measure"
-                android:textAlignment="center"
-                android:textColor="#FFFFFF"
-                android:textSize="18sp"
-                android:translationY="50dp"
-                android:visibility="gone"
-                app:checkedIconEnabled="false"
-                app:chipBackgroundColor="@color/chip_bg_states_alt"
-                app:chipIconVisible="false" />
-        </LinearLayout>
 
         <LinearLayout
             android:layout_width="match_parent"

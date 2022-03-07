@@ -19,7 +19,6 @@ import com.example.sistemidigitali.R;
 import com.example.sistemidigitali.customEvents.CustomObjectDetectorAvailableEvent;
 import com.example.sistemidigitali.customEvents.OverlayVisibilityChangeEvent;
 import com.example.sistemidigitali.customEvents.PictureTakenEvent;
-import com.example.sistemidigitali.model.CustomGestureDetector;
 import com.example.sistemidigitali.model.Permission;
 import com.example.sistemidigitali.model.ToastMessagesManager;
 import com.google.android.material.chip.Chip;
@@ -54,7 +53,6 @@ public class MainActivity extends AppCompatActivity {
     private int isUIVisible;
 
     private ToastMessagesManager toastMessagesManager;
-    private CustomGestureDetector customGestureDetector;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -63,7 +61,6 @@ public class MainActivity extends AppCompatActivity {
         getWindow().setFlags(WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS, WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS);
 
         this.permission = new Permission();
-        this.customGestureDetector = new CustomGestureDetector();
         this.toastMessagesManager = new ToastMessagesManager(this, Toast.LENGTH_SHORT);
         this.backgroundOverlayMain = findViewById(R.id.backgroundOverlayMain);
         this.liveDetectionViewMain = findViewById(R.id.liveDetectionViewMain);
@@ -73,7 +70,7 @@ public class MainActivity extends AppCompatActivity {
         this.galleryButton = findViewById(R.id.galleryButton);
         this.shutterButton = findViewById(R.id.shutterButton);
 
-        this.cameraProviderView = new CameraProviderView(this,  findViewById(R.id.previewView), customGestureDetector);
+        this.cameraProviderView = new CameraProviderView(this,  findViewById(R.id.previewView));
         this.switchCameraButton.setOnClickListener((view) -> this.cameraProviderView.switchCamera());
         this.liveDetectionSwitch.setOnClickListener((view) -> this.toastMessagesManager.showToastIfNeeded());
         this.shutterButton.setOnClickListener((view) -> this.cameraProviderView.captureImages(REQUIRED_NUMBER_OF_FRAMES));
@@ -100,7 +97,6 @@ public class MainActivity extends AppCompatActivity {
         super.onStart();
         EventBus.getDefault().register(this);
         EventBus.getDefault().register(this.liveDetectionViewMain);
-        EventBus.getDefault().register(this.customGestureDetector);
         EventBus.getDefault().removeStickyEvent(PictureTakenEvent.class);
         this.cameraProviderView.setLiveDetection(this.liveDetectionSwitch.isChecked());
     }
@@ -113,7 +109,6 @@ public class MainActivity extends AppCompatActivity {
     public void onStop() {
         EventBus.getDefault().unregister(this);
         EventBus.getDefault().unregister(this.liveDetectionViewMain);
-        EventBus.getDefault().unregister(this.customGestureDetector);
         super.onStop();
     }
 

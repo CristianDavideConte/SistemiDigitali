@@ -17,6 +17,7 @@ import com.example.sistemidigitali.customEvents.AllowUpdatePolicyChangeEvent;
 import com.example.sistemidigitali.customEvents.UpdateDetectionsRectsEvent;
 import com.example.sistemidigitali.enums.MaskTypeEnum;
 import com.example.sistemidigitali.enums.WearingModeEnum;
+import com.example.sistemidigitali.model.CustomVibrator;
 import com.example.sistemidigitali.model.DetectionLine;
 
 import org.greenrobot.eventbus.Subscribe;
@@ -26,13 +27,16 @@ import org.tensorflow.lite.task.vision.detector.Detection;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 public class LiveDetectionView extends View {
     private static final float ROUNDING_RECTS_RADIUS = 70;
     public static final float STROKE_WIDTH = 10;
+    public static final float SELECTED_STROKE_WIDTH = 25;
 
     private boolean allowUpdate;
 
+    private List<Detection> selectedDetections;
     private List<Detection> detections;
     private List<DetectionLine> detectionsLines;
     private boolean flipNeeded;
@@ -42,26 +46,30 @@ public class LiveDetectionView extends View {
     private Path detectionLinesPath;
     private Paint boxPaint;
 
+    private CustomVibrator customVibrator;
+
     public LiveDetectionView(Context context) {
         super(context);
-        init();
+        init(context);
     }
 
     public LiveDetectionView(Context context, AttributeSet attrs) {
         super(context, attrs);
-        init();
+        init(context);
     }
 
     public LiveDetectionView(Context context, AttributeSet attrs, int defStyle) {
         super(context, attrs, defStyle);
-        init();
+        init(context);
     }
 
-    public void init() {
+    public void init(Context context) {
         this.allowUpdate = true;
 
+        this.selectedDetections = new ArrayList<>();
         this.detections = new ArrayList<>();
         this.detectionsLines = new ArrayList<>();
+
         this.flipNeeded = false;
         this.flipperMatrix = new Matrix();
         this.transformMatrix = new Matrix();
@@ -72,6 +80,15 @@ public class LiveDetectionView extends View {
         this.boxPaint.setStyle(Paint.Style.STROKE);
         this.boxPaint.setStrokeWidth(STROKE_WIDTH);
         this.boxPaint.setColor(Color.RED);
+
+        this.customVibrator = new CustomVibrator(context);
+    }
+
+    public List<Detection> getSelectedDetections() {
+        return selectedDetections;
+    }
+    public void setSelectedDetections(List<Detection> selectedDetections) {
+        this.selectedDetections = selectedDetections;
     }
 
     @Subscribe(threadMode = ThreadMode.ASYNC)
@@ -97,26 +114,9 @@ public class LiveDetectionView extends View {
         super.onDraw(canvas);
         if(!this.allowUpdate) return;
 
-        //Draws all the lines between the detections' rectangles
-        this.boxPaint.setStyle(Paint.Style.FILL);
-        this.detectionsLines.parallelStream().forEach((line) -> {
-            final float initialStrokeWidth = STROKE_WIDTH / 2 * line.getStartLineWidthMultiplier();
-            final float finalStrokeWidth = STROKE_WIDTH / 2 * line.getEndLineWidthMultiplier();
-
-            this.detectionLinesPath.reset();
-            this.detectionLinesPath.moveTo(line.getStartX(), line.getStartY() - initialStrokeWidth);
-            this.detectionLinesPath.lineTo(line.getStartX(), line.getStartY() + initialStrokeWidth);
-            this.detectionLinesPath.lineTo(line.getEndX(), line.getEndY() + finalStrokeWidth);
-            this.detectionLinesPath.lineTo(line.getEndX(), line.getEndY() - finalStrokeWidth);
-            this.detectionLinesPath.lineTo(line.getStartX(), line.getStartY() - initialStrokeWidth);
-
-            this.boxPaint.setColor(line.getLineColor());
-            canvas.drawPath(this.detectionLinesPath, this.boxPaint);
-        });
-
         //Draws all the detections' rectangles
         this.boxPaint.setStyle(Paint.Style.STROKE);
-        this.detections.parallelStream().forEach((detection) -> {
+        for(Detection detection : this.detections) {
             WearingModeEnum wearingModeEnum;
             try{
                 String[] labelParts = detection.getCategories().get(0).getLabel().split("_");
@@ -136,16 +136,63 @@ public class LiveDetectionView extends View {
             //Do extra translation/scaling if specified
             if(this.transformMatrix != null) this.transformMatrix.mapRect(boundingBox);
 
+            boolean isSelected = false;
+            for(Detection selectedDetection : this.selectedDetections) {
+                if(selectedDetection.equals(detection)) {
+                    this.boxPaint.setStrokeWidth(SELECTED_STROKE_WIDTH);
+                    isSelected = true;
+                }
+            }
+            if(!isSelected) this.boxPaint.setStrokeWidth(STROKE_WIDTH);
+
             this.boxPaint.setColor(wearingModeEnum.getBackgroundColor());
             canvas.drawRoundRect(boundingBox, ROUNDING_RECTS_RADIUS, ROUNDING_RECTS_RADIUS, boxPaint);
-        });
+        }
+
+        //Draws all the lines between the detections' rectangles
+        this.boxPaint.setStyle(Paint.Style.FILL);
+        for(DetectionLine line : this.detectionsLines) {
+            final float initialStrokeWidth = STROKE_WIDTH / 2 * line.getStartLineWidthMultiplier();
+            final float finalStrokeWidth = STROKE_WIDTH / 2 * line.getEndLineWidthMultiplier();
+
+            this.detectionLinesPath.reset();
+            this.detectionLinesPath.moveTo(line.getStartX(), line.getStartY() - initialStrokeWidth);
+            this.detectionLinesPath.lineTo(line.getStartX(), line.getStartY() + initialStrokeWidth);
+            this.detectionLinesPath.lineTo(line.getEndX(), line.getEndY() + finalStrokeWidth);
+            this.detectionLinesPath.lineTo(line.getEndX(), line.getEndY() - finalStrokeWidth);
+            this.detectionLinesPath.lineTo(line.getStartX(), line.getStartY() - initialStrokeWidth);
+
+            this.boxPaint.setColor(line.getLineColor());
+            canvas.drawPath(this.detectionLinesPath, this.boxPaint);
+        }
+    }
+
+    public int onHold(MotionEvent motionEvent) {
+        final Optional<Detection> detectionOptional = this.getDetectionAtPoint(motionEvent.getX(), motionEvent.getY());
+        if(detectionOptional.isPresent()) {
+            final Detection detection = detectionOptional.get();
+            if(this.selectedDetections.remove(detection)) {
+                this.detectionsLines.clear();
+                this.customVibrator.vibrateLight();
+            } else {
+                if(this.selectedDetections.size() < 2) {
+                    this.selectedDetections.add(detection);
+                    this.customVibrator.vibrateHeavy();
+                }
+                else return this.selectedDetections.size();
+            }
+            this.invalidate();
+        }
+        return this.selectedDetections.size();
     }
 
     @SuppressLint("DefaultLocale")
     @Subscribe(threadMode = ThreadMode.ASYNC)
     public boolean onTap(MotionEvent motionEvent) {
         if(this.allowUpdate) {
-            for(Detection detection : this.detections) {
+            final Optional<Detection> detectionOptional = this.getDetectionAtPoint(motionEvent.getX(), motionEvent.getY());
+            if(detectionOptional.isPresent()) {
+                final Detection detection = detectionOptional.get();
                 if(detection.getBoundingBox().contains(motionEvent.getX(), motionEvent.getY())) {
                     Category category = detection.getCategories().get(0);
                     String[] labelParts = category.getLabel().split("_");
@@ -170,6 +217,7 @@ public class LiveDetectionView extends View {
                     intent.putExtra(PopUpActivity.POP_UP_TEXT_COLOR, String.valueOf(wearingModeEnum.getTextColor()));
                     intent.putExtra(PopUpActivity.POP_UP_BACKGROUND_COLOR, String.valueOf(wearingModeEnum.getBackgroundColor()));
 
+                    this.customVibrator.vibrateMedium();
                     this.getContext().startActivity(intent);
                     return true;
                 }
@@ -193,11 +241,28 @@ public class LiveDetectionView extends View {
                     intent.putExtra(PopUpActivity.POP_UP_TEXT_COLOR, String.valueOf(line.getTextColor()));
                     intent.putExtra(PopUpActivity.POP_UP_BACKGROUND_COLOR, String.valueOf(line.getLineColor()));
 
+                    this.customVibrator.vibrateMedium();
                     this.getContext().startActivity(intent);
                     return true;
                 }
             }
         }
         return false;
+    }
+
+    /**
+     * Checks if there's is a detection's rect at the given coordinates.
+     * Returns an Optional containing the detection if the condition above is true, Optional.empty is returned otherwise.
+     * @param x The x coordinate of the point that should be checked.
+     * @param y The y coordinate of the point that should be checked.
+     * @return Optional containing the detection if there's any at the specified coordinates, Optional.empty otherwise.
+     */
+    private Optional<Detection> getDetectionAtPoint(float x, float y) {
+        for(Detection detection : this.detections) {
+            if (detection.getBoundingBox().contains(x, y)) {
+                return Optional.of(detection);
+            }
+        }
+        return Optional.empty();
     }
 }

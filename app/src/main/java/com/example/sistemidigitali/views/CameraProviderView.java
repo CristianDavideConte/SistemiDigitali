@@ -35,7 +35,6 @@ import com.example.sistemidigitali.customEvents.CustomObjectDetectorAvailableEve
 import com.example.sistemidigitali.customEvents.PictureTakenEvent;
 import com.example.sistemidigitali.customEvents.UpdateDetectionsRectsEvent;
 import com.example.sistemidigitali.enums.CustomObjectDetectorType;
-import com.example.sistemidigitali.model.CustomGestureDetector;
 import com.example.sistemidigitali.model.CustomObjectDetector;
 import com.example.sistemidigitali.model.ImageUtility;
 import com.google.common.util.concurrent.ListenableFuture;
@@ -57,7 +56,6 @@ public class CameraProviderView {
     private static CustomObjectDetector objectDetector;
     private static int currentLensOrientation = CameraSelector.LENS_FACING_BACK;
 
-    private final CustomGestureDetector customGestureDetector;
     private final ImageUtility imageUtility;
 
     private ListenableFuture<ProcessCameraProvider> provider;
@@ -78,11 +76,10 @@ public class CameraProviderView {
     private boolean isCameraAvailable;
 
     @SuppressLint("ClickableViewAccessibility")
-    public CameraProviderView(MainActivity context, PreviewView previewView, CustomGestureDetector customGestureDetector) {
+    public CameraProviderView(MainActivity context, PreviewView previewView) {
         this.context = context;
         this.isCameraAvailable = true;
         this.imageUtility = new ImageUtility(this.context);
-        this.customGestureDetector = customGestureDetector;
         this.imageCaptureExecutors = Executors.newFixedThreadPool(2);
         this.analyzeExecutor = Executors.newSingleThreadExecutor();
         this.currentDisplayRotation = this.context.getDisplay().getRotation() * 90;
@@ -103,7 +100,9 @@ public class CameraProviderView {
 
         this.previewView.setOnTouchListener((view, motionEvent) -> {
             scaleGestureDetector.onTouchEvent(motionEvent);
-            this.customGestureDetector.update(motionEvent);
+            if(motionEvent.getAction() == MotionEvent.ACTION_UP) {
+                EventBus.getDefault().post(motionEvent);
+            }
 
             //Focus on finger-up gesture
             //If liveDetection is enabled, the tap-to-focus gesture is disabled.

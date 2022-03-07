@@ -1,12 +1,13 @@
 package com.example.sistemidigitali.views;
 
-import static java.sql.DriverManager.println;
+import static com.example.sistemidigitali.debugUtility.Debug.println;
 
 import android.annotation.SuppressLint;
 import android.graphics.Bitmap;
 import android.graphics.RectF;
 import android.os.Bundle;
 import android.util.DisplayMetrics;
+import android.view.GestureDetector;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.WindowManager;
@@ -17,7 +18,6 @@ import android.widget.Toast;
 import androidx.appcompat.app.AppCompatActivity;
 
 import com.example.sistemidigitali.R;
-import com.example.sistemidigitali.customEvents.CustomDepthEstimatorAvailableEvent;
 import com.example.sistemidigitali.customEvents.CustomObjectDetectorAvailableEvent;
 import com.example.sistemidigitali.customEvents.ImageSavedEvent;
 import com.example.sistemidigitali.customEvents.OverlayVisibilityChangeEvent;
@@ -46,7 +46,6 @@ import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 
 public class AnalyzeActivity extends AppCompatActivity {
-
     private static final double SAFE_DISTANCE_M = 1.0; //In Meters
 
     private static final double STANDARD_FACE_WIDTH_M = 0.147; //In Meters
@@ -63,6 +62,8 @@ public class AnalyzeActivity extends AppCompatActivity {
     private static final int TARGET_DEPTH_MAP_WIDTH = 256*2;
     private static final int TARGET_DEPTH_MAP_HEIGHT = 256*2;
 
+    private static final int MAX_SELECTABLE_DETECTIONS = 2;
+
     private static CustomObjectDetector objectDetector;
     private static CustomDepthEstimator depthEstimator;
 
@@ -76,7 +77,6 @@ public class AnalyzeActivity extends AppCompatActivity {
     private ImageView analyzeView;
     private LiveDetectionView liveDetectionViewAnalyze;
     private Chip analyzeButton;
-    private Chip calcDistanceButton;
     private FloatingActionButton saveImageButton;
     private List<Detection> detections;
     private List<DetectionLine> detectionLines;
@@ -91,6 +91,8 @@ public class AnalyzeActivity extends AppCompatActivity {
     private ProgressBar saveLoadingIndicator;
     private ImageUtility imageUtility;
 
+    private boolean gestureWasHold;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -101,18 +103,17 @@ public class AnalyzeActivity extends AppCompatActivity {
         this.analyzeView = findViewById(R.id.analyzeView);
         this.liveDetectionViewAnalyze = findViewById(R.id.liveDetectionViewAnalyze);
         this.analyzeButton = findViewById(R.id.analyzeButton);
-        this.calcDistanceButton = findViewById(R.id.calcDistanceButton);
         this.saveImageButton = findViewById(R.id.saveImageButton);
         this.analyzeLoadingIndicator = findViewById(R.id.analyzeLoadingIndicator);
         this.saveLoadingIndicator = findViewById(R.id.saveLoadingIndicator);
 
+        this.gestureWasHold = false;
         this.imageUtility = new ImageUtility(this);
         this.toastMessagesManager = new ToastMessagesManager(this, Toast.LENGTH_SHORT);
         this.distanceCalculatorExecutor = Executors.newSingleThreadExecutor();
         this.analyzerExecutor = Executors.newSingleThreadExecutor();
         this.imageSaverExecutor = Executors.newSingleThreadExecutor();
         this.analyzeButton.setOnClickListener((view) -> this.toastMessagesManager.showToastIfNeeded());
-        this.calcDistanceButton.setOnClickListener((view) -> this.toastMessagesManager.showToastIfNeeded());
 
         new Thread(() -> {
             if(objectDetector == null) objectDetector = new CustomObjectDetector(this, CustomObjectDetectorType.HIGH_ACCURACY);
@@ -121,7 +122,6 @@ public class AnalyzeActivity extends AppCompatActivity {
 
         new Thread(() -> {
             if(depthEstimator == null) depthEstimator = new CustomDepthEstimator(this);
-            EventBus.getDefault().postSticky(new CustomDepthEstimatorAvailableEvent(this, depthEstimator));
         }).start();
     }
 
@@ -142,7 +142,9 @@ public class AnalyzeActivity extends AppCompatActivity {
     @Override
     protected void onResume() {
         super.onResume();
-        if(this.analyzeButton.isChecked()) this.detectObjects(this.calcDistanceButton.isChecked());
+        if(this.analyzeButton.isChecked()) {
+            this.detectObjects(this.liveDetectionViewAnalyze.getSelectedDetections().size() == MAX_SELECTABLE_DETECTIONS);
+        }
     }
 
     /**
@@ -153,7 +155,6 @@ public class AnalyzeActivity extends AppCompatActivity {
     public void onStop() {
         EventBus.getDefault().unregister(this);
         EventBus.getDefault().unregister(this.liveDetectionViewAnalyze);
-        //EventBus.getDefault().unregister(this.customGestureDetector);
         super.onStop();
     }
 
@@ -170,8 +171,7 @@ public class AnalyzeActivity extends AppCompatActivity {
             this.finish();
             return;
         }
-        List<Bitmap> frames = event.getFrames();
-        loadAnalyzeComponents(frames.get(0));
+        loadAnalyzeComponents(event.getFrames().get(0));
     }
 
     /**
@@ -197,15 +197,30 @@ public class AnalyzeActivity extends AppCompatActivity {
             });
         });
 
-        this.backgroundOverlayAnalyze.setOnTouchListener((view, MotionEvent) -> true);
+        final GestureDetector gestureDetector = new GestureDetector( this, new GestureDetector.SimpleOnGestureListener() {
+            public void onLongPress(MotionEvent motionEvent) {
+                gestureWasHold = true;
+                if(depthEstimator == null) {
+                    toastMessagesManager.showToast();
+                    return;
+                }
+                final int previousSelectedDetections = liveDetectionViewAnalyze.getSelectedDetections().size();
+                if(liveDetectionViewAnalyze.onHold(motionEvent) == MAX_SELECTABLE_DETECTIONS && previousSelectedDetections < MAX_SELECTABLE_DETECTIONS) {
+                    calculateDistance();
+                }
+            }
+        });
         this.analyzeView.setOnTouchListener((view, motionEvent) -> {
+            if(this.analyzeButton.isChecked()) gestureDetector.onTouchEvent(motionEvent);
             if(motionEvent.getAction() == MotionEvent.ACTION_UP) {
-                EventBus.getDefault().post(motionEvent);
+                if(this.gestureWasHold) this.gestureWasHold = false;
+                else EventBus.getDefault().post(motionEvent);
             }
             return true;
         });
-        if(objectDetector != null) this.analyzeButton.setCheckable(true);
+        this.backgroundOverlayAnalyze.setOnTouchListener((view, MotionEvent) -> true); //Avoids the event propagation to the analyzeView
         this.analyzeLoadingIndicator.setVisibility(View.GONE);
+        if(objectDetector != null) this.analyzeButton.setCheckable(true);
     }
 
 
@@ -218,15 +233,14 @@ public class AnalyzeActivity extends AppCompatActivity {
         if(event.getContext() != this) return;
         this.analyzeButton.setOnClickListener((view) -> {});
         this.analyzeButton.setOnCheckedChangeListener((view, isChecked) -> {
-            println("ANALYZE CLICKED");
             if(isChecked) {
                 this.analyzeLoadingIndicator.setVisibility(View.VISIBLE);
                 this.analyzeButton.setText(". . .");
                 this.analyzeButton.setCheckable(false);
                 this.detectObjects(false);
             } else {
+                this.liveDetectionViewAnalyze.setSelectedDetections(new ArrayList<>());
                 this.analyzeButton.setText("Analyze");
-                this.calcDistanceButton.setVisibility(View.GONE);
                 EventBus.getDefault().post(new UpdateDetectionsRectsEvent(this, new ArrayList<>(), false, null, new ArrayList<>()));
             }
         });
@@ -237,34 +251,13 @@ public class AnalyzeActivity extends AppCompatActivity {
         EventBus.getDefault().removeStickyEvent(event);
     }
 
-    /**
-     * Sets all the listeners needed for generating the image's depth map and
-     * calculating the distance between detections.
-     */
-    @Subscribe(sticky = true, threadMode = ThreadMode.ASYNC)
-    public void onDepthEstimatorAvailable(CustomDepthEstimatorAvailableEvent event) {
-        if(event.getContext() != this) return;
-        this.calcDistanceButton.setOnClickListener((view) -> {});
-        this.calcDistanceButton.setOnCheckedChangeListener((view, isChecked) -> {
-            if(isChecked) {
-                this.calcDistanceButton.setText(". . .");
-                this.calcDistanceButton.setCheckable(false);
-                this.calculateDistance();
-            } else {
-                this.calcDistanceButton.setText("Measure");
-                this.detectionLines = new ArrayList<>();
-                EventBus.getDefault().post(new UpdateDetectionsRectsEvent(this, this.detections, false, null, this.detectionLines));
-            }
-        });
-        this.calcDistanceButton.setCheckable(true);
-        EventBus.getDefault().removeStickyEvent(event);
-    }
-
     @SuppressLint("WrongConstant")
     @Subscribe(sticky = true, threadMode = ThreadMode.MAIN)
     public void onOverlayVisibilityChange(OverlayVisibilityChangeEvent event) {
-        int visibility = event.getVisibility();
-        if(visibility == View.VISIBLE) this.detectObjects(this.calcDistanceButton.isChecked()); //Fixes a multitasking related rects-displaying bug
+        final int visibility = event.getVisibility();
+        if(visibility == View.VISIBLE) { //Fixes a multitasking related rects-displaying bug
+            this.detectObjects(this.liveDetectionViewAnalyze.getSelectedDetections().size() == MAX_SELECTABLE_DETECTIONS);
+        }
         this.backgroundOverlayAnalyze.setVisibility(visibility);
     }
 
@@ -276,7 +269,7 @@ public class AnalyzeActivity extends AppCompatActivity {
         if(event.getError().equals("success")) return;
 
         this.saveImageButton.setOnClickListener((view) -> {
-            this.toastMessagesManager.showToast();
+            this.toastMessagesManager.showToast("Saving operation failed");
         });
     }
 
@@ -300,10 +293,6 @@ public class AnalyzeActivity extends AppCompatActivity {
                     this.analyzeLoadingIndicator.setVisibility(View.GONE);
                     this.analyzeButton.setText("Clear");
                     this.analyzeButton.setCheckable(true);
-                    if(this.detections.size() > 1) {
-                        this.calcDistanceButton.setChecked(false);
-                        this.calcDistanceButton.setVisibility(View.VISIBLE);
-                    }
                 });
             }
         });
@@ -315,62 +304,55 @@ public class AnalyzeActivity extends AppCompatActivity {
             this.depthMap = depthEstimator.getDepthMap(this.originalImageBuffer);
             this.depthMapImage = this.imageUtility.convertFloatArrayToBitmap(this.depthMap, TARGET_DEPTH_BITMAP_WIDTH, TARGET_DEPTH_BITMAP_HEIGHT);
             this.detectionLines = new ArrayList<>();
-            DisplayMetrics displayMetrics = this.getResources().getDisplayMetrics();
 
-            for (int i = 0; i < this.detections.size() - 1; i++) {
-                //If the mask is correctly worn, there's no need to calculate the safe distance
-                if (this.getWearingMode(this.detections.get(i)) == WearingModeEnum.MRCW)
-                    continue;
+            final DisplayMetrics displayMetrics = this.getResources().getDisplayMetrics();
+            final List<Detection> selectedDetections = this.liveDetectionViewAnalyze.getSelectedDetections();
 
-                for (int j = i + 1; j < this.detections.size(); j++) {
-                    final RectF boundingBoxDetection1 = this.detections.get(i).getBoundingBox();
-                    final RectF boundingBoxDetection2 = this.detections.get(j).getBoundingBox();
+            final RectF boundingBoxDetection1 = selectedDetections.get(0).getBoundingBox();
+            final RectF boundingBoxDetection2 = selectedDetections.get(1).getBoundingBox();
 
-                    final double z1m = this.getZ(boundingBoxDetection1);
-                    final double z2m = this.getZ(boundingBoxDetection2);
-                    //z1m = this.getZ(boundingBoxDetection1);
-                    //z2m = this.getZ(boundingBoxDetection2);
+            final double z1m = this.getZ(boundingBoxDetection1);
+            final double z2m = this.getZ(boundingBoxDetection2);
+            //z1m = this.getZ(boundingBoxDetection1);
+            //z2m = this.getZ(boundingBoxDetection2);
 
-                    final double x1m = Math.abs(displayMetrics.widthPixels / 2.0 - boundingBoxDetection1.centerX()) * PX_TO_M_CONVERSION_FACTOR / z1m;
-                    final double y1m = Math.abs(displayMetrics.heightPixels / 2.0 - boundingBoxDetection1.centerY()) * PX_TO_M_CONVERSION_FACTOR / z1m;
+            final double x1m = Math.abs(displayMetrics.widthPixels / 2.0 - boundingBoxDetection1.centerX()) * PX_TO_M_CONVERSION_FACTOR / z1m;
+            final double y1m = Math.abs(displayMetrics.heightPixels / 2.0 - boundingBoxDetection1.centerY()) * PX_TO_M_CONVERSION_FACTOR / z1m;
 
-                    final double x2m = Math.abs(displayMetrics.widthPixels / 2.0 - boundingBoxDetection2.centerX()) * PX_TO_M_CONVERSION_FACTOR / z2m;
-                    final double y2m = Math.abs(displayMetrics.heightPixels / 2.0 - boundingBoxDetection2.centerY()) * PX_TO_M_CONVERSION_FACTOR / z2m;
+            final double x2m = Math.abs(displayMetrics.widthPixels / 2.0 - boundingBoxDetection2.centerX()) * PX_TO_M_CONVERSION_FACTOR / z2m;
+            final double y2m = Math.abs(displayMetrics.heightPixels / 2.0 - boundingBoxDetection2.centerY()) * PX_TO_M_CONVERSION_FACTOR / z2m;
 
-                    final double distance = getDistanceBetweenTwoPoints(x1m, y1m, z1m, x2m, y2m, z2m);
+            final double distance = getDistanceBetweenTwoPoints(x1m, y1m, z1m, x2m, y2m, z2m);
 
-                    final double areaDetection1 = boundingBoxDetection1.width() * boundingBoxDetection1.height();
-                    final double areaDetection2 = boundingBoxDetection2.width() * boundingBoxDetection2.height();
+            final double areaDetection1 = boundingBoxDetection1.width() * boundingBoxDetection1.height();
+            final double areaDetection2 = boundingBoxDetection2.width() * boundingBoxDetection2.height();
 
-                    final List<Integer> colors = getDepthLineColors(distance);
-                    final int detectionLineStartCorrectionXFactor, detectionLineEndCorrectionXFactor;
-                    if (boundingBoxDetection1.centerX() < boundingBoxDetection2.centerX()) {
-                        detectionLineStartCorrectionXFactor = +1;
-                        detectionLineEndCorrectionXFactor = -1;
-                    } else {
-                        detectionLineStartCorrectionXFactor = -1;
-                        detectionLineEndCorrectionXFactor = +1;
-                    }
-                    this.detectionLines.add(new DetectionLine(
-                                    boundingBoxDetection1.centerX() + boundingBoxDetection1.width() / 2 * detectionLineStartCorrectionXFactor,
-                                    boundingBoxDetection1.centerY(),
-                                    boundingBoxDetection2.centerX() + boundingBoxDetection2.width() / 2 * detectionLineEndCorrectionXFactor,
-                                    boundingBoxDetection2.centerY(),
-                                    String.format("%.2f", distance) + "M",
-                                    colors.get(0),
-                                    colors.get(1),
-                                    (float) Math.max(0.0, areaDetection1 / areaDetection2),
-                                    (float) Math.max(0.0, areaDetection2 / areaDetection1)
-                            )
-                    );
-                }
+            //If the mask is correctly worn, the safe distance doesn't matter
+            final List<Integer> colors = this.getWearingMode(selectedDetections.get(0)) == WearingModeEnum.MRCW || this.getWearingMode(selectedDetections.get(1)) == WearingModeEnum.MRCW ?
+                                         getDepthLineColors(SAFE_DISTANCE_M) : getDepthLineColors(distance);
+
+            final int detectionLineStartCorrectionXFactor, detectionLineEndCorrectionXFactor;
+            if (boundingBoxDetection1.centerX() < boundingBoxDetection2.centerX()) {
+                detectionLineStartCorrectionXFactor = +1;
+                detectionLineEndCorrectionXFactor = -1;
+            } else {
+                detectionLineStartCorrectionXFactor = -1;
+                detectionLineEndCorrectionXFactor = +1;
             }
+            this.detectionLines.add(
+                    new DetectionLine(
+                            boundingBoxDetection1.centerX() + boundingBoxDetection1.width() / 2 * detectionLineStartCorrectionXFactor,
+                            boundingBoxDetection1.centerY(),
+                            boundingBoxDetection2.centerX() + boundingBoxDetection2.width() / 2 * detectionLineEndCorrectionXFactor,
+                            boundingBoxDetection2.centerY(),
+                            String.format("%.2f", distance) + "M",
+                            colors.get(0),
+                            colors.get(1),
+                            (float) Math.max(0.0, areaDetection1 / areaDetection2),
+                            (float) Math.max(0.0, areaDetection2 / areaDetection1)
+                    )
+            );
             EventBus.getDefault().post(new UpdateDetectionsRectsEvent(this, this.detections, false, null, this.detectionLines));
-
-            runOnUiThread(() -> {
-                this.calcDistanceButton.setText("Clear");
-                this.calcDistanceButton.setCheckable(true);
-            });
         });
     }
 
@@ -414,7 +396,7 @@ public class AnalyzeActivity extends AppCompatActivity {
 
     private List<Integer> getDepthLineColors(double distance) {
         List<Integer> colors = new ArrayList<>();
-        if(distance > SAFE_DISTANCE_M) {
+        if(distance >= SAFE_DISTANCE_M) {
             colors.add(WearingModeEnum.MRCW.getBackgroundColor());
             colors.add(WearingModeEnum.MRCW.getTextColor());
         } else {

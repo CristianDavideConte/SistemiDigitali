@@ -17,6 +17,6 @@ public class Debug {
         for(Object obj : objs) {
             s.append(obj).append(" ");
         }
-        Log.println(Log.DEBUG,"DEBUG", s.toString());
+        Log.e("DEBUG", s.toString());
     }
 }
