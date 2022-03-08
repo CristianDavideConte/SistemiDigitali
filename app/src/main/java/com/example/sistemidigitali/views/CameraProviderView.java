@@ -31,7 +31,7 @@ import androidx.camera.lifecycle.ProcessCameraProvider;
 import androidx.camera.view.PreviewView;
 
 import com.example.sistemidigitali.customEvents.AllowUpdatePolicyChangeEvent;
-import com.example.sistemidigitali.customEvents.CustomObjectDetectorAvailableEvent;
+import com.example.sistemidigitali.customEvents.NeuralNetworkAvailableEvent;
 import com.example.sistemidigitali.customEvents.PictureTakenEvent;
 import com.example.sistemidigitali.customEvents.UpdateDetectionsRectsEvent;
 import com.example.sistemidigitali.enums.CustomObjectDetectorType;
@@ -117,7 +117,7 @@ public class CameraProviderView {
 
         new Thread(() -> {
             if(objectDetector == null) objectDetector = new CustomObjectDetector(context, CustomObjectDetectorType.HIGH_PERFORMANCE);
-            EventBus.getDefault().postSticky(new CustomObjectDetectorAvailableEvent(context, objectDetector, CustomObjectDetectorType.HIGH_PERFORMANCE));
+            EventBus.getDefault().postSticky(new NeuralNetworkAvailableEvent(context));
         }).start();
     }
 

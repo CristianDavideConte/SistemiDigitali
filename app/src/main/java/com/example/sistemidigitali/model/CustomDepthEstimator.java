@@ -86,7 +86,7 @@ public class CustomDepthEstimator {
         println("]");
         println();*/
 
-        return outputProbabilityBuffer.getFloatArray(); //The output is a float[] conaining the relative depths between the observer and the pixel[i,j]
+        return outputProbabilityBuffer.getFloatArray(); //The output is a float[] containing the relative depths between the observer and the pixel[i,j]
     }
 
     public float getDistancePhonePerson(float[] depthMap, float depthMapWidth, float depthMapHeight, float left, float width, float top, float height) {

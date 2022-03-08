@@ -1,7 +1,5 @@
 package com.example.sistemidigitali.views;
 
-import static com.example.sistemidigitali.debugUtility.Debug.println;
-
 import android.annotation.SuppressLint;
 import android.graphics.Bitmap;
 import android.graphics.RectF;
@@ -18,7 +16,7 @@ import android.widget.Toast;
 import androidx.appcompat.app.AppCompatActivity;
 
 import com.example.sistemidigitali.R;
-import com.example.sistemidigitali.customEvents.CustomObjectDetectorAvailableEvent;
+import com.example.sistemidigitali.customEvents.NeuralNetworkAvailableEvent;
 import com.example.sistemidigitali.customEvents.ImageSavedEvent;
 import com.example.sistemidigitali.customEvents.OverlayVisibilityChangeEvent;
 import com.example.sistemidigitali.customEvents.PictureTakenEvent;
@@ -120,11 +118,8 @@ public class AnalyzeActivity extends AppCompatActivity {
 
         new Thread(() -> {
             if(objectDetector == null) objectDetector = new CustomObjectDetector(this, CustomObjectDetectorType.HIGH_ACCURACY);
-            EventBus.getDefault().postSticky(new CustomObjectDetectorAvailableEvent(this, objectDetector, CustomObjectDetectorType.HIGH_ACCURACY));
-        }).start();
-
-        new Thread(() -> {
             if(depthEstimator == null) depthEstimator = new CustomDepthEstimator(this);
+            EventBus.getDefault().postSticky(new NeuralNetworkAvailableEvent(this));
         }).start();
     }
 
@@ -174,7 +169,9 @@ public class AnalyzeActivity extends AppCompatActivity {
             this.finish();
             return;
         }
-        loadAnalyzeComponents(event.getFrames().get(0));
+        final Bitmap image = event.getFrames().get(0);
+        this.liveDetectionViewAnalyze.setWidthAndHeight(image.getWidth(), image.getHeight());
+        loadAnalyzeComponents(image);
     }
 
     /**
@@ -204,10 +201,6 @@ public class AnalyzeActivity extends AppCompatActivity {
         final GestureDetector gestureDetector = new GestureDetector( this, new GestureDetector.SimpleOnGestureListener() {
             public void onLongPress(MotionEvent motionEvent) {
                 gestureWasHold = true;
-                if(depthEstimator == null) {
-                    toastMessagesManager.showToast();
-                    return;
-                }
                 final int previousSelectedDetections = liveDetectionViewAnalyze.getSelectedDetections().size();
                 if(liveDetectionViewAnalyze.onHold(motionEvent) == MAX_SELECTABLE_DETECTIONS && previousSelectedDetections < MAX_SELECTABLE_DETECTIONS) {
                     calculateDistance();
@@ -233,7 +226,7 @@ public class AnalyzeActivity extends AppCompatActivity {
      * drawing the detections' rects.
      */
     @Subscribe(sticky = true, threadMode = ThreadMode.ASYNC)
-    public void onCustomObjectDetectorAvailable(CustomObjectDetectorAvailableEvent event) {
+    public void onNeuralNetworkAvailable(NeuralNetworkAvailableEvent event) {
         if(event.getContext() != this) return;
         this.analyzeButton.setOnClickListener((view) -> {});
         this.analyzeButton.setOnCheckedChangeListener((view, isChecked) -> {
@@ -306,12 +299,14 @@ public class AnalyzeActivity extends AppCompatActivity {
     @SuppressLint("DefaultLocale")
     private void calculateDistance() {
         this.distanceCalculatorExecutor.execute(() -> {
+            final List<Detection> selectedDetections = this.liveDetectionViewAnalyze.getSelectedDetections();
+            if(selectedDetections.size() < 2) return;
+
             this.depthMap = depthEstimator.getDepthMap(this.originalImageBuffer);
             this.depthMapImage = this.imageUtility.convertFloatArrayToBitmap(this.depthMap, TARGET_DEPTH_BITMAP_WIDTH, TARGET_DEPTH_BITMAP_HEIGHT);
             this.detectionLines = new ArrayList<>();
 
             final DisplayMetrics displayMetrics = this.getResources().getDisplayMetrics();
-            final List<Detection> selectedDetections = this.liveDetectionViewAnalyze.getSelectedDetections();
 
             final RectF boundingBoxDetection1 = selectedDetections.get(0).getBoundingBox();
             final RectF boundingBoxDetection2 = selectedDetections.get(1).getBoundingBox();
@@ -336,19 +331,24 @@ public class AnalyzeActivity extends AppCompatActivity {
             final List<Integer> colors = this.getWearingMode(selectedDetections.get(0)) == WearingModeEnum.MRCW || this.getWearingMode(selectedDetections.get(1)) == WearingModeEnum.MRCW ?
                                          getDepthLineColors(SAFE_DISTANCE_M) : getDepthLineColors(distance);
 
-            final int detectionLineStartCorrectionXFactor, detectionLineEndCorrectionXFactor;
-            if (boundingBoxDetection1.centerX() < boundingBoxDetection2.centerX()) {
-                detectionLineStartCorrectionXFactor = +1;
-                detectionLineEndCorrectionXFactor = -1;
+            float startX, endX;
+            final float centersDistance = boundingBoxDetection1.centerX() - boundingBoxDetection2.centerX();
+            if (centersDistance < 0) {
+                startX = boundingBoxDetection1.centerX() + boundingBoxDetection1.width() / 2;
+                endX = boundingBoxDetection2.centerX() - boundingBoxDetection2.width() / 2;
             } else {
-                detectionLineStartCorrectionXFactor = -1;
-                detectionLineEndCorrectionXFactor = +1;
+                startX = boundingBoxDetection1.centerX() - boundingBoxDetection1.width() / 2;
+                endX = boundingBoxDetection2.centerX() + boundingBoxDetection2.width() / 2;
+            }
+            if(Math.abs(startX - endX) < 100) {
+                startX = boundingBoxDetection1.centerX();
+                endX = boundingBoxDetection2.centerX();
             }
             this.detectionLines.add(
                     new DetectionLine(
-                            boundingBoxDetection1.centerX() + boundingBoxDetection1.width() / 2 * detectionLineStartCorrectionXFactor,
+                            startX,
                             boundingBoxDetection1.centerY(),
-                            boundingBoxDetection2.centerX() + boundingBoxDetection2.width() / 2 * detectionLineEndCorrectionXFactor,
+                            endX,
                             boundingBoxDetection2.centerY(),
                             String.format("%.2f", distance) + "M",
                             colors.get(0),

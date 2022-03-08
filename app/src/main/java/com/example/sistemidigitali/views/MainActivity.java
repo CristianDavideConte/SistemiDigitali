@@ -16,7 +16,7 @@ import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.appcompat.app.AppCompatActivity;
 
 import com.example.sistemidigitali.R;
-import com.example.sistemidigitali.customEvents.CustomObjectDetectorAvailableEvent;
+import com.example.sistemidigitali.customEvents.NeuralNetworkAvailableEvent;
 import com.example.sistemidigitali.customEvents.OverlayVisibilityChangeEvent;
 import com.example.sistemidigitali.customEvents.PictureTakenEvent;
 import com.example.sistemidigitali.model.CustomVibrator;
@@ -73,6 +73,7 @@ public class MainActivity extends AppCompatActivity {
         this.galleryButton = findViewById(R.id.galleryButton);
         this.shutterButton = findViewById(R.id.shutterButton);
 
+        this.liveDetectionViewMain.setSelectedDetections(new ArrayList<>());
         this.cameraProviderView = new CameraProviderView(this,  findViewById(R.id.previewView));
         this.liveDetectionSwitch.setOnClickListener((view) -> this.toastMessagesManager.showToastIfNeeded());
         this.switchCameraButton.setOnClickListener((view) -> {
@@ -128,7 +129,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
     @Subscribe(sticky = true, threadMode = ThreadMode.ASYNC)
-    public void onCustomObjectDetectorAvailable(CustomObjectDetectorAvailableEvent event) {
+    public void onNeuralNetworkAvailable(NeuralNetworkAvailableEvent event) {
         if(event.getContext() != this) return;
         this.liveDetectionSwitch.setOnClickListener((view) -> {});
         this.liveDetectionSwitch.setOnCheckedChangeListener((view, isChecked) -> {

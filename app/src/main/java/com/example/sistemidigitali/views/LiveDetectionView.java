@@ -1,5 +1,7 @@
 package com.example.sistemidigitali.views;
 
+import static com.example.sistemidigitali.debugUtility.Debug.println;
+
 import android.annotation.SuppressLint;
 import android.content.Context;
 import android.content.Intent;
@@ -8,8 +10,10 @@ import android.graphics.Color;
 import android.graphics.Matrix;
 import android.graphics.Paint;
 import android.graphics.Path;
+import android.graphics.Rect;
 import android.graphics.RectF;
 import android.util.AttributeSet;
+import android.util.DisplayMetrics;
 import android.view.MotionEvent;
 import android.view.View;
 
@@ -30,13 +34,13 @@ import java.util.List;
 import java.util.Optional;
 
 public class LiveDetectionView extends View {
-    private static final float ROUNDING_RECTS_RADIUS = 70;
-    public static final float STROKE_WIDTH = 10;
-    public static final float SELECTED_STROKE_WIDTH = 25;
+    private float ROUNDING_RECTS_RADIUS = 70;
+    private float STROKE_WIDTH = 10;
+    private float SELECTED_STROKE_WIDTH = 25;
 
     private boolean allowUpdate;
 
-    private List<Detection> selectedDetections;
+    public static List<Detection> selectedDetections;
     private List<Detection> detections;
     private List<DetectionLine> detectionsLines;
     private boolean flipNeeded;
@@ -66,7 +70,7 @@ public class LiveDetectionView extends View {
     public void init(Context context) {
         this.allowUpdate = true;
 
-        this.selectedDetections = new ArrayList<>();
+        if(selectedDetections == null) selectedDetections = new ArrayList<>();
         this.detections = new ArrayList<>();
         this.detectionsLines = new ArrayList<>();
 
@@ -84,11 +88,23 @@ public class LiveDetectionView extends View {
         this.customVibrator = new CustomVibrator(context);
     }
 
+    public void setWidthAndHeight(float width, float height) {
+        final float standardResBig   = 3797F * 2564F;  //x1
+        final float standardResSmall = 1000F * 600F;   //x2
+        final float standardStrokeWidthBig   = 28.16F; //y1
+        final float standardStrokeWidthSmall = 8F;     //y2
+        final float currentRes = width * height;       //x
+
+        STROKE_WIDTH = Math.max(1, (currentRes - standardResBig) / (standardResSmall - standardResBig) * (standardStrokeWidthSmall - standardStrokeWidthBig) + standardStrokeWidthBig);
+        ROUNDING_RECTS_RADIUS = STROKE_WIDTH * 10;
+        SELECTED_STROKE_WIDTH = STROKE_WIDTH * 2.5F;
+    }
+
     public List<Detection> getSelectedDetections() {
         return selectedDetections;
     }
     public void setSelectedDetections(List<Detection> selectedDetections) {
-        this.selectedDetections = selectedDetections;
+        LiveDetectionView.selectedDetections = selectedDetections;
     }
 
     @Subscribe(threadMode = ThreadMode.ASYNC)
@@ -152,8 +168,8 @@ public class LiveDetectionView extends View {
         //Draws the connecting lines of the detections' rectangles
         this.boxPaint.setStyle(Paint.Style.FILL);
         for(DetectionLine line : this.detectionsLines) {
-            final float initialStrokeWidth = STROKE_WIDTH / 2 * line.getStartLineWidthMultiplier();
-            final float finalStrokeWidth = STROKE_WIDTH / 2 * line.getEndLineWidthMultiplier();
+            final float initialStrokeWidth = SELECTED_STROKE_WIDTH / 2 * line.getStartLineWidthMultiplier();
+            final float finalStrokeWidth = SELECTED_STROKE_WIDTH / 2 * line.getEndLineWidthMultiplier();
             final int startFixSign, endFixSign;
             if(line.getStartX() > line.getEndX()) {
                 startFixSign = -1;
@@ -162,13 +178,12 @@ public class LiveDetectionView extends View {
                 startFixSign = +1;
                 endFixSign = -1;
             }
-
             this.detectionLinesPath.reset();
-            this.detectionLinesPath.moveTo(line.getStartX() + STROKE_WIDTH * startFixSign, line.getStartY() - initialStrokeWidth);
-            this.detectionLinesPath.lineTo(line.getStartX() + STROKE_WIDTH * startFixSign, line.getStartY() + initialStrokeWidth);
-            this.detectionLinesPath.lineTo(line.getEndX() + STROKE_WIDTH * endFixSign, line.getEndY() + finalStrokeWidth);
-            this.detectionLinesPath.lineTo(line.getEndX() + STROKE_WIDTH * endFixSign, line.getEndY() - finalStrokeWidth);
-            this.detectionLinesPath.lineTo(line.getStartX() + STROKE_WIDTH * startFixSign, line.getStartY() - initialStrokeWidth);
+            this.detectionLinesPath.moveTo(line.getStartX() + SELECTED_STROKE_WIDTH * startFixSign, line.getStartY() - initialStrokeWidth);
+            this.detectionLinesPath.lineTo(line.getStartX() + SELECTED_STROKE_WIDTH * startFixSign, line.getStartY() + initialStrokeWidth);
+            this.detectionLinesPath.lineTo(line.getEndX() + SELECTED_STROKE_WIDTH * endFixSign, line.getEndY() + finalStrokeWidth);
+            this.detectionLinesPath.lineTo(line.getEndX() + SELECTED_STROKE_WIDTH * endFixSign, line.getEndY() - finalStrokeWidth);
+            this.detectionLinesPath.lineTo(line.getStartX() + SELECTED_STROKE_WIDTH * startFixSign, line.getStartY() - initialStrokeWidth);
 
             this.boxPaint.setColor(line.getLineColor());
             canvas.drawPath(this.detectionLinesPath, this.boxPaint);
@@ -179,34 +194,34 @@ public class LiveDetectionView extends View {
         final Optional<Detection> detectionOptional = this.getDetectionAtPoint(motionEvent.getX(), motionEvent.getY());
         if(detectionOptional.isPresent()) {
             final Detection detection = detectionOptional.get();
-            if(this.selectedDetections.remove(detection)) {
+            if(selectedDetections.remove(detection)) {
                 this.detectionsLines.clear();
                 this.customVibrator.vibrateLight();
             } else {
-                if(this.selectedDetections.size() < 2) {
-                    this.selectedDetections.add(detection);
+                if(selectedDetections.size() < 2) {
+                    selectedDetections.add(detection);
                     this.customVibrator.vibrateHeavy();
                 }
-                else return this.selectedDetections.size();
+                else return selectedDetections.size();
             }
             this.invalidate();
         }
-        return this.selectedDetections.size();
+        return selectedDetections.size();
     }
 
     @SuppressLint("DefaultLocale")
     @Subscribe(threadMode = ThreadMode.ASYNC)
     public boolean onTap(MotionEvent motionEvent) {
         if(this.allowUpdate) {
-            final float touchToleranceY = 5 * STROKE_WIDTH;
+            final float touchToleranceY = 2.3F * SELECTED_STROKE_WIDTH;
             for(DetectionLine line : this.detectionsLines) {
                 //The Y that the detection line should have at the motion event's X
                 final float lineYatTouchX = (line.getEndY() - line.getStartY()) * (motionEvent.getX() - line.getStartX()) / (line.getEndX() - line.getStartX()) + line.getStartY();
 
                 if(lineYatTouchX - touchToleranceY <= motionEvent.getY() &&
-                        lineYatTouchX + touchToleranceY >= motionEvent.getY() &&
-                        Math.min(line.getStartX(), line.getEndX()) <= motionEvent.getX() &&
-                        Math.max(line.getStartX(), line.getEndX()) >= motionEvent.getX())
+                   lineYatTouchX + touchToleranceY >= motionEvent.getY() &&
+                   Math.min(line.getStartX(), line.getEndX()) <= motionEvent.getX() &&
+                   Math.max(line.getStartX(), line.getEndX()) >= motionEvent.getX())
                 {
                     Intent intent = new Intent(this.getContext(), PopUpActivity.class);
                     intent.putExtra(PopUpActivity.POP_UP_TEXT_1, "Distance");
