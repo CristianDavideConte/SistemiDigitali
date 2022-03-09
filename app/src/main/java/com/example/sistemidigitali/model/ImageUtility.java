@@ -1,5 +1,7 @@
 package com.example.sistemidigitali.model;
 
+import static com.example.sistemidigitali.debugUtility.Debug.println;
+
 import android.annotation.SuppressLint;
 import android.content.ContentValues;
 import android.content.Context;
@@ -19,6 +21,7 @@ import com.example.sistemidigitali.customEvents.ImageSavedEvent;
 
 import org.greenrobot.eventbus.EventBus;
 import org.tensorflow.lite.DataType;
+import org.tensorflow.lite.support.common.ops.NormalizeOp;
 import org.tensorflow.lite.support.image.ImageProcessor;
 import org.tensorflow.lite.support.image.TensorImage;
 import org.tensorflow.lite.support.image.ops.ResizeOp;
@@ -58,23 +61,18 @@ public class ImageUtility {
 
         int[] imgNormalized = new int[imgArray.length];
         for (int i = 0; i < imgArray.length; ++i) {
-            float val = multiplier * (imgArray[i] - minVal);
+            float val = (float) (multiplier * (imgArray[i] - minVal));
             imgNormalized[i] = (int) val; //always between 0..255
         }
 
-        Bitmap bitmap = Bitmap.createBitmap(width / 2, height, Bitmap.Config.RGB_565);
+        Bitmap bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.RGB_565);
 
-        for (int ii = 0; ii < width / 2 - 1; ii++) { //pass the screen pixels in 2 directions
-            for (int jj = 0; jj < height - 1; jj++) {
+        for (int ii = 0; ii < width; ii++) {
+            for (int jj = 0; jj < height; jj++) {
                 int index = ii + jj * width;
                 if(index < imgArray.length) {
-                    //int val = (imgNormalized[index] + imgNormalized[index + width / 2]) / 2; //average of the two pictures
-                    //int val = (imgNormalized[index] + 255 - imgNormalized[index + width / 2]) / 2; //average of the two pictures
-                    //int val = imgNormalized[index + width / 2]; //Right image
-                    int val = imgNormalized[index]; //Left image
+                    int val = imgNormalized[index];
                     bitmap.setPixel(ii, jj, Color.rgb(val, val, val));
-                } else {
-                    bitmap.setPixel(ii, jj, Color.rgb(255, 0, 0));
                 }
             }
         }
@@ -116,16 +114,19 @@ public class ImageUtility {
      * @return The corresponding ByteBuffer
      */
     public ByteBuffer convertBitmapToBytebuffer(Bitmap bitmap, int targetWidth, int targetHeight) {
-        int cropSize = Math.min(bitmap.getWidth(), bitmap.getHeight());
+        float[] mean = new float[]{123.675f,  116.28f, 103.53f};
+        float[] std = new float[]{58.395f, 57.12f, 57.375f};
+
+        //https://github.com/shubham0204/Realtime_MiDaS_Depth_Estimation_Android/blob/65cd321b029fafee3d5b9ae4783fabd512951719/app/src/main/java/com/shubham0204/ml/depthestimation/MiDASModel.kt#L52
         ImageProcessor imageProcessor =
                 new ImageProcessor.Builder()
-                        //.add(new ResizeWithCropOrPadOp(cropSize, cropSize))
                         .add(new ResizeOp(targetHeight, targetWidth, ResizeOp.ResizeMethod.NEAREST_NEIGHBOR))
+                        .add(new NormalizeOp(mean, std))
                         .build();
 
         // Create a TensorImage object. This creates the tensor of the corresponding
-        // tensor type (uint8 in this case) that the TensorFlow Lite interpreter needs.
-        TensorImage tensorImage = new TensorImage(DataType.UINT8);
+        // tensor type (float32 in this case) that the TensorFlow Lite interpreter needs.
+        TensorImage tensorImage = new TensorImage(DataType.FLOAT32);
 
         // Analysis code for every frame
         // Preprocess the image

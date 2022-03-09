@@ -56,10 +56,8 @@ public class AnalyzeActivity extends AppCompatActivity {
     private static final double PX_TO_M_CONVERSION_FACTOR_V2 = 1 * STANDARD_FACE_HEIGHT_M / STANDARD_FACE_HEIGHT_PX;
     private static final double PX_TO_M_CONVERSION_FACTOR = (PX_TO_M_CONVERSION_FACTOR_V1 + PX_TO_M_CONVERSION_FACTOR_V2) / 2.0;
 
-    private static final int TARGET_DEPTH_BITMAP_WIDTH = 256;
-    private static final int TARGET_DEPTH_BITMAP_HEIGHT = 256;
-    private static final int TARGET_DEPTH_MAP_WIDTH = 256*2;
-    private static final int TARGET_DEPTH_MAP_HEIGHT = 256*2;
+    private static final int TARGET_DEPTH_MAP_WIDTH = 256;
+    private static final int TARGET_DEPTH_MAP_HEIGHT = 256;
 
     private static final int MAX_SELECTABLE_DETECTIONS = 2;
 
@@ -115,6 +113,7 @@ public class AnalyzeActivity extends AppCompatActivity {
         this.analyzerExecutor = Executors.newSingleThreadExecutor();
         this.imageSaverExecutor = Executors.newSingleThreadExecutor();
         this.analyzeButton.setOnClickListener((view) -> this.toastMessagesManager.showToastIfNeeded());
+        this.saveImageButton.setOnClickListener((view) -> this.toastMessagesManager.showToastIfNeeded());
 
         new Thread(() -> {
             if(objectDetector == null) objectDetector = new CustomObjectDetector(this, CustomObjectDetectorType.HIGH_ACCURACY);
@@ -186,18 +185,6 @@ public class AnalyzeActivity extends AppCompatActivity {
         this.originalImageBuffer = this.imageUtility.convertBitmapToBytebuffer(this.frame, TARGET_DEPTH_MAP_WIDTH, TARGET_DEPTH_MAP_HEIGHT);
         this.analyzeView.setImageBitmap(this.frame);
 
-        this.saveImageButton.setOnClickListener((view) -> {
-            this.customVibrator.vibrateLight();
-            this.saveImageButton.setClickable(false);
-            this.saveLoadingIndicator.setVisibility(View.VISIBLE);
-            this.imageSaverExecutor.execute(() -> {
-                List<Bitmap> images = new ArrayList<>();
-                images.add(this.frame);
-                if(this.depthMapImage != null) images.add(this.depthMapImage);
-                this.imageUtility.saveImages(images);
-            });
-        });
-
         final GestureDetector gestureDetector = new GestureDetector( this, new GestureDetector.SimpleOnGestureListener() {
             public void onLongPress(MotionEvent motionEvent) {
                 gestureWasHold = true;
@@ -241,6 +228,22 @@ public class AnalyzeActivity extends AppCompatActivity {
                 this.analyzeButton.setText("Analyze");
                 EventBus.getDefault().post(new UpdateDetectionsRectsEvent(this, new ArrayList<>(), false, null, new ArrayList<>()));
             }
+        });
+
+        this.saveImageButton.setOnClickListener((view) -> {
+            this.customVibrator.vibrateLight();
+            this.saveImageButton.setClickable(false);
+            this.saveLoadingIndicator.setVisibility(View.VISIBLE);
+            this.imageSaverExecutor.execute(() -> {
+                List<Bitmap> images = new ArrayList<>();
+                images.add(this.frame);
+                if(this.depthMapImage == null) {
+                    this.depthMap = depthEstimator.getDepthMap(this.originalImageBuffer);
+                    this.depthMapImage = this.imageUtility.convertFloatArrayToBitmap(this.depthMap, TARGET_DEPTH_MAP_WIDTH, TARGET_DEPTH_MAP_HEIGHT);
+                }
+                images.add(this.depthMapImage);
+                this.imageUtility.saveImages(images);
+            });
         });
 
         if(this.frame != null) this.analyzeButton.setCheckable(true);
@@ -303,7 +306,7 @@ public class AnalyzeActivity extends AppCompatActivity {
             if(selectedDetections.size() < 2) return;
 
             this.depthMap = depthEstimator.getDepthMap(this.originalImageBuffer);
-            this.depthMapImage = this.imageUtility.convertFloatArrayToBitmap(this.depthMap, TARGET_DEPTH_BITMAP_WIDTH, TARGET_DEPTH_BITMAP_HEIGHT);
+            this.depthMapImage = this.imageUtility.convertFloatArrayToBitmap(this.depthMap, TARGET_DEPTH_MAP_WIDTH, TARGET_DEPTH_MAP_HEIGHT);
             this.detectionLines = new ArrayList<>();
 
             final DisplayMetrics displayMetrics = this.getResources().getDisplayMetrics();
@@ -371,13 +374,13 @@ public class AnalyzeActivity extends AppCompatActivity {
         final RectF imageRect = new RectF(0, 0, this.frame.getWidth(), this.frame.getHeight());
         this.analyzeView.getImageMatrix().mapRect(imageRect);
 
-        final float scaleX = (float) TARGET_DEPTH_BITMAP_WIDTH  / (float) this.frame.getWidth();
-        final float scaleY = (float) TARGET_DEPTH_BITMAP_HEIGHT / (float) this.frame.getHeight();
+        final float scaleX = (float) TARGET_DEPTH_MAP_WIDTH  / (float) this.frame.getWidth();
+        final float scaleY = (float) TARGET_DEPTH_MAP_HEIGHT / (float) this.frame.getHeight();
 
         return depthEstimator.getDistancePhonePerson(
                 this.depthMap,
-                TARGET_DEPTH_BITMAP_WIDTH,
-                TARGET_DEPTH_BITMAP_HEIGHT,
+                TARGET_DEPTH_MAP_WIDTH,
+                TARGET_DEPTH_MAP_HEIGHT,
                 (detectionBoundingBox.left - imageRect.left) * scaleX,
                 detectionBoundingBox.width() * scaleX,
                 (detectionBoundingBox.top - imageRect.top) * scaleY,

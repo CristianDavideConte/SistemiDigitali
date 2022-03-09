@@ -8,6 +8,7 @@ import android.content.res.AssetFileDescriptor;
 import org.tensorflow.lite.DataType;
 import org.tensorflow.lite.Interpreter;
 import org.tensorflow.lite.gpu.GpuDelegate;
+import org.tensorflow.lite.support.common.TensorProcessor;
 import org.tensorflow.lite.support.metadata.MetadataExtractor;
 import org.tensorflow.lite.support.tensorbuffer.TensorBuffer;
 
@@ -19,15 +20,15 @@ import java.nio.channels.FileChannel;
 
 
 public class CustomDepthEstimator {
-    private final String DEPTH_ESTIMATOR_FILE = "midas_small_2_1.tflite";
+    private static final String DEPTH_ESTIMATOR_FILE = "midas_small_2_1.tflite";
 
     private static final float SFR_C_AVG = 194.29F; //Standard Average Depth in SFR area
     private static final float SFR_D = 1.0F;        //Standard Distance phone-person (in Meters)
 
-
     private final Context context;
     private Interpreter depthEstimator;
-    private TensorBuffer outputProbabilityBuffer;
+    private final TensorBuffer outputProbabilityBuffer;
+    private final TensorProcessor outputTensorProcessor;
 
     public CustomDepthEstimator(Context context) {
         this.context = context;
@@ -39,7 +40,6 @@ public class CustomDepthEstimator {
 
             MappedByteBuffer modelBuffer = loadModelFile(DEPTH_ESTIMATOR_FILE);
             this.depthEstimator = new Interpreter(modelBuffer, depthEstimatorOptions);
-            outputProbabilityBuffer = TensorBuffer.createFixedSize(this.depthEstimator.getOutputTensor(0).shape(), DataType.FLOAT32);
 
             // Image shape is in the format of {1, height, width, 3}
             int test = 0;
@@ -55,38 +55,33 @@ public class CustomDepthEstimator {
 
                 MappedByteBuffer modelBuffer = loadModelFile(DEPTH_ESTIMATOR_FILE);
                 this.depthEstimator = new Interpreter(modelBuffer, depthEstimatorOptions);
-                outputProbabilityBuffer = TensorBuffer.createFixedSize(this.depthEstimator.getOutputTensor(0).shape(), DataType.FLOAT32);
             } catch (Exception e2) {
                 e2.printStackTrace();
             }
         }
+
+        this.outputProbabilityBuffer = TensorBuffer.createFixedSize(this.depthEstimator.getOutputTensor(0).shape(), DataType.FLOAT32);
+        this.outputTensorProcessor = new TensorProcessor.Builder().add(new MinMaxScalingOp()).build();
     }
 
-    //https://github.com/isl-org/MiDaS/blob/b7fbf07a5d687653ec053757152f8f87efe49b4d/mobile/android/lib_support/src/main/java/org/tensorflow/lite/examples/classification/tflite/Classifier.java#L252
-    //P = D * scale + shift
-    //P = physical distance (meters)
-    //D = inverse depth (with respect to the furthest point)
-    //the returned float[] contains the D
+    /**
+     * Sources:
+     * https://github.com/shubham0204/Realtime_MiDaS_Depth_Estimation_Android/blob/65cd321b029fafee3d5b9ae4783fabd512951719/app/src/main/java/com/shubham0204/ml/depthestimation/MiDASModel.kt#L59
+     * https://github.com/shubham0204/Realtime_MiDaS_Depth_Estimation_Android/blob/65cd321b029fafee3d5b9ae4783fabd512951719/app/src/main/java/com/shubham0204/ml/depthestimation/MiDASModel.kt#L89
+     * https://github.com/isl-org/MiDaS/blob/b7fbf07a5d687653ec053757152f8f87efe49b4d/mobile/android/lib_support/src/main/java/org/tensorflow/lite/examples/classification/tflite/Classifier.java#L252
+     * P = D * scale + shift
+     * P = physical distance (meters)
+     * D = inverse depth (with respect to the furthest point)
+     * the returned float[] contains the D
+     */
     public float[] getDepthMap(ByteBuffer input) {
         try {
             this.depthEstimator.run(input, outputProbabilityBuffer.getBuffer().rewind());
+            this.outputTensorProcessor.process(outputProbabilityBuffer);
         } catch (Exception e) {
             e.printStackTrace();
         }
-
-        /*int test = 0;
-        print("[");
-        for (float i: outputProbabilityBuffer.getFloatArray()) {
-            if(test != 0 && test % 256 == 0) print(",\n");
-            print(test % 256 == 0 ? "[ " + i : i);
-            test++;
-            print(test % 256 == 0 ? " ]" : ", ");
-            //if(test > 1000) break;
-        }
-        println("]");
-        println();*/
-
-        return outputProbabilityBuffer.getFloatArray(); //The output is a float[] containing the relative depths between the observer and the pixel[i,j]
+        return outputProbabilityBuffer.getFloatArray(); //The output is a float[] containing the inverse (relative) depths between the observer and the pixel[i,j]
     }
 
     public float getDistancePhonePerson(float[] depthMap, float depthMapWidth, float depthMapHeight, float left, float width, float top, float height) {
