@@ -153,7 +153,7 @@ public class LiveDetectionView extends View {
             if(this.transformMatrix != null) this.transformMatrix.mapRect(boundingBox);
 
             boolean isSelected = false;
-            for(Detection selectedDetection : this.selectedDetections) {
+            for(Detection selectedDetection : selectedDetections) {
                 if(selectedDetection.equals(detection)) {
                     this.boxPaint.setStrokeWidth(SELECTED_STROKE_WIDTH);
                     isSelected = true;
