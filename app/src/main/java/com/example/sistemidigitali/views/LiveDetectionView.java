@@ -92,7 +92,7 @@ public class LiveDetectionView extends View {
         final float currentRes = width * height;       //x
 
         STROKE_WIDTH = Math.max(1, (currentRes - standardResBig) / (standardResSmall - standardResBig) * (standardStrokeWidthSmall - standardStrokeWidthBig) + standardStrokeWidthBig);
-        ROUNDING_RECTS_RADIUS = STROKE_WIDTH * 10;
+        ROUNDING_RECTS_RADIUS = STROKE_WIDTH * 5;
         SELECTED_STROKE_WIDTH = STROKE_WIDTH * 2.5F;
     }
 

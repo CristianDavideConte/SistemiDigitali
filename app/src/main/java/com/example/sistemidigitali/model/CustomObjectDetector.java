@@ -37,46 +37,36 @@ public class CustomObjectDetector {
     private final FaceDetector faceDetector;
 
     public CustomObjectDetector(Context context, CustomObjectDetectorType type) {
+        final ObjectDetectorOptions.Builder defaultOptionsBuilder = ObjectDetectorOptions.builder()
+                                                                                         .setBaseOptions(BaseOptions.builder().setNumThreads(4).build())
+                                                                                         .setScoreThreshold(0.23f); //23% prediction minimum accuracy
+
+        final ObjectDetectorOptions.Builder unsupportedOpOptionsBuilder = ObjectDetectorOptions.builder()
+                                                                                               .setBaseOptions(BaseOptions.builder().useNnapi().build()) //used for testing on the Android Studio's emulator
+                                                                                               .setScoreThreshold(0.23f); //23% prediction minimum accuracy
+
+        final FaceDetectorOptions options = new FaceDetectorOptions.Builder()
+                .setPerformanceMode(FaceDetectorOptions.PERFORMANCE_MODE_ACCURATE)
+                .setContourMode(FaceDetectorOptions.LANDMARK_MODE_NONE)
+                .setClassificationMode(FaceDetectorOptions.CLASSIFICATION_MODE_NONE)
+                .build();
+
         try {
-            // Initialization
-            ObjectDetectorOptions options =
-                    ObjectDetectorOptions.builder()
-                            //.setBaseOptions(BaseOptions.builder().useGpu().build()) //<uses-native-library> tag is required in the AndroidManifest.xml to use the GPU
-                            .setBaseOptions(BaseOptions.builder().setNumThreads(4).build())
-                            .setScoreThreshold(0.23f) //23% prediction minimum accuracy
-                            .setMaxResults(10)
-                            .build();
-
             if (type == CustomObjectDetectorType.HIGH_ACCURACY)
-                this.detector = ObjectDetector.createFromFileAndOptions(context, MODEL_FILE_F16, options);
+                this.detector = ObjectDetector.createFromFileAndOptions(context, MODEL_FILE_F16, defaultOptionsBuilder.setMaxResults(10).build());
             else
-                this.detector = ObjectDetector.createFromFileAndOptions(context, MODEL_FILE_IO8, options);
+                this.detector = ObjectDetector.createFromFileAndOptions(context, MODEL_FILE_IO8, defaultOptionsBuilder.setMaxResults(1).build());
         } catch (Exception e) {
-            println("Object Detector: GPU NOT COMPATIBLE -> LOADING NNAPI");
             try {
-                // Initialization
-                ObjectDetectorOptions options =
-                        ObjectDetectorOptions.builder()
-                                .setBaseOptions(BaseOptions.builder().useNnapi().build()) //used for testing on the Android Studio's emulator
-                                .setScoreThreshold(0.3f) //30% prediction minimum accuracy
-                                .setMaxResults(10)
-                                .build();
-
                 if (type == CustomObjectDetectorType.HIGH_ACCURACY)
-                    this.detector = ObjectDetector.createFromFileAndOptions(context, MODEL_FILE_F16, options);
+                    this.detector = ObjectDetector.createFromFileAndOptions(context, MODEL_FILE_F16, unsupportedOpOptionsBuilder.setMaxResults(10).build());
                 else
-                    this.detector = ObjectDetector.createFromFileAndOptions(context, MODEL_FILE_IO8, options);
+                    this.detector = ObjectDetector.createFromFileAndOptions(context, MODEL_FILE_IO8, unsupportedOpOptionsBuilder.setMaxResults(1).build());
             } catch (Exception e2) {
                 e2.printStackTrace();
             }
         }
-        final FaceDetectorOptions options = new FaceDetectorOptions.Builder()
-                                                                   .setPerformanceMode(FaceDetectorOptions.PERFORMANCE_MODE_ACCURATE)
-                                                                   .setContourMode(FaceDetectorOptions.LANDMARK_MODE_NONE)
-                                                                   .setClassificationMode(FaceDetectorOptions.CLASSIFICATION_MODE_NONE)
-                                                                   .build();
-
-        this.faceDetector =  FaceDetection.getClient(options);
+        this.faceDetector = FaceDetection.getClient(options);
     }
 
     /**
