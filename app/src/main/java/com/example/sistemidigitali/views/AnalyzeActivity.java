@@ -1,5 +1,7 @@
 package com.example.sistemidigitali.views;
 
+import static com.example.sistemidigitali.debugUtility.Debug.println;
+
 import android.annotation.SuppressLint;
 import android.graphics.Bitmap;
 import android.graphics.RectF;
@@ -134,17 +136,6 @@ public class AnalyzeActivity extends AppCompatActivity {
     }
 
     /**
-     * Avoids graphical artifacts
-     */
-    @Override
-    protected void onResume() {
-        super.onResume();
-        if(this.analyzeButton.isChecked()) {
-            this.detectObjects(this.liveDetectionViewAnalyze.getSelectedDetections().size() == MAX_SELECTABLE_DETECTIONS);
-        }
-    }
-
-    /**
      * Unregisters this instance of AnalyzeActivity on the EventBus,
      * so that it can no longer receive async messages from other activities.
      */
@@ -256,9 +247,6 @@ public class AnalyzeActivity extends AppCompatActivity {
     @Subscribe(sticky = true, threadMode = ThreadMode.MAIN)
     public void onOverlayVisibilityChange(OverlayVisibilityChangeEvent event) {
         final int visibility = event.getVisibility();
-        if(visibility == View.VISIBLE) { //Fixes a multitasking related rects-displaying bug
-            this.detectObjects(this.liveDetectionViewAnalyze.getSelectedDetections().size() == MAX_SELECTABLE_DETECTIONS);
-        }
         this.backgroundOverlayAnalyze.setVisibility(visibility);
     }
 
@@ -280,9 +268,8 @@ public class AnalyzeActivity extends AppCompatActivity {
      */
     private void detectObjects(boolean shouldAlsoCalculateDistances) {
         this.analyzerExecutor.execute(() -> {
-            //this.originalImageTensor = TensorImage.fromBitmap(this.frame);
-
-            this.detections = objectDetector.detect(this.originalImageTensor);
+            //this.detections = objectDetector.detect(this.originalImageTensor);
+            this.detections = objectDetector.detect(this.frame);
             this.detections.parallelStream().forEach(detection -> this.analyzeView.getImageMatrix().mapRect(detection.getBoundingBox()));
             this.detectionLines = new ArrayList<>();
 
@@ -347,6 +334,7 @@ public class AnalyzeActivity extends AppCompatActivity {
                 startX = boundingBoxDetection1.centerX();
                 endX = boundingBoxDetection2.centerX();
             }
+            println(boundingBoxDetection1.height(), boundingBoxDetection2.height(), this.frame.getHeight());
             this.detectionLines.add(
                     new DetectionLine(
                             startX,
@@ -356,8 +344,8 @@ public class AnalyzeActivity extends AppCompatActivity {
                             String.format("%.2f", distance) + "M",
                             colors.get(0),
                             colors.get(1),
-                            (float) Math.max(0.0, areaDetection1 / areaDetection2),
-                            (float) Math.max(0.0, areaDetection2 / areaDetection1)
+                            boundingBoxDetection1.height() * 0.25F,
+                            boundingBoxDetection2.height() * 0.25F
                     )
             );
             EventBus.getDefault().post(new UpdateDetectionsRectsEvent(this, this.detections, false, null, this.detectionLines));

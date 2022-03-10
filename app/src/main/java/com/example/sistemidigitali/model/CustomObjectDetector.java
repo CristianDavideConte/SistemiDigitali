@@ -3,8 +3,18 @@ package com.example.sistemidigitali.model;
 import static com.example.sistemidigitali.debugUtility.Debug.println;
 
 import android.content.Context;
+import android.graphics.Bitmap;
+import android.graphics.Rect;
+import android.graphics.RectF;
 
 import com.example.sistemidigitali.enums.CustomObjectDetectorType;
+import com.google.android.gms.tasks.OnSuccessListener;
+import com.google.android.gms.tasks.Tasks;
+import com.google.mlkit.vision.common.InputImage;
+import com.google.mlkit.vision.face.Face;
+import com.google.mlkit.vision.face.FaceDetection;
+import com.google.mlkit.vision.face.FaceDetector;
+import com.google.mlkit.vision.face.FaceDetectorOptions;
 
 import org.tensorflow.lite.support.image.TensorImage;
 import org.tensorflow.lite.task.core.BaseOptions;
@@ -14,15 +24,17 @@ import org.tensorflow.lite.task.vision.detector.ObjectDetector.ObjectDetectorOpt
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.ExecutionException;
 
 public class CustomObjectDetector {
-    private final String TEST_MODEL_FILE = "ssd_mobilenet_v1_1_metadata_1.tflite";
-    //private final String MODEL_FILE_F16 = "float_16_model_light.tflite";
-    private final String MODEL_FILE_F16 = "float_16_model_heavy.tflite";
-    private final String MODEL_FILE_IO8 = "int_8_model_light.tflite";
-    //private final String MODEL_FILE_IO8 = "int_8_model_heavy.tflite";
+    private static final String TEST_MODEL_FILE = "ssd_mobilenet_v1_1_metadata_1.tflite";
+    //private static final String MODEL_FILE_F16 = "float_16_model_light.tflite";
+    private static final String MODEL_FILE_F16 = "float_16_model_heavy.tflite";
+    private static final String MODEL_FILE_IO8 = "int_8_model_light.tflite";
+    //private static final String MODEL_FILE_IO8 = "int_8_model_heavy.tflite";
 
     private ObjectDetector detector;
+    private final FaceDetector faceDetector;
 
     public CustomObjectDetector(Context context, CustomObjectDetectorType type) {
         try {
@@ -31,7 +43,6 @@ public class CustomObjectDetector {
                     ObjectDetectorOptions.builder()
                             //.setBaseOptions(BaseOptions.builder().useGpu().build()) //<uses-native-library> tag is required in the AndroidManifest.xml to use the GPU
                             .setBaseOptions(BaseOptions.builder().setNumThreads(4).build())
-                            //.setScoreThreshold(0.09f) //23% prediction minimum accuracy
                             .setScoreThreshold(0.23f) //23% prediction minimum accuracy
                             .setMaxResults(10)
                             .build();
@@ -59,17 +70,65 @@ public class CustomObjectDetector {
                 e2.printStackTrace();
             }
         }
+        final FaceDetectorOptions options = new FaceDetectorOptions.Builder()
+                                                                   .setPerformanceMode(FaceDetectorOptions.PERFORMANCE_MODE_ACCURATE)
+                                                                   .setContourMode(FaceDetectorOptions.LANDMARK_MODE_NONE)
+                                                                   .setClassificationMode(FaceDetectorOptions.CLASSIFICATION_MODE_NONE)
+                                                                   .build();
+
+        this.faceDetector =  FaceDetection.getClient(options);
     }
 
     /**
-     * Given a Tensor image returns a list of all the object detected in it.
+     * A lightweight object-detection method.
+     * Given a Tensor image returns a list of all the faces (wearing or not a mask) detected in it.
      * @param image The image to analyze.
-     * @return A list of Detection containing all informations about every detected object.
+     * @return A list of Detection containing all mask-related informations about every detected face.
      */
     public List<Detection> detect(TensorImage image) {
         List<Detection> detections = new ArrayList<>();
         try {
             detections = this.detector.detect(image);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return detections;
+    }
+
+    /**
+     * An heavyweight object-detection method.
+     * Given a Bitmap image perform a face detection first to get all the faces in the image,
+     * then all the faces are passed to the face-mask-recognition object-detector which returns
+     * a list of all the faces (wearing or not a mask) detected.
+     * @param image The image to analyze.
+     * @return A list of Detection containing all mask-related informations about every detected face.
+     */
+    public List<Detection> detect(Bitmap image) {
+        final List<Detection> detections = new ArrayList<>();
+        try {
+            Tasks.await(
+                this.faceDetector
+                    .process(InputImage.fromBitmap(image, 0)) //Get the faces in the image
+                    .addOnSuccessListener(faces -> {
+                            for(Face face : faces) {
+                                //Crop the original image to show only the current face
+                                Rect faceBoundingBox = face.getBoundingBox();
+                                Bitmap croppedImageToFace = Bitmap.createBitmap(
+                                        image,
+                                        faceBoundingBox.left,
+                                        faceBoundingBox.top,
+                                        faceBoundingBox.width(),
+                                        faceBoundingBox.height()
+                                );
+                                //Detect if the current face is correctly wearing a mask
+                                List<Detection> detection = this.detector.detect(TensorImage.fromBitmap(croppedImageToFace));
+                                if (detection.size() > 0) {
+                                    detections.add(Detection.create(new RectF(faceBoundingBox), detection.get(0).getCategories()));
+                                }
+                            }
+                        }
+                    ).addOnFailureListener(Throwable::printStackTrace)
+            );
         } catch (Exception e) {
             e.printStackTrace();
         }

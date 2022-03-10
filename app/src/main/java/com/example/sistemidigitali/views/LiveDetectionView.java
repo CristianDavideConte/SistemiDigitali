@@ -1,7 +1,5 @@
 package com.example.sistemidigitali.views;
 
-import static com.example.sistemidigitali.debugUtility.Debug.println;
-
 import android.annotation.SuppressLint;
 import android.content.Context;
 import android.content.Intent;
@@ -10,10 +8,8 @@ import android.graphics.Color;
 import android.graphics.Matrix;
 import android.graphics.Paint;
 import android.graphics.Path;
-import android.graphics.Rect;
 import android.graphics.RectF;
 import android.util.AttributeSet;
-import android.util.DisplayMetrics;
 import android.view.MotionEvent;
 import android.view.View;
 
@@ -168,8 +164,9 @@ public class LiveDetectionView extends View {
         //Draws the connecting lines of the detections' rectangles
         this.boxPaint.setStyle(Paint.Style.FILL);
         for(DetectionLine line : this.detectionsLines) {
-            final float initialStrokeWidth = SELECTED_STROKE_WIDTH / 2 * line.getStartLineWidthMultiplier();
-            final float finalStrokeWidth = SELECTED_STROKE_WIDTH / 2 * line.getEndLineWidthMultiplier();
+            final float initialStrokeWidth = line.getStartLineSize() * 0.5F;
+            final float finalStrokeWidth = line.getEndLineSize() * 0.5F;
+
             final int startFixSign, endFixSign;
             if(line.getStartX() > line.getEndX()) {
                 startFixSign = -1;

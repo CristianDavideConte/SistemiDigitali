@@ -6,9 +6,9 @@ public class DetectionLine {
     private final String info;
     private final int lineColor;
     private final int textColor;
-    private final float startLineWidthMultiplier, endLineWidthMultiplier;
+    private final float startLineSize, endLineSize;
 
-    public DetectionLine(float startX, float startY, float endX, float endY, String info, int lineColor, int textColor, float startLineWidthMultiplier, float endLineWidthMultiplier) {
+    public DetectionLine(float startX, float startY, float endX, float endY, String info, int lineColor, int textColor, float startLineSize, float endLineSize) {
         this.startX = startX;
         this.startY = startY;
         this.endX = endX;
@@ -16,8 +16,8 @@ public class DetectionLine {
         this.info = info;
         this.textColor = textColor;
         this.lineColor = lineColor;
-        this.startLineWidthMultiplier = startLineWidthMultiplier;
-        this.endLineWidthMultiplier = endLineWidthMultiplier;
+        this.startLineSize = startLineSize;
+        this.endLineSize = endLineSize;
     }
 
     public float getStartX() {
@@ -48,11 +48,11 @@ public class DetectionLine {
         return lineColor;
     }
 
-    public float getStartLineWidthMultiplier() {
-        return startLineWidthMultiplier;
+    public float getStartLineSize() {
+        return startLineSize;
     }
 
-    public float getEndLineWidthMultiplier() {
-        return endLineWidthMultiplier;
+    public float getEndLineSize() {
+        return endLineSize;
     }
 }
