@@ -1,7 +1,5 @@
 package com.example.sistemidigitali.views;
 
-import static com.example.sistemidigitali.debugUtility.Debug.println;
-
 import android.annotation.SuppressLint;
 import android.graphics.Bitmap;
 import android.graphics.RectF;
@@ -18,8 +16,9 @@ import android.widget.Toast;
 import androidx.appcompat.app.AppCompatActivity;
 
 import com.example.sistemidigitali.R;
-import com.example.sistemidigitali.customEvents.NeuralNetworkAvailableEvent;
+import com.example.sistemidigitali.customEvents.ClearSelectedDetectionEvent;
 import com.example.sistemidigitali.customEvents.ImageSavedEvent;
+import com.example.sistemidigitali.customEvents.NeuralNetworkAvailableEvent;
 import com.example.sistemidigitali.customEvents.OverlayVisibilityChangeEvent;
 import com.example.sistemidigitali.customEvents.PictureTakenEvent;
 import com.example.sistemidigitali.customEvents.UpdateDetectionsRectsEvent;
@@ -37,7 +36,6 @@ import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import org.greenrobot.eventbus.EventBus;
 import org.greenrobot.eventbus.Subscribe;
 import org.greenrobot.eventbus.ThreadMode;
-import org.tensorflow.lite.support.image.TensorImage;
 import org.tensorflow.lite.task.vision.detector.Detection;
 
 import java.nio.ByteBuffer;
@@ -69,7 +67,6 @@ public class AnalyzeActivity extends AppCompatActivity {
     private Bitmap frame;
     private float[] depthMap;
     private Bitmap depthMapImage;
-    private TensorImage originalImageTensor;
     private ByteBuffer originalImageBuffer;
 
     private View backgroundOverlayAnalyze;
@@ -110,12 +107,19 @@ public class AnalyzeActivity extends AppCompatActivity {
         this.gestureWasHold = false;
         this.customVibrator = new CustomVibrator(this);
         this.imageUtility = new ImageUtility(this);
+        this.liveDetectionViewAnalyze.setMinimumAccuracyForDetectionsDisplay(0.0F);
         this.toastMessagesManager = new ToastMessagesManager(this, Toast.LENGTH_SHORT);
         this.distanceCalculatorExecutor = Executors.newSingleThreadExecutor();
         this.analyzerExecutor = Executors.newSingleThreadExecutor();
         this.imageSaverExecutor = Executors.newSingleThreadExecutor();
-        this.analyzeButton.setOnClickListener((view) -> this.toastMessagesManager.showToastIfNeeded());
-        this.saveImageButton.setOnClickListener((view) -> this.toastMessagesManager.showToastIfNeeded());
+        this.analyzeButton.setOnClickListener((view) -> {
+            this.customVibrator.vibrateLight();
+            this.toastMessagesManager.showToastIfNeeded();
+        });
+        this.saveImageButton.setOnClickListener((view) -> {
+            this.customVibrator.vibrateLight();
+            this.toastMessagesManager.showToastIfNeeded();
+        });
 
         new Thread(() -> {
             if(objectDetector == null) objectDetector = new CustomObjectDetector(this, CustomObjectDetectorType.HIGH_ACCURACY);
@@ -172,7 +176,6 @@ public class AnalyzeActivity extends AppCompatActivity {
     @SuppressLint("ClickableViewAccessibility")
     private void loadAnalyzeComponents(Bitmap image) {
         this.frame = image.copy(Bitmap.Config.ARGB_8888, true);
-        this.originalImageTensor = TensorImage.fromBitmap(this.frame);
         this.originalImageBuffer = this.imageUtility.convertBitmapToBytebuffer(this.frame, TARGET_DEPTH_MAP_WIDTH, TARGET_DEPTH_MAP_HEIGHT);
         this.analyzeView.setImageBitmap(this.frame);
 
@@ -213,10 +216,10 @@ public class AnalyzeActivity extends AppCompatActivity {
                 this.analyzeLoadingIndicator.setVisibility(View.VISIBLE);
                 this.analyzeButton.setText(". . .");
                 this.analyzeButton.setCheckable(false);
-                this.detectObjects(false);
+                this.detectObjects(this.liveDetectionViewAnalyze.getSelectedDetections().size() == MAX_SELECTABLE_DETECTIONS);
             } else {
-                this.liveDetectionViewAnalyze.setSelectedDetections(new ArrayList<>());
                 this.analyzeButton.setText("Analyze");
+                EventBus.getDefault().postSticky(new ClearSelectedDetectionEvent());
                 EventBus.getDefault().post(new UpdateDetectionsRectsEvent(this, new ArrayList<>(), false, null, new ArrayList<>()));
             }
         });
@@ -268,13 +271,12 @@ public class AnalyzeActivity extends AppCompatActivity {
      */
     private void detectObjects(boolean shouldAlsoCalculateDistances) {
         this.analyzerExecutor.execute(() -> {
-            //this.detections = objectDetector.detect(this.originalImageTensor);
             this.detections = objectDetector.detect(this.frame);
             this.detections.parallelStream().forEach(detection -> this.analyzeView.getImageMatrix().mapRect(detection.getBoundingBox()));
             this.detectionLines = new ArrayList<>();
 
             if(shouldAlsoCalculateDistances) calculateDistance();
-            else EventBus.getDefault().post(new UpdateDetectionsRectsEvent(this, this.detections, false, null, this.detectionLines));
+            else EventBus.getDefault().post(new UpdateDetectionsRectsEvent(this, this.detections, false, this.analyzeView.getImageMatrix(), this.detectionLines));
 
             if(!this.analyzeButton.isCheckable()) {
                 runOnUiThread(() -> {
@@ -314,9 +316,6 @@ public class AnalyzeActivity extends AppCompatActivity {
 
             final double distance = getDistanceBetweenTwoPoints(x1m, y1m, z1m, x2m, y2m, z2m);
 
-            final double areaDetection1 = boundingBoxDetection1.width() * boundingBoxDetection1.height();
-            final double areaDetection2 = boundingBoxDetection2.width() * boundingBoxDetection2.height();
-
             //If the mask is correctly worn, the safe distance doesn't matter
             final List<Integer> colors = this.getWearingMode(selectedDetections.get(0)) == WearingModeEnum.MRCW || this.getWearingMode(selectedDetections.get(1)) == WearingModeEnum.MRCW ?
                                          getDepthLineColors(SAFE_DISTANCE_M) : getDepthLineColors(distance);
@@ -334,7 +333,6 @@ public class AnalyzeActivity extends AppCompatActivity {
                 startX = boundingBoxDetection1.centerX();
                 endX = boundingBoxDetection2.centerX();
             }
-            println(boundingBoxDetection1.height(), boundingBoxDetection2.height(), this.frame.getHeight());
             this.detectionLines.add(
                     new DetectionLine(
                             startX,
@@ -384,7 +382,7 @@ public class AnalyzeActivity extends AppCompatActivity {
      * @param x2 x of P2
      * @param y2 y of P2
      * @param z2 z of P2
-     * @return
+     * @return The 3D distance between two points
      */
     private double getDistanceBetweenTwoPoints(double x1, double y1, double z1, double x2, double y2, double z2) {
         return Math.sqrt(Math.abs((x2 - x1) * (x2 - x1) + (y2 - y1) * (y2 - y1) + (z2 - z1) + (z2 - z1))); //In meters

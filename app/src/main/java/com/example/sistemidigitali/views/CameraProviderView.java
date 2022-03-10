@@ -31,6 +31,7 @@ import androidx.camera.lifecycle.ProcessCameraProvider;
 import androidx.camera.view.PreviewView;
 
 import com.example.sistemidigitali.customEvents.AllowUpdatePolicyChangeEvent;
+import com.example.sistemidigitali.customEvents.ClearSelectedDetectionEvent;
 import com.example.sistemidigitali.customEvents.NeuralNetworkAvailableEvent;
 import com.example.sistemidigitali.customEvents.PictureTakenEvent;
 import com.example.sistemidigitali.customEvents.UpdateDetectionsRectsEvent;
@@ -221,6 +222,7 @@ public class CameraProviderView {
                          * open a new analyze activity which will handle any error
                          */
                         if (frames.size() == numOfFrames) {
+                            EventBus.getDefault().postSticky(new ClearSelectedDetectionEvent());
                             EventBus.getDefault().postSticky(new PictureTakenEvent(frames, "success"));
                             context.startActivity(new Intent(context, AnalyzeActivity.class));
                         }

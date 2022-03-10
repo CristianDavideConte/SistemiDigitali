@@ -1,14 +1,11 @@
 package com.example.sistemidigitali.model;
 
-import static com.example.sistemidigitali.debugUtility.Debug.println;
-
 import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.Rect;
 import android.graphics.RectF;
 
 import com.example.sistemidigitali.enums.CustomObjectDetectorType;
-import com.google.android.gms.tasks.OnSuccessListener;
 import com.google.android.gms.tasks.Tasks;
 import com.google.mlkit.vision.common.InputImage;
 import com.google.mlkit.vision.face.Face;
@@ -16,7 +13,9 @@ import com.google.mlkit.vision.face.FaceDetection;
 import com.google.mlkit.vision.face.FaceDetector;
 import com.google.mlkit.vision.face.FaceDetectorOptions;
 
+import org.tensorflow.lite.support.image.ImageProcessor;
 import org.tensorflow.lite.support.image.TensorImage;
+import org.tensorflow.lite.support.image.ops.ResizeOp;
 import org.tensorflow.lite.task.core.BaseOptions;
 import org.tensorflow.lite.task.vision.detector.Detection;
 import org.tensorflow.lite.task.vision.detector.ObjectDetector;
@@ -24,7 +23,6 @@ import org.tensorflow.lite.task.vision.detector.ObjectDetector.ObjectDetectorOpt
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.ExecutionException;
 
 public class CustomObjectDetector {
     private static final String TEST_MODEL_FILE = "ssd_mobilenet_v1_1_metadata_1.tflite";
@@ -37,14 +35,8 @@ public class CustomObjectDetector {
     private final FaceDetector faceDetector;
 
     public CustomObjectDetector(Context context, CustomObjectDetectorType type) {
-        final ObjectDetectorOptions.Builder defaultOptionsBuilder = ObjectDetectorOptions.builder()
-                                                                                         .setBaseOptions(BaseOptions.builder().setNumThreads(4).build())
-                                                                                         .setScoreThreshold(0.23f); //23% prediction minimum accuracy
-
-        final ObjectDetectorOptions.Builder unsupportedOpOptionsBuilder = ObjectDetectorOptions.builder()
-                                                                                               .setBaseOptions(BaseOptions.builder().useNnapi().build()) //used for testing on the Android Studio's emulator
-                                                                                               .setScoreThreshold(0.23f); //23% prediction minimum accuracy
-
+        final ObjectDetectorOptions.Builder defaultOptionsBuilder = ObjectDetectorOptions.builder().setBaseOptions(BaseOptions.builder().setNumThreads(4).build());
+        final ObjectDetectorOptions.Builder unsupportedOpOptionsBuilder = ObjectDetectorOptions.builder().setBaseOptions(BaseOptions.builder().useNnapi().build());
         final FaceDetectorOptions options = new FaceDetectorOptions.Builder()
                 .setPerformanceMode(FaceDetectorOptions.PERFORMANCE_MODE_ACCURATE)
                 .setContourMode(FaceDetectorOptions.LANDMARK_MODE_NONE)
@@ -95,6 +87,9 @@ public class CustomObjectDetector {
      */
     public List<Detection> detect(Bitmap image) {
         final List<Detection> detections = new ArrayList<>();
+        ImageProcessor imageProcessor = new ImageProcessor.Builder()
+                                                          .add(new ResizeOp(448, 448, ResizeOp.ResizeMethod.NEAREST_NEIGHBOR))
+                                                          .build();
         try {
             Tasks.await(
                 this.faceDetector
@@ -111,9 +106,21 @@ public class CustomObjectDetector {
                                         faceBoundingBox.height()
                                 );
                                 //Detect if the current face is correctly wearing a mask
-                                List<Detection> detection = this.detector.detect(TensorImage.fromBitmap(croppedImageToFace));
-                                if (detection.size() > 0) {
-                                    detections.add(Detection.create(new RectF(faceBoundingBox), detection.get(0).getCategories()));
+                                final TensorImage tensorImage = TensorImage.fromBitmap(croppedImageToFace);
+                                final List<Detection> detectionType1 = this.detector.detect(imageProcessor.process(tensorImage));
+                                final List<Detection> detectionType2 = this.detector.detect(TensorImage.fromBitmap(croppedImageToFace));
+                                if (detectionType1.size() > 0 && detectionType2.size() < 1) {
+                                    detections.add(Detection.create(new RectF(faceBoundingBox), detectionType1.get(0).getCategories()));
+                                } else if (detectionType2.size() > 0 && detectionType1.size() < 1) {
+                                    detections.add(Detection.create(new RectF(faceBoundingBox), detectionType2.get(0).getCategories()));
+                                } else if (detectionType1.size() > 0) { //Both have size > 0
+                                    final float score1 = detectionType1.get(0).getCategories().get(0).getScore();
+                                    final float score2 = detectionType2.get(0).getCategories().get(0).getScore();
+                                    if (score1 >= score2) {
+                                        detections.add(Detection.create(new RectF(faceBoundingBox), detectionType1.get(0).getCategories()));
+                                    } else {
+                                        detections.add(Detection.create(new RectF(faceBoundingBox), detectionType2.get(0).getCategories()));
+                                    }
                                 }
                             }
                         }

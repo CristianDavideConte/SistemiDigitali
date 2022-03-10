@@ -14,12 +14,14 @@ import android.view.MotionEvent;
 import android.view.View;
 
 import com.example.sistemidigitali.customEvents.AllowUpdatePolicyChangeEvent;
+import com.example.sistemidigitali.customEvents.ClearSelectedDetectionEvent;
 import com.example.sistemidigitali.customEvents.UpdateDetectionsRectsEvent;
 import com.example.sistemidigitali.enums.MaskTypeEnum;
 import com.example.sistemidigitali.enums.WearingModeEnum;
 import com.example.sistemidigitali.model.CustomVibrator;
 import com.example.sistemidigitali.model.DetectionLine;
 
+import org.greenrobot.eventbus.EventBus;
 import org.greenrobot.eventbus.Subscribe;
 import org.greenrobot.eventbus.ThreadMode;
 import org.tensorflow.lite.support.label.Category;
@@ -30,13 +32,16 @@ import java.util.List;
 import java.util.Optional;
 
 public class LiveDetectionView extends View {
+    private float MIN_ACCURACY_FOR_DETECTION_DISPLAY = 0.6F; //By default, 60% of minimum precision is needed to show a detection
+
     private float ROUNDING_RECTS_RADIUS = 70;
     private float STROKE_WIDTH = 10;
     private float SELECTED_STROKE_WIDTH = 25;
 
+
     private boolean allowUpdate;
 
-    public static List<Detection> selectedDetections;
+    private static List<Detection> selectedDetections;
     private List<Detection> detections;
     private List<DetectionLine> detectionsLines;
     private boolean flipNeeded;
@@ -66,7 +71,7 @@ public class LiveDetectionView extends View {
     public void init(Context context) {
         this.allowUpdate = true;
 
-        if(selectedDetections == null) selectedDetections = new ArrayList<>();
+        if(LiveDetectionView.selectedDetections == null) LiveDetectionView.selectedDetections = new ArrayList<>();
         this.detections = new ArrayList<>();
         this.detectionsLines = new ArrayList<>();
 
@@ -97,10 +102,16 @@ public class LiveDetectionView extends View {
     }
 
     public List<Detection> getSelectedDetections() {
-        return selectedDetections;
+        return LiveDetectionView.selectedDetections;
     }
-    public void setSelectedDetections(List<Detection> selectedDetections) {
-        LiveDetectionView.selectedDetections = selectedDetections;
+    public void setMinimumAccuracyForDetectionsDisplay(float minimumAccuracyForDetectionsDisplay) {
+        this.MIN_ACCURACY_FOR_DETECTION_DISPLAY = minimumAccuracyForDetectionsDisplay;
+    }
+
+    @Subscribe(sticky = true, threadMode = ThreadMode.ASYNC)
+    public void onClearSelectedDetection(ClearSelectedDetectionEvent event) {
+        LiveDetectionView.selectedDetections.clear();
+        EventBus.getDefault().removeStickyEvent(event);
     }
 
     @Subscribe(threadMode = ThreadMode.ASYNC)
@@ -129,6 +140,8 @@ public class LiveDetectionView extends View {
         //Draws all the detections' rectangles
         this.boxPaint.setStyle(Paint.Style.STROKE);
         for(Detection detection : this.detections) {
+            if(detection.getCategories().get(0).getScore() < MIN_ACCURACY_FOR_DETECTION_DISPLAY) continue;
+
             WearingModeEnum wearingModeEnum;
             try{
                 String[] labelParts = detection.getCategories().get(0).getLabel().split("_");
@@ -149,7 +162,7 @@ public class LiveDetectionView extends View {
             if(this.transformMatrix != null) this.transformMatrix.mapRect(boundingBox);
 
             boolean isSelected = false;
-            for(Detection selectedDetection : selectedDetections) {
+            for(Detection selectedDetection : LiveDetectionView.selectedDetections) {
                 if(selectedDetection.equals(detection)) {
                     this.boxPaint.setStrokeWidth(SELECTED_STROKE_WIDTH);
                     isSelected = true;
@@ -191,19 +204,19 @@ public class LiveDetectionView extends View {
         final Optional<Detection> detectionOptional = this.getDetectionAtPoint(motionEvent.getX(), motionEvent.getY());
         if(detectionOptional.isPresent()) {
             final Detection detection = detectionOptional.get();
-            if(selectedDetections.remove(detection)) {
+            if(LiveDetectionView.selectedDetections.remove(detection)) {
                 this.detectionsLines.clear();
                 this.customVibrator.vibrateLight();
             } else {
-                if(selectedDetections.size() < 2) {
-                    selectedDetections.add(detection);
+                if(LiveDetectionView.selectedDetections.size() < 2) {
+                    LiveDetectionView.selectedDetections.add(detection);
                     this.customVibrator.vibrateHeavy();
                 }
-                else return selectedDetections.size();
+                else return LiveDetectionView.selectedDetections.size();
             }
             this.invalidate();
         }
-        return selectedDetections.size();
+        return LiveDetectionView.selectedDetections.size();
     }
 
     @SuppressLint("DefaultLocale")
@@ -279,6 +292,7 @@ public class LiveDetectionView extends View {
      */
     private Optional<Detection> getDetectionAtPoint(float x, float y) {
         for(Detection detection : this.detections) {
+            if(detection.getCategories().get(0).getScore() < MIN_ACCURACY_FOR_DETECTION_DISPLAY) continue;
             if (detection.getBoundingBox().contains(x, y)) {
                 return Optional.of(detection);
             }

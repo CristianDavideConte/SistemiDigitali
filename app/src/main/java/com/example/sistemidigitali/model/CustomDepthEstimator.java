@@ -38,7 +38,7 @@ public class CustomDepthEstimator {
             depthEstimatorOptions.addDelegate(new GpuDelegate());
             depthEstimatorOptions.setNumThreads(4);
 
-            MappedByteBuffer modelBuffer = loadModelFile(DEPTH_ESTIMATOR_FILE);
+            MappedByteBuffer modelBuffer = loadModelFile();
             this.depthEstimator = new Interpreter(modelBuffer, depthEstimatorOptions);
 
             // Image shape is in the format of {1, height, width, 3}
@@ -53,7 +53,7 @@ public class CustomDepthEstimator {
                 Interpreter.Options depthEstimatorOptions = new Interpreter.Options();
                 depthEstimatorOptions.setNumThreads(4);
 
-                MappedByteBuffer modelBuffer = loadModelFile(DEPTH_ESTIMATOR_FILE);
+                MappedByteBuffer modelBuffer = loadModelFile();
                 this.depthEstimator = new Interpreter(modelBuffer, depthEstimatorOptions);
             } catch (Exception e2) {
                 e2.printStackTrace();
@@ -128,12 +128,11 @@ public class CustomDepthEstimator {
 
     /**
      * Return a MappedByteBuffer of a tflite model.
-     * @param path tflite model path
      * @return a MappedByteBuffer of the tflite file
      * @throws IOException if the file cannot be opened
      */
-    private MappedByteBuffer loadModelFile(String path) throws IOException {
-        AssetFileDescriptor fileDescriptor = this.context.getAssets().openFd(path);
+    private MappedByteBuffer loadModelFile() throws IOException {
+        AssetFileDescriptor fileDescriptor = this.context.getAssets().openFd(CustomDepthEstimator.DEPTH_ESTIMATOR_FILE);
         FileInputStream inputStream = new FileInputStream(fileDescriptor.getFileDescriptor());
         FileChannel fileChannel = inputStream.getChannel();
 

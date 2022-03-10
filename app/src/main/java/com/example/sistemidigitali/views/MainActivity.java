@@ -16,6 +16,7 @@ import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.appcompat.app.AppCompatActivity;
 
 import com.example.sistemidigitali.R;
+import com.example.sistemidigitali.customEvents.ClearSelectedDetectionEvent;
 import com.example.sistemidigitali.customEvents.NeuralNetworkAvailableEvent;
 import com.example.sistemidigitali.customEvents.OverlayVisibilityChangeEvent;
 import com.example.sistemidigitali.customEvents.PictureTakenEvent;
@@ -38,7 +39,6 @@ public class MainActivity extends AppCompatActivity {
 
     private final String [] permissions = {Manifest.permission.CAMERA, Manifest.permission.READ_EXTERNAL_STORAGE, Manifest.permission.WRITE_EXTERNAL_STORAGE};
 
-    private Permission permission;
     private CameraProviderView cameraProviderView;
 
     private View backgroundOverlayMain;
@@ -62,7 +62,7 @@ public class MainActivity extends AppCompatActivity {
         setContentView(R.layout.activity_main);
         getWindow().setFlags(WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS, WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS);
 
-        this.permission = new Permission();
+        final Permission permission = new Permission();
         this.customVibrator = new CustomVibrator(this);
         this.toastMessagesManager = new ToastMessagesManager(this, Toast.LENGTH_SHORT);
         this.backgroundOverlayMain = findViewById(R.id.backgroundOverlayMain);
@@ -73,9 +73,11 @@ public class MainActivity extends AppCompatActivity {
         this.galleryButton = findViewById(R.id.galleryButton);
         this.shutterButton = findViewById(R.id.shutterButton);
 
-        this.liveDetectionViewMain.setSelectedDetections(new ArrayList<>());
-        this.cameraProviderView = new CameraProviderView(this,  findViewById(R.id.previewView));
-        this.liveDetectionSwitch.setOnClickListener((view) -> this.toastMessagesManager.showToastIfNeeded());
+        this.cameraProviderView = new CameraProviderView(this, findViewById(R.id.previewView));
+        this.liveDetectionSwitch.setOnClickListener((view) -> {
+            this.customVibrator.vibrateLight();
+            this.toastMessagesManager.showToastIfNeeded();
+        });
         this.switchCameraButton.setOnClickListener((view) -> {
             this.customVibrator.vibrateLight();
             this.cameraProviderView.switchCamera();
@@ -99,8 +101,8 @@ public class MainActivity extends AppCompatActivity {
 
 
         //Request all the permissions needed if not already available
-        if(!this.permission.checkPermission(this, permissions)) {
-            this.permission.requestPermission(this, permissions);
+        if(!permission.checkPermission(this, permissions)) {
+            permission.requestPermission(this, permissions);
         }
     }
 
@@ -165,6 +167,7 @@ public class MainActivity extends AppCompatActivity {
                 Bitmap frame = ImageDecoder.decodeBitmap(ImageDecoder.createSource(this.getContentResolver(), uri)).copy(Bitmap.Config.ARGB_8888, false);
                 frames.add(frame);
             }
+            EventBus.getDefault().postSticky(new ClearSelectedDetectionEvent());
             EventBus.getDefault().postSticky(new PictureTakenEvent(frames, "success"));
             Intent intent = new Intent(this, AnalyzeActivity.class);
             this.startActivity(intent);
