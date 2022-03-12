@@ -1,7 +1,10 @@
 package com.example.sistemidigitali.views;
 
+import static com.example.sistemidigitali.debugUtility.Debug.println;
+
 import android.annotation.SuppressLint;
 import android.graphics.Bitmap;
+import android.graphics.Matrix;
 import android.graphics.RectF;
 import android.os.Bundle;
 import android.util.DisplayMetrics;
@@ -235,7 +238,19 @@ public class AnalyzeActivity extends AppCompatActivity {
                     this.depthMap = depthEstimator.getDepthMap(this.originalImageBuffer);
                     this.depthMapImage = this.imageUtility.convertFloatArrayToBitmap(this.depthMap, TARGET_DEPTH_MAP_WIDTH, TARGET_DEPTH_MAP_HEIGHT);
                 }
-                images.add(this.depthMapImage);
+                //The depth map image is always size x size,
+                //before saving it, it needs to be scaled to the right proportions
+                final float widthScalingFactor;
+                final float heightScalingFactor;
+                final float scalingFactor = (float)(this.frame.getHeight()) / (float)(this.frame.getWidth());
+                if(scalingFactor > 1) {
+                    widthScalingFactor = 1;
+                    heightScalingFactor = scalingFactor;
+                } else {
+                    widthScalingFactor = 1 / scalingFactor;
+                    heightScalingFactor = 1;
+                }
+                images.add(Bitmap.createScaledBitmap(this.depthMapImage, (int)(this.depthMapImage.getWidth() * widthScalingFactor), (int)(this.depthMapImage.getHeight() * heightScalingFactor), true));
                 this.imageUtility.saveImages(images);
             });
         });

@@ -35,7 +35,7 @@ public class CustomDepthEstimator {
 
         try {
             Interpreter.Options depthEstimatorOptions = new Interpreter.Options();
-            depthEstimatorOptions.addDelegate(new GpuDelegate());
+            //depthEstimatorOptions.addDelegate(new GpuDelegate());
             depthEstimatorOptions.setNumThreads(4);
 
             MappedByteBuffer modelBuffer = loadModelFile();
@@ -47,17 +47,7 @@ public class CustomDepthEstimator {
                 println(test++, " -> " ,i);
             }
         } catch (Exception e) {
-            try {
-                println("Depth Estimator: GPU NOT COMPATIBLE -> LOADING CPU");
-
-                Interpreter.Options depthEstimatorOptions = new Interpreter.Options();
-                depthEstimatorOptions.setNumThreads(4);
-
-                MappedByteBuffer modelBuffer = loadModelFile();
-                this.depthEstimator = new Interpreter(modelBuffer, depthEstimatorOptions);
-            } catch (Exception e2) {
-                e2.printStackTrace();
-            }
+            e.printStackTrace();
         }
 
         this.outputProbabilityBuffer = TensorBuffer.createFixedSize(this.depthEstimator.getOutputTensor(0).shape(), DataType.FLOAT32);

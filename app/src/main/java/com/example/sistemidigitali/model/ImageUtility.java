@@ -93,7 +93,7 @@ public class ImageUtility {
 
         BitmapFactory.decodeByteArray(bytes, 0, bytes.length);
         BitmapFactory.Options decodeOptions = new BitmapFactory.Options();
-        decodeOptions.inSampleSize = 2; //Scale the original image by this factor in either dimension
+        decodeOptions.inSampleSize = 2; //Scale down the original image by this factor in both dimension
         decodeOptions.inPreferredConfig = Bitmap.Config.ARGB_8888;
 
         Bitmap bitmap = BitmapFactory.decodeByteArray(bytes, 0, bytes.length, decodeOptions);
