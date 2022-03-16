@@ -4,6 +4,7 @@ import static com.example.sistemidigitali.debugUtility.Debug.println;
 
 import android.content.Context;
 import android.content.res.AssetFileDescriptor;
+import android.graphics.RectF;
 
 import org.tensorflow.lite.DataType;
 import org.tensorflow.lite.Interpreter;
@@ -11,6 +12,7 @@ import org.tensorflow.lite.gpu.GpuDelegate;
 import org.tensorflow.lite.support.common.TensorProcessor;
 import org.tensorflow.lite.support.metadata.MetadataExtractor;
 import org.tensorflow.lite.support.tensorbuffer.TensorBuffer;
+import org.tensorflow.lite.task.vision.detector.Detection;
 
 import java.io.FileInputStream;
 import java.io.IOException;
@@ -21,6 +23,11 @@ import java.nio.channels.FileChannel;
 
 public class CustomDepthEstimator {
     private static final String DEPTH_ESTIMATOR_FILE = "midas_small_2_1.tflite";
+
+    private static final float STANDARD_FACE_WIDTH_M = 0.147F; //In Meters
+    private static final float STANDARD_FACE_HEIGHT_M = 0.234F; //In Meters
+    private static final float STANDARD_FACE_WIDTH_PX = 211.67F; //In Pixels
+    private static final float STANDARD_FACE_HEIGHT_PX = 333.9583F; //In Pixels
 
     private static final float SFR_C_AVG = 194.29F; //Standard Average Depth in SFR area
     private static final float SFR_D = 1.0F;        //Standard Distance phone-person (in Meters)
@@ -91,7 +98,7 @@ public class CustomDepthEstimator {
      * @param height The height of the detection.
      * @return The average value (depth) within the given boundaries.
      */
-    private float getAverageDepthInDetection(float[] depthMap, float depthMapWidth, float depthMapHeight, float left, float width, float top, float height) {
+    public float getAverageDepthInDetection(float[] depthMap, float depthMapWidth, float depthMapHeight, float left, float width, float top, float height) {
         left = left < 0 ? 0 : Math.min(left, depthMapWidth - 1);
         top  = top  < 0 ? 0 : Math.min(top, depthMapHeight - 1);
         int availableWidth  = (int) Math.min(depthMapWidth  - 1, left + width);
@@ -114,6 +121,18 @@ public class CustomDepthEstimator {
             }
         }
         return averageDepth / (width * height);
+    }
+
+    /**
+     * Uses perspective to estimate the distance of a face from the observer.
+     * Based on standard face width/height proportions.
+     * @param faceBoundingBox The bounding box of a detection containing a face.
+     * @return The detection's face distance (in meters) from the observer.
+     */
+    public double getPredictedDistance(RectF faceBoundingBox) {
+        final double standardFaceArea = STANDARD_FACE_HEIGHT_PX * STANDARD_FACE_WIDTH_PX;
+        final double currentFaceArea = faceBoundingBox.height() * faceBoundingBox.width();
+        return standardFaceArea / currentFaceArea;
     }
 
     /**
