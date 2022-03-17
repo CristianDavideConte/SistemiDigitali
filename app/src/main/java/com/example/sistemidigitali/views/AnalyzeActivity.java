@@ -49,8 +49,8 @@ import java.util.concurrent.Executors;
 public class AnalyzeActivity extends AppCompatActivity {
     private static final double SAFE_DISTANCE_M = 1.0; //In Meters
 
-    private static final double STANDARD_FACE_WIDTH_M = 0.147; //In Meters
-    private static final double STANDARD_FACE_HEIGHT_M = 0.234; //In Meters
+    private static final double STANDARD_FACE_WIDTH_M = 0.152; //In Meters
+    private static final double STANDARD_FACE_HEIGHT_M = 0.232; //In Meters
     private static final double STANDARD_FACE_WIDTH_PX = 211.67; //In Pixels
     private static final double STANDARD_FACE_HEIGHT_PX = 333.9583; //In Pixels
 
@@ -314,7 +314,7 @@ public class AnalyzeActivity extends AppCompatActivity {
     private void calculateDistance() {
         this.distanceCalculatorExecutor.execute(() -> {
             final List<Detection> selectedDetections = this.liveDetectionViewAnalyze.getSelectedDetections();
-            if (selectedDetections.size() < 2) return;
+            if(selectedDetections.size() < 2) return;
 
             this.depthMap = depthEstimator.getDepthMap(this.originalImageBuffer);
             this.depthMapImage = this.imageUtility.convertFloatArrayToBitmap(this.depthMap, TARGET_DEPTH_MAP_WIDTH, TARGET_DEPTH_MAP_HEIGHT);
@@ -323,17 +323,30 @@ public class AnalyzeActivity extends AppCompatActivity {
             final RectF boundingBoxDetection1 = selectedDetections.get(0).getBoundingBox();
             final RectF boundingBoxDetection2 = selectedDetections.get(1).getBoundingBox();
 
-            final double distance1 = depthEstimator.getDistanceFromObserver(boundingBoxDetection1, this.frame.getWidth(), this.frame.getHeight());
-            final double distance2 = depthEstimator.getDistanceFromObserver(boundingBoxDetection2, this.frame.getWidth(), this.frame.getHeight());
-            final double angle1 = depthEstimator.getAngleFromScreenCenter(boundingBoxDetection1, this.frame.getWidth(), this.frame.getHeight());
-            final double angle2 = depthEstimator.getAngleFromScreenCenter(boundingBoxDetection2, this.frame.getWidth(), this.frame.getHeight());
-            double angleBetweenDetections = Math.abs(angle1 - angle2);
-            if(angleBetweenDetections > 2 * Math.PI) angleBetweenDetections = 2 * Math.PI - angleBetweenDetections;
+            final double distanceFromObserver1 = depthEstimator.getDistanceFromObserver(boundingBoxDetection1, this.frame.getWidth(), this.frame.getHeight());
+            final double distanceFromObserver2 = depthEstimator.getDistanceFromObserver(boundingBoxDetection2, this.frame.getWidth(), this.frame.getHeight());
 
-            println("ANGLE BETWEEN", angleBetweenDetections * 90 / Math.PI);
+            final double distanceFromScreenCenter1 = depthEstimator.getPerspectiveWidth(boundingBoxDetection1, this.frame.getWidth(), this.frame.getHeight());
+            final double distanceFromScreenCenter2 = depthEstimator.getPerspectiveWidth(boundingBoxDetection2, this.frame.getWidth(), this.frame.getHeight());
 
-            //Carnot theorem
-            final double distance = Math.sqrt(distance1 * distance1 + distance2 * distance2 - 2 * distance1 * distance2 * Math.cos(angleBetweenDetections));
+            final double depth1 = Math.sqrt(distanceFromObserver1 * distanceFromObserver1 - distanceFromScreenCenter1 * distanceFromScreenCenter1);
+            final double depth2 = Math.sqrt(distanceFromObserver2 * distanceFromObserver2 - distanceFromScreenCenter2 * distanceFromScreenCenter2);
+
+            final double deltaZBetweenTwoDetections = Math.abs(depth2 - depth1);
+            final double deltaXBetweenTwoDetections = Math.abs(distanceFromScreenCenter1) + Math.abs(distanceFromScreenCenter2);
+
+            final double distance = Math.sqrt(deltaZBetweenTwoDetections * deltaZBetweenTwoDetections + deltaXBetweenTwoDetections * deltaXBetweenTwoDetections);
+
+            println("DISTANCE FROM OBSERVER 1", distanceFromObserver1);
+            println("DISTANCE FROM OBSERVER 2", distanceFromObserver2);
+            println("DISTANCE FROM SCREEN CENTER 1", distanceFromScreenCenter1);
+            println("DISTANCE FROM SCREEN CENTER 2", distanceFromScreenCenter2);
+            println("DEPTH 1", depth1);
+            println("DEPTH 2", depth2);
+
+            println("deltaZBetweenTwoDetections", deltaZBetweenTwoDetections);
+            println("deltaXBetweenTwoDetections", deltaXBetweenTwoDetections);
+            println("DISTANCE", distance);
 
             //If the mask is correctly worn, the safe distance doesn't matter
             final List<Integer> colors = this.getWearingMode(selectedDetections.get(0)) == WearingModeEnum.MRCW || this.getWearingMode(selectedDetections.get(1)) == WearingModeEnum.MRCW ?
@@ -366,9 +379,10 @@ public class AnalyzeActivity extends AppCompatActivity {
                     )
             );
             EventBus.getDefault().post(new UpdateDetectionsRectsEvent(this, this.detections, false, null, this.detectionLines));
-
         });
     }
+
+
     @SuppressLint("DefaultLocale")
     private void calculateDistance2() {
         this.distanceCalculatorExecutor.execute(() -> {
