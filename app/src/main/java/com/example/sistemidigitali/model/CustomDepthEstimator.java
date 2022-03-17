@@ -27,10 +27,10 @@ public class CustomDepthEstimator {
     private static final double STANDARD_IMAGE_WIDTH_PX = 1728;  //In Pixels
     private static final double STANDARD_IMAGE_HEIGHT_PX = 2304; //In Pixels
 
-    private static final double STANDARD_FACE_WIDTH_M = 0.147F; //In Meters
-    private static final double STANDARD_FACE_HEIGHT_M = 0.234F; //In Meters
-    private static final double STANDARD_FACE_WIDTH_PX = 266F; //In Pixels
-    private static final double STANDARD_FACE_HEIGHT_PX = 353F; //In Pixels
+    private static final double STANDARD_FACE_WIDTH_M = 0.152; //In Meters
+    private static final double STANDARD_FACE_HEIGHT_M = 0.232; //In Meters
+    private static final double STANDARD_FACE_WIDTH_PX = 266; //In Pixels
+    private static final double STANDARD_FACE_HEIGHT_PX = 353; //In Pixels
 
     private static final double SFR_C_AVG = 194.29F; //Standard Average Depth in SFR area
     private static final double SFR_D = 1.0F;        //Standard Distance phone-person (in Meters)
@@ -167,6 +167,14 @@ public class CustomDepthEstimator {
                 STANDARD_FACE_WIDTH_PX  / (faceBoundingBox.width()  * normalizationFactorWidth)
                ) * 0.5;
     }
+
+    public double getPerspectiveWidth(RectF faceBoundingBox, double imageWidth, double imageHeight) {
+        final double scale = this.getDistanceFromObserver(faceBoundingBox, imageWidth, imageHeight);
+        final double distanceFromScreenCenter = faceBoundingBox.centerX() - (imageWidth * 0.5); //In Pixels
+        final double width = distanceFromScreenCenter / faceBoundingBox.width() * scale * STANDARD_FACE_WIDTH_M; //In Meters
+        return width > 0 ? Math.min(width, scale) : -Math.min(-width, scale);
+    }
+
 
     /**
      * Return a MappedByteBuffer of a tflite model.
