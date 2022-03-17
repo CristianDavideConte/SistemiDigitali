@@ -183,6 +183,13 @@ public class AnalyzeActivity extends AppCompatActivity {
 
         final GestureDetector gestureDetector = new GestureDetector( this, new GestureDetector.SimpleOnGestureListener() {
             public void onLongPress(MotionEvent motionEvent) {
+                println("FRAME:",frame.getWidth(),"x",frame.getHeight());
+                for(Detection detection : detections) {
+                    println("WIDTH x HEIGHT", detection.getBoundingBox().width(),"x",detection.getBoundingBox().height());
+                    println("DISTANCE FROM CAMERA", depthEstimator.getDistanceFromObserver(detection.getBoundingBox(), frame.getWidth(), frame.getHeight()));
+                    println("ANGLE", depthEstimator.getAngleFromScreenCenter(detection.getBoundingBox(), frame.getWidth(), frame.getHeight()) * 90 / Math.PI);
+                }
+
                 gestureWasHold = true;
                 final int previousSelectedDetections = liveDetectionViewAnalyze.getSelectedDetections().size();
                 if(liveDetectionViewAnalyze.onHold(motionEvent) == MAX_SELECTABLE_DETECTIONS && previousSelectedDetections < MAX_SELECTABLE_DETECTIONS) {
@@ -302,11 +309,12 @@ public class AnalyzeActivity extends AppCompatActivity {
         });
     }
 
+
     @SuppressLint("DefaultLocale")
-    public void calculateDistance() {
+    private void calculateDistance() {
         this.distanceCalculatorExecutor.execute(() -> {
             final List<Detection> selectedDetections = this.liveDetectionViewAnalyze.getSelectedDetections();
-            if(selectedDetections.size() < 2) return;
+            if (selectedDetections.size() < 2) return;
 
             this.depthMap = depthEstimator.getDepthMap(this.originalImageBuffer);
             this.depthMapImage = this.imageUtility.convertFloatArrayToBitmap(this.depthMap, TARGET_DEPTH_MAP_WIDTH, TARGET_DEPTH_MAP_HEIGHT);
@@ -315,46 +323,17 @@ public class AnalyzeActivity extends AppCompatActivity {
             final RectF boundingBoxDetection1 = selectedDetections.get(0).getBoundingBox();
             final RectF boundingBoxDetection2 = selectedDetections.get(1).getBoundingBox();
 
-            double sumXY = 0;
-            double sumXX = 0;
-            double sumX = 0;
-            double sumY = 0;
-            final double n = this.detections.size();
-            for(Detection detection : this.detections) {
-                final RectF faceBoundingBox = detection.getBoundingBox();
-                final double x = getX(faceBoundingBox);
-                final double y = depthEstimator.getPredictedDistance(faceBoundingBox);
+            final double distance1 = depthEstimator.getDistanceFromObserver(boundingBoxDetection1, this.frame.getWidth(), this.frame.getHeight());
+            final double distance2 = depthEstimator.getDistanceFromObserver(boundingBoxDetection2, this.frame.getWidth(), this.frame.getHeight());
+            final double angle1 = depthEstimator.getAngleFromScreenCenter(boundingBoxDetection1, this.frame.getWidth(), this.frame.getHeight());
+            final double angle2 = depthEstimator.getAngleFromScreenCenter(boundingBoxDetection2, this.frame.getWidth(), this.frame.getHeight());
+            double angleBetweenDetections = Math.abs(angle1 - angle2);
+            if(angleBetweenDetections > 2 * Math.PI) angleBetweenDetections = 2 * Math.PI - angleBetweenDetections;
 
-                sumX += x;
-                sumY += y;
-                sumXY += x * y;
-                sumXX += x * x;
-            }
+            println("ANGLE BETWEEN", angleBetweenDetections * 90 / Math.PI);
 
-            //Calculate the scale parameter of the depth map
-            final double scale = (sumXY - (sumX * sumY) / n) / (sumXX - (sumX * sumX) / n);
-
-            //Calculate the shift parameter of the depth map
-            final double shift = (sumY - (scale * sumX)) / n;
-
-            final double longCathetus1 = (this.getX(boundingBoxDetection1) * scale + shift);
-            final double longCathetus2 = (this.getX(boundingBoxDetection2) * scale + shift);
-
-            final double hypotenuse1 = depthEstimator.getPredictedDistance(boundingBoxDetection1);
-            final double hypotenuse2 = depthEstimator.getPredictedDistance(boundingBoxDetection2);
-
-            final double shortCathetus1 = Math.sqrt(hypotenuse1 * hypotenuse1 - longCathetus1 * longCathetus1);
-            final double shortCathetus2 = Math.sqrt(hypotenuse2 * hypotenuse2 - longCathetus2 * longCathetus2);
-
-            println("SCALE", scale, "SHIFT", shift);
-            println("L1", longCathetus1, "   L2", longCathetus2);
-            println("H1", hypotenuse1, "   H2", hypotenuse2);
-            println("S1", shortCathetus1, "    S2", shortCathetus2);
-
-            final double simpleDistance = shortCathetus1 + shortCathetus2;
-            final double distance = longCathetus1 == longCathetus2 ? simpleDistance :
-                                                                     Math.sqrt(simpleDistance * simpleDistance + (longCathetus1 - longCathetus2) * (longCathetus1 - longCathetus2));
-
+            //Carnot theorem
+            final double distance = Math.sqrt(distance1 * distance1 + distance2 * distance2 - 2 * distance1 * distance2 * Math.cos(angleBetweenDetections));
 
             //If the mask is correctly worn, the safe distance doesn't matter
             final List<Integer> colors = this.getWearingMode(selectedDetections.get(0)) == WearingModeEnum.MRCW || this.getWearingMode(selectedDetections.get(1)) == WearingModeEnum.MRCW ?
@@ -387,10 +366,9 @@ public class AnalyzeActivity extends AppCompatActivity {
                     )
             );
             EventBus.getDefault().post(new UpdateDetectionsRectsEvent(this, this.detections, false, null, this.detectionLines));
+
         });
     }
-
-
     @SuppressLint("DefaultLocale")
     private void calculateDistance2() {
         this.distanceCalculatorExecutor.execute(() -> {
@@ -467,25 +445,6 @@ public class AnalyzeActivity extends AppCompatActivity {
         final float scaleY = (float) TARGET_DEPTH_MAP_HEIGHT / (float) this.frame.getHeight();
 
         return depthEstimator.getDistancePhonePerson(
-                this.depthMap,
-                TARGET_DEPTH_MAP_WIDTH,
-                TARGET_DEPTH_MAP_HEIGHT,
-                (detectionBoundingBox.left - imageRect.left) * scaleX,
-                detectionBoundingBox.width() * scaleX,
-                (detectionBoundingBox.top - imageRect.top) * scaleY,
-                detectionBoundingBox.height() * scaleY
-        ); //In meters
-    }
-
-    private double getX(RectF detectionBoundingBox) {
-        //Rectangle of the currently zoomed/scaled/translate AnalyzeView's image
-        final RectF imageRect = new RectF(0, 0, this.frame.getWidth(), this.frame.getHeight());
-        this.analyzeView.getImageMatrix().mapRect(imageRect);
-
-        final float scaleX = (float) TARGET_DEPTH_MAP_WIDTH  / (float) this.frame.getWidth();
-        final float scaleY = (float) TARGET_DEPTH_MAP_HEIGHT / (float) this.frame.getHeight();
-
-        return depthEstimator.getAverageDepthInDetection(
                 this.depthMap,
                 TARGET_DEPTH_MAP_WIDTH,
                 TARGET_DEPTH_MAP_HEIGHT,

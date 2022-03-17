@@ -24,13 +24,16 @@ import java.nio.channels.FileChannel;
 public class CustomDepthEstimator {
     private static final String DEPTH_ESTIMATOR_FILE = "midas_small_2_1.tflite";
 
-    private static final float STANDARD_FACE_WIDTH_M = 0.147F; //In Meters
-    private static final float STANDARD_FACE_HEIGHT_M = 0.234F; //In Meters
-    private static final float STANDARD_FACE_WIDTH_PX = 211.67F; //In Pixels
-    private static final float STANDARD_FACE_HEIGHT_PX = 333.9583F; //In Pixels
+    private static final double STANDARD_IMAGE_WIDTH_PX = 1728;  //In Pixels
+    private static final double STANDARD_IMAGE_HEIGHT_PX = 2304; //In Pixels
 
-    private static final float SFR_C_AVG = 194.29F; //Standard Average Depth in SFR area
-    private static final float SFR_D = 1.0F;        //Standard Distance phone-person (in Meters)
+    private static final double STANDARD_FACE_WIDTH_M = 0.147F; //In Meters
+    private static final double STANDARD_FACE_HEIGHT_M = 0.234F; //In Meters
+    private static final double STANDARD_FACE_WIDTH_PX = 266F; //In Pixels
+    private static final double STANDARD_FACE_HEIGHT_PX = 353F; //In Pixels
+
+    private static final double SFR_C_AVG = 194.29F; //Standard Average Depth in SFR area
+    private static final double SFR_D = 1.0F;        //Standard Distance phone-person (in Meters)
 
     private final Context context;
     private Interpreter depthEstimator;
@@ -81,7 +84,7 @@ public class CustomDepthEstimator {
         return outputProbabilityBuffer.getFloatArray(); //The output is a float[] containing the inverse (relative) depths between the observer and the pixel[i,j]
     }
 
-    public float getDistancePhonePerson(float[] depthMap, float depthMapWidth, float depthMapHeight, float left, float width, float top, float height) {
+    public double getDistancePhonePerson(float[] depthMap, float depthMapWidth, float depthMapHeight, float left, float width, float top, float height) {
         //C(i,j) = depthMap[i][j]
         //C(avg) = average depth in detection
         //SFR = STANDARD_DETECTION_RECT
@@ -124,15 +127,45 @@ public class CustomDepthEstimator {
     }
 
     /**
+     * Source: https://stackoverflow.com/questions/7926816/calculate-angle-of-touched-point-and-rotate-it-in-android
+     * @param faceBoundingBox
+     * @param imageWidth
+     * @param imageHeight
+     * @return
+     */
+    public double getAngleFromScreenCenter(RectF faceBoundingBox, double imageWidth, double imageHeight) {
+        final double centerX = imageWidth  / 2;
+        final double centerY = imageHeight / 2;
+
+        final double tx = faceBoundingBox.centerX() - centerX;
+        final double ty = faceBoundingBox.centerY() - centerY;
+        final double tLength = Math.sqrt(tx * tx + ty * ty);
+        final double angle = Math.acos(ty / tLength);
+
+        final double correctionAngle;
+
+        if(faceBoundingBox.centerX() > centerX) {
+            correctionAngle = faceBoundingBox.centerY() > centerY ? 4 * Math.PI : 1 * Math.PI;
+        } else {
+            correctionAngle = faceBoundingBox.centerY() > centerY ? 3 * Math.PI : 2 * Math.PI;
+        }
+
+        return correctionAngle - angle;
+    }
+
+    /**
      * Uses perspective to estimate the distance of a face from the observer.
      * Based on standard face width/height proportions.
      * @param faceBoundingBox The bounding box of a detection containing a face.
      * @return The detection's face distance (in meters) from the observer.
      */
-    public double getPredictedDistance(RectF faceBoundingBox) {
-        final double standardFaceArea = STANDARD_FACE_HEIGHT_PX * STANDARD_FACE_WIDTH_PX;
-        final double currentFaceArea = faceBoundingBox.height() * faceBoundingBox.width();
-        return standardFaceArea / currentFaceArea;
+    public double getDistanceFromObserver(RectF faceBoundingBox, double imageWidth, double imageHeight) {
+        final double normalizationFactorWidth  = STANDARD_IMAGE_WIDTH_PX  / imageWidth;
+        final double normalizationFactorHeight = STANDARD_IMAGE_HEIGHT_PX / imageHeight;
+        return (
+                STANDARD_FACE_HEIGHT_PX / (faceBoundingBox.height() * normalizationFactorHeight) +
+                STANDARD_FACE_WIDTH_PX  / (faceBoundingBox.width()  * normalizationFactorWidth)
+               ) * 0.5;
     }
 
     /**
