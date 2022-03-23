@@ -416,6 +416,8 @@ public class AnalyzeActivity extends AppCompatActivity {
         final RectF imageRect = new RectF(0, 0, this.frame.getWidth(), this.frame.getHeight());
         this.analyzeView.getImageMatrix().mapRect(imageRect);
 
+        //The scales are used to get the coordinates of the bounding boxes with respect to the frame
+        //instead of the whole screen.
         final float scaleX = (float) TARGET_DEPTH_MAP_WIDTH  / (float) this.frame.getWidth();
         final float scaleY = (float) TARGET_DEPTH_MAP_HEIGHT / (float) this.frame.getHeight();
 
