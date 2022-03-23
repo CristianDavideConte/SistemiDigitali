@@ -27,10 +27,14 @@ public class CustomDepthEstimator {
     private static final double STANDARD_IMAGE_WIDTH_PX = 1728;  //In Pixels
     private static final double STANDARD_IMAGE_HEIGHT_PX = 2304; //In Pixels
 
-    private static final double STANDARD_FACE_WIDTH_M = 0.152; //In Meters
-    private static final double STANDARD_FACE_HEIGHT_M = 0.232; //In Meters
-    private static final double STANDARD_FACE_WIDTH_PX = 266; //In Pixels
-    private static final double STANDARD_FACE_HEIGHT_PX = 353; //In Pixels
+    public static final double STANDARD_FACE_WIDTH_M = 0.152; //In Meters
+    public static final double STANDARD_FACE_HEIGHT_M = 0.232; //In Meters
+    public static final double STANDARD_FACE_WIDTH_PX = 266; //In Pixels
+    public static final double STANDARD_FACE_HEIGHT_PX = 353; //In Pixels
+
+    public static final double PX_TO_M_CONVERSION_FACTOR_V1 = STANDARD_FACE_WIDTH_M  / STANDARD_FACE_WIDTH_PX;
+    public static final double PX_TO_M_CONVERSION_FACTOR_V2 = STANDARD_FACE_HEIGHT_M / STANDARD_FACE_HEIGHT_PX;
+    public static final double PX_TO_M_CONVERSION_FACTOR = (PX_TO_M_CONVERSION_FACTOR_V1 + PX_TO_M_CONVERSION_FACTOR_V2) * 0.5;
 
     private static final double SFR_C_AVG = 194.29F; //Standard Average Depth in SFR area
     private static final double SFR_D = 1.0F;        //Standard Distance phone-person (in Meters)
@@ -125,56 +129,6 @@ public class CustomDepthEstimator {
         }
         return averageDepth / (width * height);
     }
-
-    /**
-     * Source: https://stackoverflow.com/questions/7926816/calculate-angle-of-touched-point-and-rotate-it-in-android
-     * @param faceBoundingBox
-     * @param imageWidth
-     * @param imageHeight
-     * @return
-     */
-    public double getAngleFromScreenCenter(RectF faceBoundingBox, double imageWidth, double imageHeight) {
-        final double centerX = imageWidth  / 2;
-        final double centerY = imageHeight / 2;
-
-        final double tx = faceBoundingBox.centerX() - centerX;
-        final double ty = faceBoundingBox.centerY() - centerY;
-        final double tLength = Math.sqrt(tx * tx + ty * ty);
-        final double angle = Math.acos(ty / tLength);
-
-        final double correctionAngle;
-
-        if(faceBoundingBox.centerX() > centerX) {
-            correctionAngle = faceBoundingBox.centerY() > centerY ? 4 * Math.PI : 1 * Math.PI;
-        } else {
-            correctionAngle = faceBoundingBox.centerY() > centerY ? 3 * Math.PI : 2 * Math.PI;
-        }
-
-        return correctionAngle - angle;
-    }
-
-    /**
-     * Uses perspective to estimate the distance of a face from the observer.
-     * Based on standard face width/height proportions.
-     * @param faceBoundingBox The bounding box of a detection containing a face.
-     * @return The detection's face distance (in meters) from the observer.
-     */
-    public double getDistanceFromObserver(RectF faceBoundingBox, double imageWidth, double imageHeight) {
-        final double normalizationFactorWidth  = STANDARD_IMAGE_WIDTH_PX  / imageWidth;
-        final double normalizationFactorHeight = STANDARD_IMAGE_HEIGHT_PX / imageHeight;
-        return (
-                STANDARD_FACE_HEIGHT_PX / (faceBoundingBox.height() * normalizationFactorHeight) +
-                STANDARD_FACE_WIDTH_PX  / (faceBoundingBox.width()  * normalizationFactorWidth)
-               ) * 0.5;
-    }
-
-    public double getPerspectiveWidth(RectF faceBoundingBox, double imageWidth, double imageHeight) {
-        final double scale = this.getDistanceFromObserver(faceBoundingBox, imageWidth, imageHeight);
-        final double distanceFromScreenCenter = faceBoundingBox.centerX() - (imageWidth * 0.5); //In Pixels
-        final double width = distanceFromScreenCenter / faceBoundingBox.width() * scale * STANDARD_FACE_WIDTH_M; //In Meters
-        return width > 0 ? Math.min(width, scale) : -Math.min(-width, scale);
-    }
-
 
     /**
      * Return a MappedByteBuffer of a tflite model.
