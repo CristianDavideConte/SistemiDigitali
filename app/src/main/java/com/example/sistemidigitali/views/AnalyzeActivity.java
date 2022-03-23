@@ -1,6 +1,11 @@
 package com.example.sistemidigitali.views;
 
 import static com.example.sistemidigitali.debugUtility.Debug.println;
+import static com.example.sistemidigitali.model.CustomDepthEstimator.PX_TO_M_CONVERSION_FACTOR;
+import static com.example.sistemidigitali.model.CustomDepthEstimator.STANDARD_FACE_HEIGHT_M;
+import static com.example.sistemidigitali.model.CustomDepthEstimator.STANDARD_FACE_HEIGHT_PX;
+import static com.example.sistemidigitali.model.CustomDepthEstimator.STANDARD_FACE_WIDTH_M;
+import static com.example.sistemidigitali.model.CustomDepthEstimator.STANDARD_FACE_WIDTH_PX;
 
 import android.annotation.SuppressLint;
 import android.graphics.Bitmap;
@@ -48,15 +53,6 @@ import java.util.concurrent.Executors;
 
 public class AnalyzeActivity extends AppCompatActivity {
     private static final double SAFE_DISTANCE_M = 1.0; //In Meters
-
-    private static final double STANDARD_FACE_WIDTH_M = 0.152; //In Meters
-    private static final double STANDARD_FACE_HEIGHT_M = 0.232; //In Meters
-    private static final double STANDARD_FACE_WIDTH_PX = 211.67; //In Pixels
-    private static final double STANDARD_FACE_HEIGHT_PX = 333.9583; //In Pixels
-
-    private static final double PX_TO_M_CONVERSION_FACTOR_V1 = 1 * STANDARD_FACE_WIDTH_M  / STANDARD_FACE_WIDTH_PX;
-    private static final double PX_TO_M_CONVERSION_FACTOR_V2 = 1 * STANDARD_FACE_HEIGHT_M / STANDARD_FACE_HEIGHT_PX;
-    private static final double PX_TO_M_CONVERSION_FACTOR = (PX_TO_M_CONVERSION_FACTOR_V1 + PX_TO_M_CONVERSION_FACTOR_V2) / 2.0;
 
     private static final int TARGET_DEPTH_MAP_WIDTH = 256;
     private static final int TARGET_DEPTH_MAP_HEIGHT = 256;
@@ -183,13 +179,6 @@ public class AnalyzeActivity extends AppCompatActivity {
 
         final GestureDetector gestureDetector = new GestureDetector( this, new GestureDetector.SimpleOnGestureListener() {
             public void onLongPress(MotionEvent motionEvent) {
-                println("FRAME:",frame.getWidth(),"x",frame.getHeight());
-                for(Detection detection : detections) {
-                    println("WIDTH x HEIGHT", detection.getBoundingBox().width(),"x",detection.getBoundingBox().height());
-                    println("DISTANCE FROM CAMERA", depthEstimator.getDistanceFromObserver(detection.getBoundingBox(), frame.getWidth(), frame.getHeight()));
-                    println("ANGLE", depthEstimator.getAngleFromScreenCenter(detection.getBoundingBox(), frame.getWidth(), frame.getHeight()) * 90 / Math.PI);
-                }
-
                 gestureWasHold = true;
                 final int previousSelectedDetections = liveDetectionViewAnalyze.getSelectedDetections().size();
                 if(liveDetectionViewAnalyze.onHold(motionEvent) == MAX_SELECTABLE_DETECTIONS && previousSelectedDetections < MAX_SELECTABLE_DETECTIONS) {
@@ -309,48 +298,84 @@ public class AnalyzeActivity extends AppCompatActivity {
         });
     }
 
-
     @SuppressLint("DefaultLocale")
     private void calculateDistance() {
         this.distanceCalculatorExecutor.execute(() -> {
+            /**
+             * Calculate the depth map if necessary
+             */
             final List<Detection> selectedDetections = this.liveDetectionViewAnalyze.getSelectedDetections();
-            if(selectedDetections.size() < 2) return;
+            if (selectedDetections.size() < 2) return;
 
             this.depthMap = depthEstimator.getDepthMap(this.originalImageBuffer);
             this.depthMapImage = this.imageUtility.convertFloatArrayToBitmap(this.depthMap, TARGET_DEPTH_MAP_WIDTH, TARGET_DEPTH_MAP_HEIGHT);
             this.detectionLines = new ArrayList<>();
 
+            /**
+             * Calculate the distance between the selected detections
+             */
+            /**
+            <-------------------------------------NEEDS TO BE FIXED -------------------------------------------------------------------------------------------
+            */
+            final Detection furthestDetection = getFurthestDetection(); //Furthest based on the depth map informations
+            /**
+             -------------------------------------NEEDS TO BE FIXED ------------------------------------------------------------------------------------------->
+             */
+
+
+
             final RectF boundingBoxDetection1 = selectedDetections.get(0).getBoundingBox();
             final RectF boundingBoxDetection2 = selectedDetections.get(1).getBoundingBox();
+            final RectF boundingBoxFurthestDetection = furthestDetection.getBoundingBox();
 
-            final double distanceFromObserver1 = depthEstimator.getDistanceFromObserver(boundingBoxDetection1, this.frame.getWidth(), this.frame.getHeight());
-            final double distanceFromObserver2 = depthEstimator.getDistanceFromObserver(boundingBoxDetection2, this.frame.getWidth(), this.frame.getHeight());
+            //These are the distances (in meters) from the observer to the center of the detections.
+            //N.B. The detections and the observer can have different heights (these distances may have an angle).
+            final double distanceMax = getMaxDistanceFromObserver(furthestDetection);
+            final double distance1 =
+                    (STANDARD_FACE_HEIGHT_PX / boundingBoxDetection1.height() + STANDARD_FACE_WIDTH_PX / boundingBoxDetection1.width()) * distanceMax /
+                    (STANDARD_FACE_HEIGHT_PX / boundingBoxFurthestDetection.height() + STANDARD_FACE_WIDTH_PX / boundingBoxFurthestDetection.width());
+            final double distance2 =
+                    (STANDARD_FACE_HEIGHT_PX / boundingBoxDetection2.height() + STANDARD_FACE_WIDTH_PX / boundingBoxDetection2.width()) * distanceMax /
+                    (STANDARD_FACE_HEIGHT_PX / boundingBoxFurthestDetection.height() + STANDARD_FACE_WIDTH_PX / boundingBoxFurthestDetection.width());
 
-            final double distanceFromScreenCenter1 = depthEstimator.getPerspectiveWidth(boundingBoxDetection1, this.frame.getWidth(), this.frame.getHeight());
-            final double distanceFromScreenCenter2 = depthEstimator.getPerspectiveWidth(boundingBoxDetection2, this.frame.getWidth(), this.frame.getHeight());
+            //These are the distances (in meters) between a detection and the center of the frame,
+            //scaled by taking into account the distance the detection is at.
+            final double deltaX1MfromCenter = distance1 * (this.frame.getWidth() * 0.5 - boundingBoxDetection1.centerX()) * PX_TO_M_CONVERSION_FACTOR;
+            final double deltaX2MfromCenter = distance2 * (this.frame.getWidth() * 0.5 - boundingBoxDetection2.centerX()) * PX_TO_M_CONVERSION_FACTOR;
 
-            final double depth1 = Math.sqrt(distanceFromObserver1 * distanceFromObserver1 - distanceFromScreenCenter1 * distanceFromScreenCenter1);
-            final double depth2 = Math.sqrt(distanceFromObserver2 * distanceFromObserver2 - distanceFromScreenCenter2 * distanceFromScreenCenter2);
+            //These are the heights the observer would be at if it was at the same distance as the detections.
+            //Used to understand what is the height difference between the observer and the detections and
+            //which angle the distances have been calculated at.
+            final double observerY1 = distance1 * this.frame.getHeight() * 0.5 * PX_TO_M_CONVERSION_FACTOR;
+            final double observerY2 = distance2 * this.frame.getHeight() * 0.5 * PX_TO_M_CONVERSION_FACTOR;
 
-            final double deltaZBetweenTwoDetections = Math.abs(depth2 - depth1);
-            final double deltaXBetweenTwoDetections = Math.abs(distanceFromScreenCenter1) + Math.abs(distanceFromScreenCenter2);
+            //These are the distances (in meters) between a detection and the left size (start) of the frame,
+            //scaled by taking into account the distance the detection is at.
+            final double x1 = distance1 * boundingBoxDetection1.centerX() * PX_TO_M_CONVERSION_FACTOR;
+            final double x2 = distance2 * boundingBoxDetection2.centerX() * PX_TO_M_CONVERSION_FACTOR;
 
-            final double distance = Math.sqrt(deltaZBetweenTwoDetections * deltaZBetweenTwoDetections + deltaXBetweenTwoDetections * deltaXBetweenTwoDetections);
+            //These are the distances (in meters) between a detection and the top size (start) of the frame,
+            //scaled by taking into account the distance the detection is at.
+            final double y1 = distance1 * boundingBoxDetection1.centerY() * PX_TO_M_CONVERSION_FACTOR;
+            final double y2 = distance2 * boundingBoxDetection2.centerY() * PX_TO_M_CONVERSION_FACTOR;
 
-            println("DISTANCE FROM OBSERVER 1", distanceFromObserver1);
-            println("DISTANCE FROM OBSERVER 2", distanceFromObserver2);
-            println("DISTANCE FROM SCREEN CENTER 1", distanceFromScreenCenter1);
-            println("DISTANCE FROM SCREEN CENTER 2", distanceFromScreenCenter2);
-            println("DEPTH 1", depth1);
-            println("DEPTH 2", depth2);
+            //These are the normalized distances between the observer and the detections.
+            //"Normalized" means: these are the distances between the lowest between the observer and the detection,
+            //and the corresponding lowered point on the other (makes the observer and the detection's heights the same).
+            final double distance1Projection = Math.sqrt(distance1 * distance1 - (observerY1 - y1) * (observerY1 - y1));
+            final double distance2Projection = Math.sqrt(distance2 * distance2 - (observerY2 - y2) * (observerY2 - y2));
 
-            println("deltaZBetweenTwoDetections", deltaZBetweenTwoDetections);
-            println("deltaXBetweenTwoDetections", deltaXBetweenTwoDetections);
-            println("DISTANCE", distance);
+            final double z1 = Math.sqrt(distance1Projection * distance1Projection - deltaX1MfromCenter * deltaX1MfromCenter);
+            final double z2 = Math.sqrt(distance2Projection * distance2Projection - deltaX2MfromCenter * deltaX2MfromCenter);
 
-            //If the mask is correctly worn, the safe distance doesn't matter
-            final List<Integer> colors = this.getWearingMode(selectedDetections.get(0)) == WearingModeEnum.MRCW || this.getWearingMode(selectedDetections.get(1)) == WearingModeEnum.MRCW ?
-                    getDepthLineColors(SAFE_DISTANCE_M) : getDepthLineColors(distance);
+            println(x1,x2,y1,y2,z1,z2);
+
+            final double distance = getDistanceBetweenTwoPoints(x1, y1, z1, x2, y2, z2);
+
+            /**
+             * Draw the detections' lines
+             */
+            final List<Integer> colors = getDepthLineColors(distance);
 
             float startX, endX;
             final float centersDistance = boundingBoxDetection1.centerX() - boundingBoxDetection2.centerX();
@@ -361,7 +386,7 @@ public class AnalyzeActivity extends AppCompatActivity {
                 startX = boundingBoxDetection1.centerX() - boundingBoxDetection1.width() / 2;
                 endX = boundingBoxDetection2.centerX() + boundingBoxDetection2.width() / 2;
             }
-            if(Math.abs(startX - endX) < 100) {
+            if (Math.abs(startX - endX) < 100) {
                 startX = boundingBoxDetection1.centerX();
                 endX = boundingBoxDetection2.centerX();
             }
@@ -381,6 +406,48 @@ public class AnalyzeActivity extends AppCompatActivity {
             EventBus.getDefault().post(new UpdateDetectionsRectsEvent(this, this.detections, false, null, this.detectionLines));
         });
     }
+
+
+    private double getMaxDistanceFromObserver(Detection furthestDetection) {
+        return 0.5 * (STANDARD_FACE_HEIGHT_PX / furthestDetection.getBoundingBox().height() + STANDARD_FACE_WIDTH_PX / furthestDetection.getBoundingBox().width());
+    }
+
+    private Detection getFurthestDetection() {
+        final RectF imageRect = new RectF(0, 0, this.frame.getWidth(), this.frame.getHeight());
+        this.analyzeView.getImageMatrix().mapRect(imageRect);
+
+        final float scaleX = (float) TARGET_DEPTH_MAP_WIDTH  / (float) this.frame.getWidth();
+        final float scaleY = (float) TARGET_DEPTH_MAP_HEIGHT / (float) this.frame.getHeight();
+
+        double minAvgDepth = Float.POSITIVE_INFINITY;
+        Detection furthestDetection = null;
+
+        for(Detection detection : this.detections) {
+            final RectF boundingBoxDetection = detection.getBoundingBox();
+            final double avgDepth = depthEstimator.getAverageDepthInDetection(
+                    depthMap,
+                    TARGET_DEPTH_MAP_WIDTH,
+                    TARGET_DEPTH_MAP_HEIGHT,
+                    (boundingBoxDetection.left - imageRect.left) * scaleX,
+                    boundingBoxDetection.width() * scaleX,
+                    (boundingBoxDetection.top - imageRect.top) * scaleY,
+                    boundingBoxDetection.height() * scaleY
+            );
+
+            if(avgDepth <= minAvgDepth) {
+                furthestDetection = detection;
+                minAvgDepth = avgDepth;
+            }
+        }
+        return furthestDetection;
+    }
+
+
+
+
+
+
+
 
 
     @SuppressLint("DefaultLocale")
