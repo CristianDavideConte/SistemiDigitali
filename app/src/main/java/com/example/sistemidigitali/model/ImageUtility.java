@@ -93,7 +93,7 @@ public class ImageUtility {
 
         BitmapFactory.decodeByteArray(bytes, 0, bytes.length);
         BitmapFactory.Options decodeOptions = new BitmapFactory.Options();
-        decodeOptions.inSampleSize = 2; //Scale down the original image by this factor in both dimension
+        //decodeOptions.inSampleSize = 2; //Scale down the original image by this factor in both dimension
         decodeOptions.inPreferredConfig = Bitmap.Config.ARGB_8888;
 
         Bitmap bitmap = BitmapFactory.decodeByteArray(bytes, 0, bytes.length, decodeOptions);
@@ -101,9 +101,10 @@ public class ImageUtility {
         matrix.postRotate(rotationDegree);
         if(flipNeeded) matrix.preScale(1.0f, -1.0f); //flip the image on the y-axis
 
-        int width = Math.min(image.getWidth(), bitmap.getWidth());
-        int height = Math.min(image.getHeight(), bitmap.getHeight());
-        return Bitmap.createBitmap(bitmap, 0, 0, width, height, matrix, flipNeeded);
+        //int width = Math.min(image.getWidth(), bitmap.getWidth());
+        //int height = Math.min(image.getHeight(), bitmap.getHeight());
+        //return Bitmap.createBitmap(bitmap, 0, 0, width, height, matrix, flipNeeded);
+        return Bitmap.createBitmap(bitmap, 0, 0, bitmap.getWidth(), bitmap.getHeight(), matrix, flipNeeded);
     }
 
     /**

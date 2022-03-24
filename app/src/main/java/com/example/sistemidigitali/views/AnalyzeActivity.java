@@ -35,6 +35,8 @@ import com.example.sistemidigitali.model.CustomDepthEstimator;
 import com.example.sistemidigitali.model.CustomObjectDetector;
 import com.example.sistemidigitali.model.CustomVibrator;
 import com.example.sistemidigitali.model.DetectionLine;
+import com.example.sistemidigitali.model.ExceptionDeltaX1;
+import com.example.sistemidigitali.model.ExceptionDeltaX2;
 import com.example.sistemidigitali.model.ImageUtility;
 import com.example.sistemidigitali.model.ToastMessagesManager;
 import com.google.android.material.chip.Chip;
@@ -365,9 +367,14 @@ public class AnalyzeActivity extends AppCompatActivity {
             final double distance1Projection = Math.sqrt(distance1 * distance1 - (observerY1 - y1) * (observerY1 - y1));
             final double distance2Projection = Math.sqrt(distance2 * distance2 - (observerY2 - y2) * (observerY2 - y2));
 
-            final double z1 = Math.sqrt(distance1Projection * distance1Projection - deltaX1MfromCenter * deltaX1MfromCenter);
-            final double z2 = Math.sqrt(distance2Projection * distance2Projection - deltaX2MfromCenter * deltaX2MfromCenter);
+            println(Math.sqrt(distance1Projection * distance1Projection - deltaX1MfromCenter * deltaX1MfromCenter));
+            println(Math.sqrt(Math.abs(distance1Projection * distance1Projection - deltaX1MfromCenter * deltaX1MfromCenter)));
+            println(distance2Projection * distance2Projection - deltaX2MfromCenter * deltaX2MfromCenter);
+            println((Math.abs(distance2Projection * distance2Projection - deltaX2MfromCenter * deltaX2MfromCenter)));
+            final double z1 = Math.sqrt(Math.abs(distance1Projection * distance1Projection - deltaX1MfromCenter * deltaX1MfromCenter));
+            final double z2 = Math.sqrt(Math.abs(distance2Projection * distance2Projection - deltaX2MfromCenter * deltaX2MfromCenter));
 
+            println(distance1Projection,deltaX1MfromCenter,distance2Projection,deltaX2MfromCenter);
             println(x1,x2,y1,y2,z1,z2);
 
             final double distance = getDistanceBetweenTwoPoints(x1, y1, z1, x2, y2, z2);

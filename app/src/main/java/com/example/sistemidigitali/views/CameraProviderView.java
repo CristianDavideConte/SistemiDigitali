@@ -9,6 +9,7 @@ import android.graphics.Bitmap;
 import android.graphics.Matrix;
 import android.hardware.camera2.CameraCharacteristics;
 import android.hardware.camera2.CameraManager;
+import android.hardware.camera2.params.StreamConfigurationMap;
 import android.util.Size;
 import android.view.MotionEvent;
 import android.view.ScaleGestureDetector;
@@ -153,7 +154,7 @@ public class CameraProviderView {
 
                 //Image Capture
                 this.imageCapt = new ImageCapture.Builder()
-                                .setCaptureMode(ImageCapture.CAPTURE_MODE_MINIMIZE_LATENCY)
+                                .setCaptureMode(ImageCapture.CAPTURE_MODE_MAXIMIZE_QUALITY)
                                 .setTargetRotation(Surface.ROTATION_0)
                                 .build();
 
@@ -214,7 +215,7 @@ public class CameraProviderView {
                     public void onCaptureSuccess(@NonNull ImageProxy imageProxy) {
                         Bitmap frame = imageUtility.convertImageToBitmap(imageProxy.getImage(), getRotationDegree(imageProxy), currentLensOrientation == CameraSelector.LENS_FACING_FRONT);
                         frames.add(frame);
-
+                        println("FRAME: ", frame.getWidth(), frame.getHeight(),"PROXY: ",imageProxy.getWidth(),imageProxy.getHeight());
                         imageProxy.close();
 
                         /*
