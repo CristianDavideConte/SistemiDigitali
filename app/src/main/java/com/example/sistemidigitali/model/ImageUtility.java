@@ -101,9 +101,6 @@ public class ImageUtility {
         matrix.postRotate(rotationDegree);
         if(flipNeeded) matrix.preScale(1.0f, -1.0f); //flip the image on the y-axis
 
-        //int width = Math.min(image.getWidth(), bitmap.getWidth());
-        //int height = Math.min(image.getHeight(), bitmap.getHeight());
-        //return Bitmap.createBitmap(bitmap, 0, 0, width, height, matrix, flipNeeded);
         return Bitmap.createBitmap(bitmap, 0, 0, bitmap.getWidth(), bitmap.getHeight(), matrix, flipNeeded);
     }
 

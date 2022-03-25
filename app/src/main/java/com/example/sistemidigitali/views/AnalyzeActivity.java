@@ -316,15 +316,7 @@ public class AnalyzeActivity extends AppCompatActivity {
             /**
              * Calculate the distance between the selected detections
              */
-            /**
-            <-------------------------------------NEEDS TO BE FIXED -------------------------------------------------------------------------------------------
-            */
             final Detection furthestDetection = getFurthestDetection(); //Furthest based on the depth map informations
-            /**
-             -------------------------------------NEEDS TO BE FIXED ------------------------------------------------------------------------------------------->
-             */
-
-
 
             final RectF boundingBoxDetection1 = selectedDetections.get(0).getBoundingBox();
             final RectF boundingBoxDetection2 = selectedDetections.get(1).getBoundingBox();
@@ -340,7 +332,7 @@ public class AnalyzeActivity extends AppCompatActivity {
                     (STANDARD_FACE_HEIGHT_PX / boundingBoxDetection2.height() + STANDARD_FACE_WIDTH_PX / boundingBoxDetection2.width()) * distanceMax /
                     (STANDARD_FACE_HEIGHT_PX / boundingBoxFurthestDetection.height() + STANDARD_FACE_WIDTH_PX / boundingBoxFurthestDetection.width());
 
-            //These are the distances (in meters) between a detection and the center of the frame,
+            //These are the distances (in meters) between every detection and the center of the frame,
             //scaled by taking into account the distance the detection is at.
             final double deltaX1MfromCenter = distance1 * (this.frame.getWidth() * 0.5 - boundingBoxDetection1.centerX()) * PX_TO_M_CONVERSION_FACTOR;
             final double deltaX2MfromCenter = distance2 * (this.frame.getWidth() * 0.5 - boundingBoxDetection2.centerX()) * PX_TO_M_CONVERSION_FACTOR;
@@ -351,31 +343,27 @@ public class AnalyzeActivity extends AppCompatActivity {
             final double observerY1 = distance1 * this.frame.getHeight() * 0.5 * PX_TO_M_CONVERSION_FACTOR;
             final double observerY2 = distance2 * this.frame.getHeight() * 0.5 * PX_TO_M_CONVERSION_FACTOR;
 
-            //These are the distances (in meters) between a detection and the left size (start) of the frame,
+            //These are the distances (in meters) between every detection and the left size (start) of the frame,
             //scaled by taking into account the distance the detection is at.
             final double x1 = distance1 * boundingBoxDetection1.centerX() * PX_TO_M_CONVERSION_FACTOR;
             final double x2 = distance2 * boundingBoxDetection2.centerX() * PX_TO_M_CONVERSION_FACTOR;
 
-            //These are the distances (in meters) between a detection and the top size (start) of the frame,
+            //These are the distances (in meters) between every detection and the top size (start) of the frame,
             //scaled by taking into account the distance the detection is at.
             final double y1 = distance1 * boundingBoxDetection1.centerY() * PX_TO_M_CONVERSION_FACTOR;
             final double y2 = distance2 * boundingBoxDetection2.centerY() * PX_TO_M_CONVERSION_FACTOR;
 
             //These are the normalized distances between the observer and the detections.
-            //"Normalized" means: these are the distances between the lowest between the observer and the detection,
+            //"Normalized" means: these are the distances between the lowest between the observer and every detection,
             //and the corresponding lowered point on the other (makes the observer and the detection's heights the same).
             final double distance1Projection = Math.sqrt(distance1 * distance1 - (observerY1 - y1) * (observerY1 - y1));
             final double distance2Projection = Math.sqrt(distance2 * distance2 - (observerY2 - y2) * (observerY2 - y2));
 
-            println(Math.sqrt(distance1Projection * distance1Projection - deltaX1MfromCenter * deltaX1MfromCenter));
-            println(Math.sqrt(Math.abs(distance1Projection * distance1Projection - deltaX1MfromCenter * deltaX1MfromCenter)));
-            println(distance2Projection * distance2Projection - deltaX2MfromCenter * deltaX2MfromCenter);
-            println((Math.abs(distance2Projection * distance2Projection - deltaX2MfromCenter * deltaX2MfromCenter)));
+            //These are the depths (in meters) of every detection from the observer point of view,
             final double z1 = Math.sqrt(Math.abs(distance1Projection * distance1Projection - deltaX1MfromCenter * deltaX1MfromCenter));
             final double z2 = Math.sqrt(Math.abs(distance2Projection * distance2Projection - deltaX2MfromCenter * deltaX2MfromCenter));
 
-            println(distance1Projection,deltaX1MfromCenter,distance2Projection,deltaX2MfromCenter);
-            println(x1,x2,y1,y2,z1,z2);
+            println(z1, z2, distance1Projection, distance2Projection, deltaX1MfromCenter, deltaX2MfromCenter);
 
             final double distance = getDistanceBetweenTwoPoints(x1, y1, z1, x2, y2, z2);
 
@@ -462,7 +450,7 @@ public class AnalyzeActivity extends AppCompatActivity {
      * @return The 3D distance between two points
      */
     private double getDistanceBetweenTwoPoints(double x1, double y1, double z1, double x2, double y2, double z2) {
-        return Math.sqrt(Math.abs((x2 - x1) * (x2 - x1) + (y2 - y1) * (y2 - y1) + (z2 - z1) + (z2 - z1))); //In meters
+        return Math.sqrt((x2 - x1) * (x2 - x1) + (y2 - y1) * (y2 - y1) + (z2 - z1) * (z2 - z1)); //In meters
     }
 
     private List<Integer> getDepthLineColors(double distance) {
