@@ -224,7 +224,7 @@ public class CameraProviderView {
                          */
                         if (frames.size() == numOfFrames) {
                             EventBus.getDefault().postSticky(new ClearSelectedDetectionEvent());
-                            EventBus.getDefault().postSticky(new PictureTakenEvent(frames, "success"));
+                            EventBus.getDefault().postSticky(new PictureTakenEvent(frames, "success", false));
                             context.startActivity(new Intent(context, AnalyzeActivity.class));
                         }
                     }

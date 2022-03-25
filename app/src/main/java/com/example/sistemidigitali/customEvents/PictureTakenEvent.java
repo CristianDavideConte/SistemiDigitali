@@ -8,10 +8,12 @@ public class PictureTakenEvent {
 
     private String error;
     private List<Bitmap> frames;
+    private boolean isFromGallery;
 
-    public PictureTakenEvent(List<Bitmap> frames, String error) {
+    public PictureTakenEvent(List<Bitmap> frames, String error, boolean isFromGallery) {
         this.frames = frames;
         this.error = error;
+        this.isFromGallery = isFromGallery;
     }
 
     public List<Bitmap> getFrames() {
@@ -19,5 +21,8 @@ public class PictureTakenEvent {
     }
     public String getError() {
         return error;
+    }
+    public boolean isFromGallery() {
+        return isFromGallery;
     }
 }

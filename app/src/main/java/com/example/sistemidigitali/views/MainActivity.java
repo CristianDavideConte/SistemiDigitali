@@ -168,7 +168,7 @@ public class MainActivity extends AppCompatActivity {
                 frames.add(frame);
             }
             EventBus.getDefault().postSticky(new ClearSelectedDetectionEvent());
-            EventBus.getDefault().postSticky(new PictureTakenEvent(frames, "success"));
+            EventBus.getDefault().postSticky(new PictureTakenEvent(frames, "success", true));
             Intent intent = new Intent(this, AnalyzeActivity.class);
             this.startActivity(intent);
         } catch (IOException e) {

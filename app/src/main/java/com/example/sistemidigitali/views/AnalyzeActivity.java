@@ -2,16 +2,13 @@ package com.example.sistemidigitali.views;
 
 import static com.example.sistemidigitali.debugUtility.Debug.println;
 import static com.example.sistemidigitali.model.CustomDepthEstimator.PX_TO_M_CONVERSION_FACTOR;
-import static com.example.sistemidigitali.model.CustomDepthEstimator.STANDARD_FACE_HEIGHT_M;
 import static com.example.sistemidigitali.model.CustomDepthEstimator.STANDARD_FACE_HEIGHT_PX;
-import static com.example.sistemidigitali.model.CustomDepthEstimator.STANDARD_FACE_WIDTH_M;
 import static com.example.sistemidigitali.model.CustomDepthEstimator.STANDARD_FACE_WIDTH_PX;
 
 import android.annotation.SuppressLint;
 import android.graphics.Bitmap;
 import android.graphics.RectF;
 import android.os.Bundle;
-import android.util.DisplayMetrics;
 import android.view.GestureDetector;
 import android.view.MotionEvent;
 import android.view.View;
@@ -35,8 +32,6 @@ import com.example.sistemidigitali.model.CustomDepthEstimator;
 import com.example.sistemidigitali.model.CustomObjectDetector;
 import com.example.sistemidigitali.model.CustomVibrator;
 import com.example.sistemidigitali.model.DetectionLine;
-import com.example.sistemidigitali.model.ExceptionDeltaX1;
-import com.example.sistemidigitali.model.ExceptionDeltaX2;
 import com.example.sistemidigitali.model.ImageUtility;
 import com.example.sistemidigitali.model.ToastMessagesManager;
 import com.google.android.material.chip.Chip;
@@ -76,19 +71,19 @@ public class AnalyzeActivity extends AppCompatActivity {
     private FloatingActionButton saveImageButton;
     private List<Detection> detections;
     private List<DetectionLine> detectionLines;
+    private ProgressBar analyzeLoadingIndicator;
+    private ProgressBar saveLoadingIndicator;
+    private ImageUtility imageUtility;
 
     private Executor distanceCalculatorExecutor;
     private Executor analyzerExecutor;
     private Executor imageSaverExecutor;
 
     private ToastMessagesManager toastMessagesManager;
-
-    private ProgressBar analyzeLoadingIndicator;
-    private ProgressBar saveLoadingIndicator;
-    private ImageUtility imageUtility;
-
-    private boolean gestureWasHold;
     private CustomVibrator customVibrator;
+
+    private boolean frameIsFromGallery;
+    private boolean gestureWasHold;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -104,6 +99,7 @@ public class AnalyzeActivity extends AppCompatActivity {
         this.analyzeLoadingIndicator = findViewById(R.id.analyzeLoadingIndicator);
         this.saveLoadingIndicator = findViewById(R.id.saveLoadingIndicator);
 
+        this.frameIsFromGallery = false;
         this.gestureWasHold = false;
         this.customVibrator = new CustomVibrator(this);
         this.imageUtility = new ImageUtility(this);
@@ -164,6 +160,7 @@ public class AnalyzeActivity extends AppCompatActivity {
             return;
         }
         final Bitmap image = event.getFrames().get(0);
+        this.frameIsFromGallery = event.isFromGallery();
         this.liveDetectionViewAnalyze.setWidthAndHeight(image.getWidth(), image.getHeight());
         loadAnalyzeComponents(image);
     }
@@ -230,7 +227,7 @@ public class AnalyzeActivity extends AppCompatActivity {
             this.saveLoadingIndicator.setVisibility(View.VISIBLE);
             this.imageSaverExecutor.execute(() -> {
                 List<Bitmap> images = new ArrayList<>();
-                images.add(this.frame);
+                if(!this.frameIsFromGallery) images.add(this.frame);
                 if(this.depthMapImage == null) {
                     this.depthMap = depthEstimator.getDepthMap(this.originalImageBuffer);
                     this.depthMapImage = this.imageUtility.convertFloatArrayToBitmap(this.depthMap, TARGET_DEPTH_MAP_WIDTH, TARGET_DEPTH_MAP_HEIGHT);
