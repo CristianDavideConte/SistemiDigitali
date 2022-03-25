@@ -4,15 +4,12 @@ import static com.example.sistemidigitali.debugUtility.Debug.println;
 
 import android.content.Context;
 import android.content.res.AssetFileDescriptor;
-import android.graphics.RectF;
 
 import org.tensorflow.lite.DataType;
 import org.tensorflow.lite.Interpreter;
-import org.tensorflow.lite.gpu.GpuDelegate;
 import org.tensorflow.lite.support.common.TensorProcessor;
 import org.tensorflow.lite.support.metadata.MetadataExtractor;
 import org.tensorflow.lite.support.tensorbuffer.TensorBuffer;
-import org.tensorflow.lite.task.vision.detector.Detection;
 
 import java.io.FileInputStream;
 import java.io.IOException;
@@ -24,9 +21,6 @@ import java.nio.channels.FileChannel;
 public class CustomDepthEstimator {
     private static final String DEPTH_ESTIMATOR_FILE = "midas_small_2_1.tflite";
 
-    private static final double STANDARD_IMAGE_WIDTH_PX = 1728;  //In Pixels
-    private static final double STANDARD_IMAGE_HEIGHT_PX = 2304; //In Pixels
-
     public static final double STANDARD_FACE_WIDTH_M = 0.152; //In Meters
     public static final double STANDARD_FACE_HEIGHT_M = 0.232; //In Meters
     public static final double STANDARD_FACE_WIDTH_PX = 266; //In Pixels
@@ -35,9 +29,6 @@ public class CustomDepthEstimator {
     public static final double PX_TO_M_CONVERSION_FACTOR_V1 = STANDARD_FACE_WIDTH_M  / STANDARD_FACE_WIDTH_PX;
     public static final double PX_TO_M_CONVERSION_FACTOR_V2 = STANDARD_FACE_HEIGHT_M / STANDARD_FACE_HEIGHT_PX;
     public static final double PX_TO_M_CONVERSION_FACTOR = (PX_TO_M_CONVERSION_FACTOR_V1 + PX_TO_M_CONVERSION_FACTOR_V2) * 0.5;
-
-    private static final double SFR_C_AVG = 194.29F; //Standard Average Depth in SFR area
-    private static final double SFR_D = 1.0F;        //Standard Distance phone-person (in Meters)
 
     private final Context context;
     private Interpreter depthEstimator;
@@ -86,16 +77,6 @@ public class CustomDepthEstimator {
             e.printStackTrace();
         }
         return outputProbabilityBuffer.getFloatArray(); //The output is a float[] containing the inverse (relative) depths between the observer and the pixel[i,j]
-    }
-
-    public double getDistancePhonePerson(float[] depthMap, float depthMapWidth, float depthMapHeight, float left, float width, float top, float height) {
-        //C(i,j) = depthMap[i][j]
-        //C(avg) = average depth in detection
-        //SFR = STANDARD_DETECTION_RECT
-        //distancePhonePerson = SFR.C(avg) * detection.C(avg) / SFR.C(avg)
-        final float averageDepthInDetection = this.getAverageDepthInDetection(depthMap, depthMapWidth, depthMapHeight, left, width, top, height); //C(avg)
-        println("AVERAGE DEPTH", averageDepthInDetection);
-        return SFR_D * averageDepthInDetection / SFR_C_AVG;
     }
 
     /**
