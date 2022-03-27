@@ -66,18 +66,22 @@ public class AnalyzeActivity extends AppCompatActivity {
 
     private View backgroundOverlayAnalyze;
     private ImageView analyzeView;
+    private ImageView depthMapView;
     private LiveDetectionView liveDetectionViewAnalyze;
     private Chip analyzeButton;
     private FloatingActionButton saveImageButton;
+    private FloatingActionButton showDepthMapButton;
     private List<Detection> detections;
     private List<DetectionLine> detectionLines;
     private ProgressBar analyzeLoadingIndicator;
     private ProgressBar saveLoadingIndicator;
+    private ProgressBar depthMapLoadingIndicator;
     private ImageUtility imageUtility;
 
     private Executor distanceCalculatorExecutor;
     private Executor analyzerExecutor;
     private Executor imageSaverExecutor;
+    private Executor showDepthMapExecutor;
 
     private ToastMessagesManager toastMessagesManager;
     private CustomVibrator customVibrator;
@@ -93,11 +97,14 @@ public class AnalyzeActivity extends AppCompatActivity {
 
         this.backgroundOverlayAnalyze = findViewById(R.id.backgroundOverlayAnalyze);
         this.analyzeView = findViewById(R.id.analyzeView);
+        this.depthMapView = findViewById(R.id.depthMapView);
         this.liveDetectionViewAnalyze = findViewById(R.id.liveDetectionViewAnalyze);
         this.analyzeButton = findViewById(R.id.analyzeButton);
         this.saveImageButton = findViewById(R.id.saveImageButton);
+        this.showDepthMapButton = findViewById(R.id.showDepthMapButton);
         this.analyzeLoadingIndicator = findViewById(R.id.analyzeLoadingIndicator);
         this.saveLoadingIndicator = findViewById(R.id.saveLoadingIndicator);
+        this.depthMapLoadingIndicator = findViewById(R.id.showDepthMapLoadingIndicator);
 
         this.frameIsFromGallery = false;
         this.gestureWasHold = false;
@@ -108,6 +115,7 @@ public class AnalyzeActivity extends AppCompatActivity {
         this.distanceCalculatorExecutor = Executors.newSingleThreadExecutor();
         this.analyzerExecutor = Executors.newSingleThreadExecutor();
         this.imageSaverExecutor = Executors.newSingleThreadExecutor();
+        this.showDepthMapExecutor = Executors.newSingleThreadExecutor();
         this.analyzeButton.setOnClickListener((view) -> {
             this.customVibrator.vibrateLight();
             this.toastMessagesManager.showToastIfNeeded();
@@ -219,6 +227,46 @@ public class AnalyzeActivity extends AppCompatActivity {
                 EventBus.getDefault().postSticky(new ClearSelectedDetectionEvent());
                 EventBus.getDefault().post(new UpdateDetectionsRectsEvent(this, new ArrayList<>(), false, null, new ArrayList<>()));
             }
+        });
+
+        this.showDepthMapButton.setOnClickListener((view) -> {
+            this.customVibrator.vibrateLight();
+            this.showDepthMapButton.setClickable(false);
+            this.depthMapLoadingIndicator.setVisibility(View.VISIBLE);
+            this.showDepthMapExecutor.execute(() -> {
+                if(this.depthMapImage == null) {
+                    this.depthMap = depthEstimator.getDepthMap(this.originalImageBuffer);
+                    this.depthMapImage = this.imageUtility.convertFloatArrayToBitmap(this.depthMap, TARGET_DEPTH_MAP_WIDTH, TARGET_DEPTH_MAP_HEIGHT);
+                    //The depth map image is always size x size,
+                    //before saving it, it needs to be scaled to the right proportions
+                    final float widthScalingFactor;
+                    final float heightScalingFactor;
+                    final float scalingFactor = (float)(this.frame.getHeight()) / (float)(this.frame.getWidth());
+                    if(scalingFactor > 1) {
+                        widthScalingFactor = 1;
+                        heightScalingFactor = scalingFactor;
+                    } else {
+                        widthScalingFactor = 1 / scalingFactor;
+                        heightScalingFactor = 1;
+                    }
+                    runOnUiThread(() -> {
+                        this.depthMapView.setImageBitmap(Bitmap.createScaledBitmap(this.depthMapImage, (int)(this.depthMapImage.getWidth() * widthScalingFactor), (int)(this.depthMapImage.getHeight() * heightScalingFactor), true));
+                        this.depthMapView.setVisibility(View.VISIBLE);
+                        this.depthMapLoadingIndicator.setVisibility(View.GONE);
+                        this.showDepthMapButton.setClickable(true);
+                    });
+                    return;
+                }
+                runOnUiThread(() -> {
+                    if (this.depthMapView.getVisibility() == View.VISIBLE) {
+                        this.depthMapView.setVisibility(View.GONE);
+                    } else {
+                        this.depthMapView.setVisibility(View.VISIBLE);
+                    }
+                    this.depthMapLoadingIndicator.setVisibility(View.GONE);
+                    this.showDepthMapButton.setClickable(true);
+                });
+            });
         });
 
         this.saveImageButton.setOnClickListener((view) -> {
