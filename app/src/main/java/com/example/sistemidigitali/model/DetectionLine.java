@@ -1,14 +1,14 @@
 package com.example.sistemidigitali.model;
 
 public class DetectionLine {
-    private final float startX, startY;
-    private final float endX, endY;
+    private final double startX, startY;
+    private final double endX, endY;
     private final String info;
     private final int lineColor;
     private final int textColor;
     private final float startLineSize, endLineSize;
 
-    public DetectionLine(float startX, float startY, float endX, float endY, String info, int lineColor, int textColor, float startLineSize, float endLineSize) {
+    public DetectionLine(double startX, double startY, double endX, double endY, String info, int lineColor, int textColor, float startLineSize, float endLineSize) {
         this.startX = startX;
         this.startY = startY;
         this.endX = endX;
@@ -21,19 +21,19 @@ public class DetectionLine {
     }
 
     public float getStartX() {
-        return startX;
+        return (float)startX;
     }
 
     public float getStartY() {
-        return startY;
+        return (float)startY;
     }
 
     public float getEndX() {
-        return endX;
+        return (float)endX;
     }
 
     public float getEndY() {
-        return endY;
+        return (float)endY;
     }
 
     public String getInfo() {

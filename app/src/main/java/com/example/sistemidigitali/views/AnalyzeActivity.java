@@ -240,10 +240,12 @@ public class AnalyzeActivity extends AppCompatActivity {
                 }
                 runOnUiThread(() -> {
                     if (this.depthMapView.getVisibility() == View.VISIBLE) {
+                        this.analyzeView.setVisibility(View.VISIBLE);
                         this.depthMapView.setVisibility(View.GONE);
                     } else {
                         this.depthMapView.setImageBitmap(Bitmap.createScaledBitmap(this.depthMapImage, this.frame.getWidth(), this.frame.getHeight(), true));
                         this.depthMapView.setVisibility(View.VISIBLE);
+                        this.analyzeView.setVisibility(View.GONE);
                     }
                     this.depthMapLoadingIndicator.setVisibility(View.GONE);
                     this.showDepthMapButton.setClickable(true);
@@ -339,31 +341,42 @@ public class AnalyzeActivity extends AppCompatActivity {
             final RectF boundingBoxDetection2 = selectedDetections.get(1).getBoundingBox();
             final RectF boundingBoxFurthestDetection = furthestDetection.getBoundingBox();
 
+            final double frameCenterX = this.frame.getWidth() * 0.5;
+            final double frameCenterY = this.frame.getHeight() * 0.5;
+            final double boundingBoxDetection1CenterX = boundingBoxDetection1.centerX();
+            final double boundingBoxDetection2CenterX = boundingBoxDetection2.centerX();
+            final double boundingBoxDetection1Width = boundingBoxDetection1.width();
+            final double boundingBoxDetection2Width = boundingBoxDetection2.width();
+
             //These are the distances (in meters) from the observer to the center of the detections.
             //N.B. The detections and the observer can have different heights (these distances may have an angle).
             final double distanceMax = getMaxDistanceFromObserver(furthestDetection);
             final double distance1 =
-                    (STANDARD_FACE_HEIGHT_PX / boundingBoxDetection1.height() + STANDARD_FACE_WIDTH_PX / boundingBoxDetection1.width()) * distanceMax /
+                    (STANDARD_FACE_HEIGHT_PX / boundingBoxDetection1.height() + STANDARD_FACE_WIDTH_PX / boundingBoxDetection1Width) * distanceMax /
                     (STANDARD_FACE_HEIGHT_PX / boundingBoxFurthestDetection.height() + STANDARD_FACE_WIDTH_PX / boundingBoxFurthestDetection.width());
             final double distance2 =
-                    (STANDARD_FACE_HEIGHT_PX / boundingBoxDetection2.height() + STANDARD_FACE_WIDTH_PX / boundingBoxDetection2.width()) * distanceMax /
+                    (STANDARD_FACE_HEIGHT_PX / boundingBoxDetection2.height() + STANDARD_FACE_WIDTH_PX / boundingBoxDetection2Width) * distanceMax /
                     (STANDARD_FACE_HEIGHT_PX / boundingBoxFurthestDetection.height() + STANDARD_FACE_WIDTH_PX / boundingBoxFurthestDetection.width());
 
             //These are the distances (in meters) between every detection and the center of the frame,
             //scaled by taking into account the distance the detection is at.
-            final double deltaX1MfromCenter = distance1 * (this.frame.getWidth() * 0.5 - boundingBoxDetection1.centerX()) * PX_TO_M_CONVERSION_FACTOR;
-            final double deltaX2MfromCenter = distance2 * (this.frame.getWidth() * 0.5 - boundingBoxDetection2.centerX()) * PX_TO_M_CONVERSION_FACTOR;
+            final double deltaX1MfromCenter = boundingBoxDetection1CenterX > frameCenterX ?
+                    distance1 * (frameCenterX - boundingBoxDetection1CenterX + boundingBoxDetection1Width * 0.5) * PX_TO_M_CONVERSION_FACTOR :
+                    distance1 * (frameCenterX - boundingBoxDetection1CenterX - boundingBoxDetection1Width * 0.5) * PX_TO_M_CONVERSION_FACTOR;
+            final double deltaX2MfromCenter = boundingBoxDetection2CenterX > frameCenterX ?
+                    distance2 * (frameCenterX - boundingBoxDetection2CenterX + boundingBoxDetection2Width * 0.5) * PX_TO_M_CONVERSION_FACTOR :
+                    distance2 * (frameCenterX - boundingBoxDetection2CenterX - boundingBoxDetection2Width * 0.5) * PX_TO_M_CONVERSION_FACTOR;
 
             //These are the heights the observer would be at if it was at the same distance as the detections.
             //Used to understand what is the height difference between the observer and the detections and
             //which angle the distances have been calculated at.
-            final double observerY1 = distance1 * this.frame.getHeight() * 0.5 * PX_TO_M_CONVERSION_FACTOR;
-            final double observerY2 = distance2 * this.frame.getHeight() * 0.5 * PX_TO_M_CONVERSION_FACTOR;
+            final double observerY1 = distance1 * frameCenterY * PX_TO_M_CONVERSION_FACTOR;
+            final double observerY2 = distance2 * frameCenterY * PX_TO_M_CONVERSION_FACTOR;
 
             //These are the distances (in meters) between every detection and the left size (start) of the frame,
             //scaled by taking into account the distance the detection is at.
-            final double x1 = distance1 * boundingBoxDetection1.centerX() * PX_TO_M_CONVERSION_FACTOR;
-            final double x2 = distance2 * boundingBoxDetection2.centerX() * PX_TO_M_CONVERSION_FACTOR;
+            final double x1 = distance1 * boundingBoxDetection1CenterX * PX_TO_M_CONVERSION_FACTOR;
+            final double x2 = distance2 * boundingBoxDetection2CenterX * PX_TO_M_CONVERSION_FACTOR;
 
             //These are the distances (in meters) between every detection and the top size (start) of the frame,
             //scaled by taking into account the distance the detection is at.
@@ -380,7 +393,21 @@ public class AnalyzeActivity extends AppCompatActivity {
             final double z1 = Math.sqrt(Math.abs(distance1Projection * distance1Projection - deltaX1MfromCenter * deltaX1MfromCenter));
             final double z2 = Math.sqrt(Math.abs(distance2Projection * distance2Projection - deltaX2MfromCenter * deltaX2MfromCenter));
 
-            println(z1, z2, distance1Projection, distance2Projection, deltaX1MfromCenter, deltaX2MfromCenter);
+            println("DETECTION 1:\n",
+                    distance1,
+                    distance1Projection,
+                    deltaX1MfromCenter,
+                    x1,
+                    y1,
+                    z1,
+                    "DETECTION 2:\n",
+                    distance2,
+                    distance2Projection,
+                    deltaX2MfromCenter,
+                    x2,
+                    y2,
+                    z2
+            );
 
             final double distance = getDistanceBetweenTwoPoints(x1, y1, z1, x2, y2, z2);
 
@@ -389,14 +416,14 @@ public class AnalyzeActivity extends AppCompatActivity {
              */
             final List<Integer> colors = getDepthLineColors(distance);
 
-            float startX, endX;
-            final float centersDistance = boundingBoxDetection1.centerX() - boundingBoxDetection2.centerX();
+            double startX, endX;
+            final double centersDistance = boundingBoxDetection1CenterX - boundingBoxDetection2CenterX;
             if (centersDistance < 0) {
-                startX = boundingBoxDetection1.centerX() + boundingBoxDetection1.width() / 2;
-                endX = boundingBoxDetection2.centerX() - boundingBoxDetection2.width() / 2;
+                startX = boundingBoxDetection1CenterX + boundingBoxDetection1Width / 2;
+                endX   = boundingBoxDetection2CenterX - boundingBoxDetection2Width / 2;
             } else {
-                startX = boundingBoxDetection1.centerX() - boundingBoxDetection1.width() / 2;
-                endX = boundingBoxDetection2.centerX() + boundingBoxDetection2.width() / 2;
+                startX = boundingBoxDetection1CenterX - boundingBoxDetection1Width / 2;
+                endX = boundingBoxDetection2CenterX + boundingBoxDetection2Width / 2;
             }
             if (Math.abs(startX - endX) < 100) {
                 startX = boundingBoxDetection1.centerX();
@@ -480,14 +507,5 @@ public class AnalyzeActivity extends AppCompatActivity {
             colors.add(WearingModeEnum.MRNW.getTextColor());
         }
         return colors;
-    }
-
-    private WearingModeEnum getWearingMode(Detection detection) {
-        try{
-            String[] labelParts = detection.getCategories().get(0).getLabel().split("_");
-            return WearingModeEnum.valueOf(labelParts[0]);
-        } catch (IllegalArgumentException e) { //Test mode
-            return WearingModeEnum.TEST;
-        }
     }
 }
