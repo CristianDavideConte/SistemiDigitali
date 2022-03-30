@@ -58,18 +58,17 @@ public class ImageUtility {
         if ((maxVal - minVal) > 0) multiplier = 255 / (maxVal - Math.abs(minVal));
 
         int[] imgNormalized = new int[imgArray.length];
-        for (int i = 0; i < imgArray.length; ++i) {
-            float val = (float) (multiplier * (imgArray[i] - minVal));
-            imgNormalized[i] = (int) val; //always between 0..255
+        for (int i = 0; i < imgArray.length; i++) {
+            imgNormalized[i] = (int)(multiplier * (imgArray[i] - minVal)); //always between 0..255
         }
 
         Bitmap bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.RGB_565);
 
         for (int ii = 0; ii < width; ii++) {
             for (int jj = 0; jj < height; jj++) {
-                int index = ii + jj * width;
+                final int index = ii + jj * width;
                 if(index < imgArray.length) {
-                    int val = imgNormalized[index];
+                    final int val = imgNormalized[index];
                     bitmap.setPixel(ii, jj, Color.rgb(val, val, val));
                 }
             }

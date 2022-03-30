@@ -234,33 +234,15 @@ public class AnalyzeActivity extends AppCompatActivity {
             this.showDepthMapButton.setClickable(false);
             this.depthMapLoadingIndicator.setVisibility(View.VISIBLE);
             this.showDepthMapExecutor.execute(() -> {
-                if(this.depthMapImage == null) {
+                if(this.depthMap == null) {
                     this.depthMap = depthEstimator.getDepthMap(this.originalImageBuffer);
                     this.depthMapImage = this.imageUtility.convertFloatArrayToBitmap(this.depthMap, TARGET_DEPTH_MAP_WIDTH, TARGET_DEPTH_MAP_HEIGHT);
-                    //The depth map image is always size x size,
-                    //before saving it, it needs to be scaled to the right proportions
-                    final float widthScalingFactor;
-                    final float heightScalingFactor;
-                    final float scalingFactor = (float)(this.frame.getHeight()) / (float)(this.frame.getWidth());
-                    if(scalingFactor > 1) {
-                        widthScalingFactor = 1;
-                        heightScalingFactor = scalingFactor;
-                    } else {
-                        widthScalingFactor = 1 / scalingFactor;
-                        heightScalingFactor = 1;
-                    }
-                    runOnUiThread(() -> {
-                        this.depthMapView.setImageBitmap(Bitmap.createScaledBitmap(this.depthMapImage, (int)(this.depthMapImage.getWidth() * widthScalingFactor), (int)(this.depthMapImage.getHeight() * heightScalingFactor), true));
-                        this.depthMapView.setVisibility(View.VISIBLE);
-                        this.depthMapLoadingIndicator.setVisibility(View.GONE);
-                        this.showDepthMapButton.setClickable(true);
-                    });
-                    return;
                 }
                 runOnUiThread(() -> {
                     if (this.depthMapView.getVisibility() == View.VISIBLE) {
                         this.depthMapView.setVisibility(View.GONE);
                     } else {
+                        this.depthMapView.setImageBitmap(Bitmap.createScaledBitmap(this.depthMapImage, this.frame.getWidth(), this.frame.getHeight(), true));
                         this.depthMapView.setVisibility(View.VISIBLE);
                     }
                     this.depthMapLoadingIndicator.setVisibility(View.GONE);
@@ -282,17 +264,7 @@ public class AnalyzeActivity extends AppCompatActivity {
                 }
                 //The depth map image is always size x size,
                 //before saving it, it needs to be scaled to the right proportions
-                final float widthScalingFactor;
-                final float heightScalingFactor;
-                final float scalingFactor = (float)(this.frame.getHeight()) / (float)(this.frame.getWidth());
-                if(scalingFactor > 1) {
-                    widthScalingFactor = 1;
-                    heightScalingFactor = scalingFactor;
-                } else {
-                    widthScalingFactor = 1 / scalingFactor;
-                    heightScalingFactor = 1;
-                }
-                images.add(Bitmap.createScaledBitmap(this.depthMapImage, (int)(this.depthMapImage.getWidth() * widthScalingFactor), (int)(this.depthMapImage.getHeight() * heightScalingFactor), true));
+                images.add(Bitmap.createScaledBitmap(this.depthMapImage, this.frame.getWidth(), this.frame.getHeight(), true));
                 this.imageUtility.saveImages(images);
             });
         });

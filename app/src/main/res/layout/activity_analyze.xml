@@ -62,7 +62,9 @@
                     android:id="@+id/depthMapView"
                     android:layout_width="match_parent"
                     android:layout_height="match_parent"
-                    tools:srcCompat="@tools:sample/avatars" />
+                    android:visibility="gone"
+                    tools:srcCompat="@tools:sample/avatars"
+                    tools:visibility="gone" />
 
                 <com.example.sistemidigitali.views.LiveDetectionView
                     android:id="@+id/liveDetectionViewAnalyze"
