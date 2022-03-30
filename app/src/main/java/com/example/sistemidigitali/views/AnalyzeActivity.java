@@ -352,11 +352,11 @@ public class AnalyzeActivity extends AppCompatActivity {
             //N.B. The detections and the observer can have different heights (these distances may have an angle).
             final double distanceMax = getMaxDistanceFromObserver(furthestDetection);
             final double distance1 =
-                    (STANDARD_FACE_HEIGHT_PX / boundingBoxDetection1.height() + STANDARD_FACE_WIDTH_PX / boundingBoxDetection1Width) * distanceMax /
-                    (STANDARD_FACE_HEIGHT_PX / boundingBoxFurthestDetection.height() + STANDARD_FACE_WIDTH_PX / boundingBoxFurthestDetection.width());
+                    (STANDARD_FACE_WIDTH_PX / boundingBoxDetection1Width) * distanceMax /
+                    (STANDARD_FACE_WIDTH_PX / boundingBoxFurthestDetection.width());
             final double distance2 =
-                    (STANDARD_FACE_HEIGHT_PX / boundingBoxDetection2.height() + STANDARD_FACE_WIDTH_PX / boundingBoxDetection2Width) * distanceMax /
-                    (STANDARD_FACE_HEIGHT_PX / boundingBoxFurthestDetection.height() + STANDARD_FACE_WIDTH_PX / boundingBoxFurthestDetection.width());
+                    (STANDARD_FACE_WIDTH_PX / boundingBoxDetection2Width) * distanceMax /
+                    (STANDARD_FACE_WIDTH_PX / boundingBoxFurthestDetection.width());
 
             //These are the distances (in meters) between every detection and the center of the frame,
             //scaled by taking into account the distance the detection is at.
@@ -448,7 +448,7 @@ public class AnalyzeActivity extends AppCompatActivity {
 
 
     private double getMaxDistanceFromObserver(Detection furthestDetection) {
-        return 0.5 * (STANDARD_FACE_HEIGHT_PX / furthestDetection.getBoundingBox().height() + STANDARD_FACE_WIDTH_PX / furthestDetection.getBoundingBox().width());
+        return STANDARD_FACE_WIDTH_PX / furthestDetection.getBoundingBox().width();
     }
 
     private Detection getFurthestDetection() {
