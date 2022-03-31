@@ -345,8 +345,12 @@ public class AnalyzeActivity extends AppCompatActivity {
             final double frameCenterY = this.frame.getHeight() * 0.5;
             final double boundingBoxDetection1CenterX = boundingBoxDetection1.centerX();
             final double boundingBoxDetection2CenterX = boundingBoxDetection2.centerX();
+            final double boundingBoxDetection1CenterY = boundingBoxDetection1.centerY();
+            final double boundingBoxDetection2CenterY = boundingBoxDetection2.centerY();
             final double boundingBoxDetection1Width = boundingBoxDetection1.width();
             final double boundingBoxDetection2Width = boundingBoxDetection2.width();
+            final double boundingBoxDetection1Height = boundingBoxDetection1.height();
+            final double boundingBoxDetection2Height = boundingBoxDetection2.height();
 
             //These are the distances (in meters) from the observer to the center of the detections.
             //N.B. The detections and the observer can have different heights (these distances may have an angle).
@@ -358,7 +362,13 @@ public class AnalyzeActivity extends AppCompatActivity {
                     (STANDARD_FACE_WIDTH_PX / boundingBoxDetection2Width) * distanceMax /
                     (STANDARD_FACE_WIDTH_PX / boundingBoxFurthestDetection.width());
 
-            //These are the distances (in meters) between every detection and the center of the frame,
+            //These are the heights the observer would be at if it was at the same distance as the detections.
+            //Used to understand what is the height difference between the observer and the detections and
+            //which angle the distances have been calculated at.
+            final double observerY1 = distance1 * frameCenterY * PX_TO_M_CONVERSION_FACTOR;
+            final double observerY2 = distance2 * frameCenterY * PX_TO_M_CONVERSION_FACTOR;
+
+            //These are the distances (in meters) between every detection and the center (x-axis) of the frame,
             //scaled by taking into account the distance the detection is at.
             final double deltaX1MfromCenter = boundingBoxDetection1CenterX > frameCenterX ?
                     distance1 * (frameCenterX - boundingBoxDetection1CenterX + boundingBoxDetection1Width * 0.5) * PX_TO_M_CONVERSION_FACTOR :
@@ -367,21 +377,19 @@ public class AnalyzeActivity extends AppCompatActivity {
                     distance2 * (frameCenterX - boundingBoxDetection2CenterX + boundingBoxDetection2Width * 0.5) * PX_TO_M_CONVERSION_FACTOR :
                     distance2 * (frameCenterX - boundingBoxDetection2CenterX - boundingBoxDetection2Width * 0.5) * PX_TO_M_CONVERSION_FACTOR;
 
-            //These are the heights the observer would be at if it was at the same distance as the detections.
-            //Used to understand what is the height difference between the observer and the detections and
-            //which angle the distances have been calculated at.
-            final double observerY1 = distance1 * frameCenterY * PX_TO_M_CONVERSION_FACTOR;
-            final double observerY2 = distance2 * frameCenterY * PX_TO_M_CONVERSION_FACTOR;
+            //These are the distances (in meters) between every detection and the center (y-axis) of the frame,
+            //scaled by taking into account the distance the detection is at.
+            final double y1 = boundingBoxDetection1CenterY > frameCenterY ?
+                    distance1 * (frameCenterY - boundingBoxDetection1CenterY + boundingBoxDetection1Height * 0.5) * PX_TO_M_CONVERSION_FACTOR :
+                    distance1 * (frameCenterY - boundingBoxDetection1CenterY - boundingBoxDetection1Height * 0.5) * PX_TO_M_CONVERSION_FACTOR;
+            final double y2 = boundingBoxDetection2CenterY > frameCenterY ?
+                    distance2 * (frameCenterY - boundingBoxDetection2CenterY + boundingBoxDetection2Height * 0.5) * PX_TO_M_CONVERSION_FACTOR :
+                    distance2 * (frameCenterY - boundingBoxDetection2CenterY - boundingBoxDetection2Height * 0.5) * PX_TO_M_CONVERSION_FACTOR;
 
             //These are the distances (in meters) between every detection and the left size (start) of the frame,
             //scaled by taking into account the distance the detection is at.
             final double x1 = distance1 * boundingBoxDetection1CenterX * PX_TO_M_CONVERSION_FACTOR;
             final double x2 = distance2 * boundingBoxDetection2CenterX * PX_TO_M_CONVERSION_FACTOR;
-
-            //These are the distances (in meters) between every detection and the top size (start) of the frame,
-            //scaled by taking into account the distance the detection is at.
-            final double y1 = distance1 * boundingBoxDetection1.centerY() * PX_TO_M_CONVERSION_FACTOR;
-            final double y2 = distance2 * boundingBoxDetection2.centerY() * PX_TO_M_CONVERSION_FACTOR;
 
             //These are the normalized distances between the observer and the detections.
             //"Normalized" means: these are the distances between the lowest between the observer and every detection,
