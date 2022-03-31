@@ -4,6 +4,8 @@ import static com.example.sistemidigitali.debugUtility.Debug.println;
 import static com.example.sistemidigitali.model.CustomDepthEstimator.PX_TO_M_CONVERSION_FACTOR;
 import static com.example.sistemidigitali.model.CustomDepthEstimator.STANDARD_FACE_HEIGHT_PX;
 import static com.example.sistemidigitali.model.CustomDepthEstimator.STANDARD_FACE_WIDTH_PX;
+import static com.example.sistemidigitali.model.CustomDepthEstimator.STANDARD_RESOLUTION_HEIGHT;
+import static com.example.sistemidigitali.model.CustomDepthEstimator.STANDARD_RESOLUTION_WIDTH;
 
 import android.annotation.SuppressLint;
 import android.graphics.Bitmap;
@@ -341,16 +343,19 @@ public class AnalyzeActivity extends AppCompatActivity {
             final RectF boundingBoxDetection2 = selectedDetections.get(1).getBoundingBox();
             final RectF boundingBoxFurthestDetection = furthestDetection.getBoundingBox();
 
+            final double resolutionScalingFactorWidth = STANDARD_RESOLUTION_WIDTH / this.frame.getWidth();
+            final double resolutionScalingFactorHeight = STANDARD_RESOLUTION_HEIGHT / this.frame.getHeight();
+
             final double frameCenterX = this.frame.getWidth() * 0.5;
             final double frameCenterY = this.frame.getHeight() * 0.5;
             final double boundingBoxDetection1CenterX = boundingBoxDetection1.centerX();
             final double boundingBoxDetection2CenterX = boundingBoxDetection2.centerX();
             final double boundingBoxDetection1CenterY = boundingBoxDetection1.centerY();
             final double boundingBoxDetection2CenterY = boundingBoxDetection2.centerY();
-            final double boundingBoxDetection1Width = boundingBoxDetection1.width();
-            final double boundingBoxDetection2Width = boundingBoxDetection2.width();
-            final double boundingBoxDetection1Height = boundingBoxDetection1.height();
-            final double boundingBoxDetection2Height = boundingBoxDetection2.height();
+            final double boundingBoxDetection1Width = boundingBoxDetection1.width() * resolutionScalingFactorWidth;
+            final double boundingBoxDetection2Width = boundingBoxDetection2.width() * resolutionScalingFactorWidth;
+            final double boundingBoxDetection1Height = boundingBoxDetection1.height() * resolutionScalingFactorHeight;
+            final double boundingBoxDetection2Height = boundingBoxDetection2.height() * resolutionScalingFactorHeight;
 
             //These are the distances (in meters) from the observer to the center of the detections.
             //N.B. The detections and the observer can have different heights (these distances may have an angle).
@@ -365,15 +370,15 @@ public class AnalyzeActivity extends AppCompatActivity {
             //These are the heights the observer would be at if it was at the same distance as the detections.
             //Used to understand what is the height difference between the observer and the detections and
             //which angle the distances have been calculated at.
-            final double observerY1 = distance1 * frameCenterY * PX_TO_M_CONVERSION_FACTOR;
-            final double observerY2 = distance2 * frameCenterY * PX_TO_M_CONVERSION_FACTOR;
+            //final double observerY1 = distance1 * frameCenterY * PX_TO_M_CONVERSION_FACTOR;
+            //final double observerY2 = distance2 * frameCenterY * PX_TO_M_CONVERSION_FACTOR;
 
             //These are the distances (in meters) between every detection and the center (x-axis) of the frame,
             //scaled by taking into account the distance the detection is at.
-            final double deltaX1MfromCenter = boundingBoxDetection1CenterX > frameCenterX ?
+            final double x1 = boundingBoxDetection1CenterX > frameCenterX ?
                     distance1 * (frameCenterX - boundingBoxDetection1CenterX + boundingBoxDetection1Width * 0.5) * PX_TO_M_CONVERSION_FACTOR :
                     distance1 * (frameCenterX - boundingBoxDetection1CenterX - boundingBoxDetection1Width * 0.5) * PX_TO_M_CONVERSION_FACTOR;
-            final double deltaX2MfromCenter = boundingBoxDetection2CenterX > frameCenterX ?
+            final double x2 = boundingBoxDetection2CenterX > frameCenterX ?
                     distance2 * (frameCenterX - boundingBoxDetection2CenterX + boundingBoxDetection2Width * 0.5) * PX_TO_M_CONVERSION_FACTOR :
                     distance2 * (frameCenterX - boundingBoxDetection2CenterX - boundingBoxDetection2Width * 0.5) * PX_TO_M_CONVERSION_FACTOR;
 
@@ -388,30 +393,30 @@ public class AnalyzeActivity extends AppCompatActivity {
 
             //These are the distances (in meters) between every detection and the left size (start) of the frame,
             //scaled by taking into account the distance the detection is at.
-            final double x1 = distance1 * boundingBoxDetection1CenterX * PX_TO_M_CONVERSION_FACTOR;
-            final double x2 = distance2 * boundingBoxDetection2CenterX * PX_TO_M_CONVERSION_FACTOR;
+            //final double x1 = distance1 * boundingBoxDetection1CenterX * PX_TO_M_CONVERSION_FACTOR;
+            //final double x2 = distance2 * boundingBoxDetection2CenterX * PX_TO_M_CONVERSION_FACTOR;
 
             //These are the normalized distances between the observer and the detections.
             //"Normalized" means: these are the distances between the lowest between the observer and every detection,
             //and the corresponding lowered point on the other (makes the observer and the detection's heights the same).
-            final double distance1Projection = Math.sqrt(distance1 * distance1 - (observerY1 - y1) * (observerY1 - y1));
-            final double distance2Projection = Math.sqrt(distance2 * distance2 - (observerY2 - y2) * (observerY2 - y2));
+            final double distance1Projection = Math.sqrt(distance1 * distance1 - y1 * y1);
+            final double distance2Projection = Math.sqrt(distance2 * distance2 - y2 * y2);
 
             //These are the depths (in meters) of every detection from the observer point of view,
-            final double z1 = Math.sqrt(Math.abs(distance1Projection * distance1Projection - deltaX1MfromCenter * deltaX1MfromCenter));
-            final double z2 = Math.sqrt(Math.abs(distance2Projection * distance2Projection - deltaX2MfromCenter * deltaX2MfromCenter));
+            final double z1 = Math.sqrt(Math.abs(distance1Projection * distance1Projection - x1 * x1));
+            final double z2 = Math.sqrt(Math.abs(distance2Projection * distance2Projection - x2 * x2));
 
             println("DETECTION 1:\n",
                     distance1,
                     distance1Projection,
-                    deltaX1MfromCenter,
+                    //deltaX1MfromCenter,
                     x1,
                     y1,
                     z1,
                     "DETECTION 2:\n",
                     distance2,
                     distance2Projection,
-                    deltaX2MfromCenter,
+                    //deltaX2MfromCenter,
                     x2,
                     y2,
                     z2
