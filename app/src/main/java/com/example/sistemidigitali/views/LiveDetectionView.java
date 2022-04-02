@@ -34,7 +34,6 @@ import java.util.Optional;
 public class LiveDetectionView extends View {
     private float MIN_ACCURACY_FOR_DETECTION_DISPLAY = 0.3F; //By default, 30% of minimum precision is needed to show a detection
 
-    private float ROUNDING_RECTS_RADIUS = 70;
     private float STROKE_WIDTH = 10;
     private float SELECTED_STROKE_WIDTH = 25;
 
@@ -96,7 +95,6 @@ public class LiveDetectionView extends View {
         final float standardStrokeWidthSmall = 8F;  //y2
 
         STROKE_WIDTH = Math.max(1, (width - standardResBig) / (standardResSmall - standardResBig) * (standardStrokeWidthSmall - standardStrokeWidthBig) + standardStrokeWidthBig);
-        ROUNDING_RECTS_RADIUS = STROKE_WIDTH * 5;
         SELECTED_STROKE_WIDTH = STROKE_WIDTH * 2F;
     }
 
@@ -135,6 +133,7 @@ public class LiveDetectionView extends View {
     public void onDraw(Canvas canvas) {
         super.onDraw(canvas);
         if(!this.allowUpdate) return;
+        final float ROUNDING_RECTS_RADIUS = getWidth();
 
         //Draws all the detections' rectangles
         this.boxPaint.setStyle(Paint.Style.STROKE);

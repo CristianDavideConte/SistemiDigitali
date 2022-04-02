@@ -154,7 +154,8 @@ public class CameraProviderView {
 
                 //Image Capture
                 this.imageCapt = new ImageCapture.Builder()
-                                .setCaptureMode(ImageCapture.CAPTURE_MODE_MAXIMIZE_QUALITY)
+                                //.setCaptureMode(ImageCapture.CAPTURE_MODE_MAXIMIZE_QUALITY)
+                                .setCaptureMode(ImageCapture.CAPTURE_MODE_MINIMIZE_LATENCY)
                                 .setTargetRotation(Surface.ROTATION_0)
                                 .build();
 
