@@ -2,7 +2,6 @@ package com.example.sistemidigitali.views;
 
 import static com.example.sistemidigitali.debugUtility.Debug.println;
 import static com.example.sistemidigitali.model.CustomDepthEstimator.PX_TO_M_CONVERSION_FACTOR;
-import static com.example.sistemidigitali.model.CustomDepthEstimator.STANDARD_FACE_HEIGHT_PX;
 import static com.example.sistemidigitali.model.CustomDepthEstimator.STANDARD_FACE_WIDTH_PX;
 import static com.example.sistemidigitali.model.CustomDepthEstimator.STANDARD_RESOLUTION_HEIGHT;
 import static com.example.sistemidigitali.model.CustomDepthEstimator.STANDARD_RESOLUTION_WIDTH;
@@ -171,7 +170,7 @@ public class AnalyzeActivity extends AppCompatActivity {
         }
         final Bitmap image = event.getFrames().get(0);
         this.frameIsFromGallery = event.isFromGallery();
-        this.liveDetectionViewAnalyze.setWidthAndHeight(image.getWidth(), image.getHeight());
+        this.liveDetectionViewAnalyze.adjustSelectedStrokeWidth(image.getWidth());
         loadAnalyzeComponents(image);
     }
 
@@ -343,58 +342,59 @@ public class AnalyzeActivity extends AppCompatActivity {
             final RectF boundingBoxDetection2 = selectedDetections.get(1).getBoundingBox();
             final RectF boundingBoxFurthestDetection = furthestDetection.getBoundingBox();
 
-            final double resolutionScalingFactorWidth = STANDARD_RESOLUTION_WIDTH / this.frame.getWidth();
-            final double resolutionScalingFactorHeight = STANDARD_RESOLUTION_HEIGHT / this.frame.getHeight();
+            final double resolutionScalingFactor = STANDARD_RESOLUTION_WIDTH / this.frame.getWidth();
 
+            //Useful variables
             final double frameCenterX = this.frame.getWidth() * 0.5;
             final double frameCenterY = this.frame.getHeight() * 0.5;
-            final double boundingBoxDetection1CenterX = boundingBoxDetection1.centerX();
-            final double boundingBoxDetection2CenterX = boundingBoxDetection2.centerX();
-            final double boundingBoxDetection1CenterY = boundingBoxDetection1.centerY();
-            final double boundingBoxDetection2CenterY = boundingBoxDetection2.centerY();
-            final double boundingBoxDetection1Width = boundingBoxDetection1.width() * resolutionScalingFactorWidth;
-            final double boundingBoxDetection2Width = boundingBoxDetection2.width() * resolutionScalingFactorWidth;
-            final double boundingBoxDetection1Height = boundingBoxDetection1.height() * resolutionScalingFactorHeight;
-            final double boundingBoxDetection2Height = boundingBoxDetection2.height() * resolutionScalingFactorHeight;
+
+            final double detection1CenterX = boundingBoxDetection1.centerX();
+            final double detection2CenterX = boundingBoxDetection2.centerX();
+            final double detection1CenterY = boundingBoxDetection1.centerY();
+            final double detection2CenterY = boundingBoxDetection2.centerY();
+
+            final double detection1Right = boundingBoxDetection1.right;
+            final double detection2Right = boundingBoxDetection2.right;
+            final double detection1Left = boundingBoxDetection1.left;
+            final double detection2Left = boundingBoxDetection2.left;
+
+            final double detection1Top = boundingBoxDetection1.top;
+            final double detection2Top = boundingBoxDetection2.top;
+            final double detection1Bottom = boundingBoxDetection1.bottom;
+            final double detection2Bottom = boundingBoxDetection2.bottom;
+
+            final double detection1Width = boundingBoxDetection1.width() ;//* resolutionScalingFactor;
+            final double detection2Width = boundingBoxDetection2.width() ;//* resolutionScalingFactor;
+
+
 
             //These are the distances (in meters) from the observer to the center of the detections.
             //N.B. The detections and the observer can have different heights (these distances may have an angle).
             final double distanceMax = getMaxDistanceFromObserver(furthestDetection);
             final double distance1 =
-                    (STANDARD_FACE_WIDTH_PX / boundingBoxDetection1Width) * distanceMax /
+                    (STANDARD_FACE_WIDTH_PX / detection1Width) * distanceMax /
                     (STANDARD_FACE_WIDTH_PX / boundingBoxFurthestDetection.width());
             final double distance2 =
-                    (STANDARD_FACE_WIDTH_PX / boundingBoxDetection2Width) * distanceMax /
+                    (STANDARD_FACE_WIDTH_PX / detection2Width) * distanceMax /
                     (STANDARD_FACE_WIDTH_PX / boundingBoxFurthestDetection.width());
-
-            //These are the heights the observer would be at if it was at the same distance as the detections.
-            //Used to understand what is the height difference between the observer and the detections and
-            //which angle the distances have been calculated at.
-            //final double observerY1 = distance1 * frameCenterY * PX_TO_M_CONVERSION_FACTOR;
-            //final double observerY2 = distance2 * frameCenterY * PX_TO_M_CONVERSION_FACTOR;
 
             //These are the distances (in meters) between every detection and the center (x-axis) of the frame,
             //scaled by taking into account the distance the detection is at.
-            final double x1 = boundingBoxDetection1CenterX > frameCenterX ?
-                    distance1 * (frameCenterX - boundingBoxDetection1CenterX + boundingBoxDetection1Width * 0.5) * PX_TO_M_CONVERSION_FACTOR :
-                    distance1 * (frameCenterX - boundingBoxDetection1CenterX - boundingBoxDetection1Width * 0.5) * PX_TO_M_CONVERSION_FACTOR;
-            final double x2 = boundingBoxDetection2CenterX > frameCenterX ?
-                    distance2 * (frameCenterX - boundingBoxDetection2CenterX + boundingBoxDetection2Width * 0.5) * PX_TO_M_CONVERSION_FACTOR :
-                    distance2 * (frameCenterX - boundingBoxDetection2CenterX - boundingBoxDetection2Width * 0.5) * PX_TO_M_CONVERSION_FACTOR;
+            final double x1 = detection1CenterX > frameCenterX ?
+                    distance1 * (frameCenterX - detection1Left) * PX_TO_M_CONVERSION_FACTOR :
+                    distance1 * (frameCenterX - detection1Right) * PX_TO_M_CONVERSION_FACTOR;
+            final double x2 = detection2CenterX > frameCenterX ?
+                    distance2 * (frameCenterX - detection2Left) * PX_TO_M_CONVERSION_FACTOR :
+                    distance2 * (frameCenterX - detection2Right) * PX_TO_M_CONVERSION_FACTOR;
 
             //These are the distances (in meters) between every detection and the center (y-axis) of the frame,
             //scaled by taking into account the distance the detection is at.
-            final double y1 = boundingBoxDetection1CenterY > frameCenterY ?
-                    distance1 * (frameCenterY - boundingBoxDetection1CenterY + boundingBoxDetection1Height * 0.5) * PX_TO_M_CONVERSION_FACTOR :
-                    distance1 * (frameCenterY - boundingBoxDetection1CenterY - boundingBoxDetection1Height * 0.5) * PX_TO_M_CONVERSION_FACTOR;
-            final double y2 = boundingBoxDetection2CenterY > frameCenterY ?
-                    distance2 * (frameCenterY - boundingBoxDetection2CenterY + boundingBoxDetection2Height * 0.5) * PX_TO_M_CONVERSION_FACTOR :
-                    distance2 * (frameCenterY - boundingBoxDetection2CenterY - boundingBoxDetection2Height * 0.5) * PX_TO_M_CONVERSION_FACTOR;
-
-            //These are the distances (in meters) between every detection and the left size (start) of the frame,
-            //scaled by taking into account the distance the detection is at.
-            //final double x1 = distance1 * boundingBoxDetection1CenterX * PX_TO_M_CONVERSION_FACTOR;
-            //final double x2 = distance2 * boundingBoxDetection2CenterX * PX_TO_M_CONVERSION_FACTOR;
+            final double y1 = detection1CenterY > frameCenterY ?
+                    distance1 * (frameCenterY - detection1Top) * PX_TO_M_CONVERSION_FACTOR :
+                    distance1 * (frameCenterY - detection1Bottom) * PX_TO_M_CONVERSION_FACTOR;
+            final double y2 = detection2CenterY > frameCenterY ?
+                    distance2 * (frameCenterY - detection2Top) * PX_TO_M_CONVERSION_FACTOR :
+                    distance2 * (frameCenterY - detection2Bottom) * PX_TO_M_CONVERSION_FACTOR;
 
             //These are the normalized distances between the observer and the detections.
             //"Normalized" means: these are the distances between the lowest between the observer and every detection,
@@ -409,14 +409,12 @@ public class AnalyzeActivity extends AppCompatActivity {
             println("DETECTION 1:\n",
                     distance1,
                     distance1Projection,
-                    //deltaX1MfromCenter,
                     x1,
                     y1,
                     z1,
                     "DETECTION 2:\n",
                     distance2,
                     distance2Projection,
-                    //deltaX2MfromCenter,
                     x2,
                     y2,
                     z2
@@ -429,25 +427,20 @@ public class AnalyzeActivity extends AppCompatActivity {
              */
             final List<Integer> colors = getDepthLineColors(distance);
 
-            double startX, endX;
-            final double centersDistance = boundingBoxDetection1CenterX - boundingBoxDetection2CenterX;
-            if (centersDistance < 0) {
-                startX = boundingBoxDetection1CenterX + boundingBoxDetection1Width / 2;
-                endX   = boundingBoxDetection2CenterX - boundingBoxDetection2Width / 2;
-            } else {
-                startX = boundingBoxDetection1CenterX - boundingBoxDetection1Width / 2;
-                endX = boundingBoxDetection2CenterX + boundingBoxDetection2Width / 2;
-            }
-            if (Math.abs(startX - endX) < 100) {
-                startX = boundingBoxDetection1.centerX();
-                endX = boundingBoxDetection2.centerX();
+            final double centersDistance = x1 - x2;
+            double startX = centersDistance > 0 ? detection1Right : detection1Left;
+            double endX   = centersDistance > 0 ? detection2Left : detection2Right;
+            if (Math.abs(startX - endX) * resolutionScalingFactor < 500 &&
+                    Math.abs(detection1CenterY - detection2CenterY) * resolutionScalingFactor > 200) {
+                        startX = boundingBoxDetection1.centerX();
+                        endX = boundingBoxDetection2.centerX();
             }
             this.detectionLines.add(
                     new DetectionLine(
                             startX,
-                            boundingBoxDetection1.centerY(),
+                            detection1CenterY,
                             endX,
-                            boundingBoxDetection2.centerY(),
+                            detection2CenterY,
                             String.format("%.2f", distance) + "M",
                             colors.get(0),
                             colors.get(1),

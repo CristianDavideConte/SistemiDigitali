@@ -272,9 +272,9 @@ public class CameraProviderView {
         matrix.postScale(scalingFactor, scalingFactor, 0.5F * screenWidth, 0.5F * screenHeight);
 
 
-        long init = System.currentTimeMillis();
+        //long init = System.currentTimeMillis();
         List<Detection> detections = CameraProviderView.objectDetector.detect(tensorImage);
-        println(System.currentTimeMillis() - init);
+        //println(System.currentTimeMillis() - init);
 
         EventBus.getDefault().post(new UpdateDetectionsRectsEvent(this.context, detections, this.flipNeeded, matrix, new ArrayList<>()));
         imageProxy.close();

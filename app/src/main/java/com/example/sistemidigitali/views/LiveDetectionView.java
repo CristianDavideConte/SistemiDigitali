@@ -32,7 +32,7 @@ import java.util.List;
 import java.util.Optional;
 
 public class LiveDetectionView extends View {
-    private float MIN_ACCURACY_FOR_DETECTION_DISPLAY = 0.6F; //By default, 60% of minimum precision is needed to show a detection
+    private float MIN_ACCURACY_FOR_DETECTION_DISPLAY = 0.3F; //By default, 30% of minimum precision is needed to show a detection
 
     private float ROUNDING_RECTS_RADIUS = 70;
     private float STROKE_WIDTH = 10;
@@ -89,16 +89,15 @@ public class LiveDetectionView extends View {
         this.customVibrator = new CustomVibrator(context);
     }
 
-    public void setWidthAndHeight(float width, float height) {
-        final float standardResBig   = 3797F * 2564F;  //x1
-        final float standardResSmall = 1000F * 600F;   //x2
-        final float standardStrokeWidthBig   = 28.16F; //y1
-        final float standardStrokeWidthSmall = 8F;     //y2
-        final float currentRes = width * height;       //x
+    public void adjustSelectedStrokeWidth(float width) {
+        final float standardResBig   = 3494F;       //x1
+        final float standardResSmall = 1000F;       //x2
+        final float standardStrokeWidthBig   = 25F; //y1
+        final float standardStrokeWidthSmall = 8F;  //y2
 
-        STROKE_WIDTH = Math.max(1, (currentRes - standardResBig) / (standardResSmall - standardResBig) * (standardStrokeWidthSmall - standardStrokeWidthBig) + standardStrokeWidthBig);
+        STROKE_WIDTH = Math.max(1, (width - standardResBig) / (standardResSmall - standardResBig) * (standardStrokeWidthSmall - standardStrokeWidthBig) + standardStrokeWidthBig);
         ROUNDING_RECTS_RADIUS = STROKE_WIDTH * 5;
-        SELECTED_STROKE_WIDTH = STROKE_WIDTH * 2.5F;
+        SELECTED_STROKE_WIDTH = STROKE_WIDTH * 2F;
     }
 
     public List<Detection> getSelectedDetections() {
