@@ -1,14 +1,12 @@
 package com.example.sistemidigitali.model;
 
-import static com.example.sistemidigitali.debugUtility.Debug.println;
-
 import android.content.Context;
 import android.content.res.AssetFileDescriptor;
+import android.graphics.Point;
 
 import org.tensorflow.lite.DataType;
 import org.tensorflow.lite.Interpreter;
 import org.tensorflow.lite.support.common.TensorProcessor;
-import org.tensorflow.lite.support.metadata.MetadataExtractor;
 import org.tensorflow.lite.support.tensorbuffer.TensorBuffer;
 
 import java.io.FileInputStream;
@@ -43,17 +41,10 @@ public class CustomDepthEstimator {
 
         try {
             Interpreter.Options depthEstimatorOptions = new Interpreter.Options();
-            //depthEstimatorOptions.addDelegate(new GpuDelegate());
             depthEstimatorOptions.setNumThreads(4);
 
             MappedByteBuffer modelBuffer = loadModelFile();
             this.depthEstimator = new Interpreter(modelBuffer, depthEstimatorOptions);
-
-            // Image shape is in the format of {1, height, width, 3}
-            int test = 0;
-            for (int i: new MetadataExtractor(modelBuffer).getInputTensorShape(0)) {
-                println(test++, " -> " ,i);
-            }
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -78,6 +69,7 @@ public class CustomDepthEstimator {
             this.outputTensorProcessor.process(outputProbabilityBuffer);
         } catch (Exception e) {
             e.printStackTrace();
+            return new float[]{};
         }
         return outputProbabilityBuffer.getFloatArray(); //The output is a float[] containing the inverse (relative) depths between the observer and the pixel[i,j]
     }
@@ -92,18 +84,8 @@ public class CustomDepthEstimator {
     public float getAverageDepthInDetection(float[] depthMap, float depthMapWidth, float depthMapHeight, float left, float width, float top, float height) {
         left = left < 0 ? 0 : Math.min(left, depthMapWidth - 1);
         top  = top  < 0 ? 0 : Math.min(top, depthMapHeight - 1);
-        int availableWidth  = (int) Math.min(depthMapWidth  - 1, left + width);
-        int availableHeight = (int) Math.min(depthMapHeight - 1, top + height);
-
-        /*
-        println("DET LEFT", left);
-        println("DET WIDTH", width);
-        println("DET TOP", top);
-        println("DET HEIGHT", height);
-        println("AVAIL WIDTH", availableWidth);
-        println("AVAIL HEIGHT", availableHeight);
-        println("ARRAY LENGTH", depthMap.length);
-        */
+        final int availableWidth  = (int) Math.min(depthMapWidth  - 1, left + width);
+        final int availableHeight = (int) Math.min(depthMapHeight - 1, top + height);
 
         float averageDepth = 0.0F;
         for (int j = (int) top; j < availableHeight; j++) {
@@ -111,7 +93,57 @@ public class CustomDepthEstimator {
                 averageDepth += depthMap[(int)(i + j * depthMapWidth)];
             }
         }
-        return averageDepth / (width * height);
+        return averageDepth / (availableWidth * availableHeight);
+    }
+
+    /**
+     * Given a depth map, calculate the point in which there's minimum value (depth) within the given boundaries.
+     * @param depthMap The depth map containing the depth values.
+     * @param width The width of the detection.
+     * @param height The height of the detection.
+     * @return The minimum value (depth) within the given boundaries.
+     */
+    public Point getMinDepthInDetection(float[] depthMap, float depthMapWidth, float depthMapHeight, float left, float width, float top, float height) {
+        left = left < 0 ? 0 : Math.min(left, depthMapWidth - 1);
+        top  = top  < 0 ? 0 : Math.min(top, depthMapHeight - 1);
+        final int availableWidth  = (int) Math.min(depthMapWidth  - 1, left + width);
+        final int availableHeight = (int) Math.min(depthMapHeight - 1, top + height);
+        Point minCoordinates = new Point();
+
+        double minDepth = Double.POSITIVE_INFINITY;
+        for (int j = (int) top; j < availableHeight; j++) {
+            for (int i = (int) left; i < availableWidth; i++) {
+                minDepth = Math.min(minDepth, depthMap[(int)(i + j * depthMapWidth)]);
+                minCoordinates.x = i;
+                minCoordinates.y = j;
+            }
+        }
+        return minCoordinates;
+    }
+
+    /**
+     * Given a depth map, calculate the point in which there's the maximum value (depth) within the given boundaries.
+     * @param depthMap The depth map containing the depth values.
+     * @param width The width of the detection.
+     * @param height The height of the detection.
+     * @return The maximum value (depth) within the given boundaries.
+     */
+    public Point getMaxDepthInDetection(float[] depthMap, float depthMapWidth, float depthMapHeight, float left, float width, float top, float height) {
+        left = left < 0 ? 0 : Math.min(left, depthMapWidth - 1);
+        top  = top  < 0 ? 0 : Math.min(top, depthMapHeight - 1);
+        final int availableWidth  = (int) Math.min(depthMapWidth  - 1, left + width);
+        final int availableHeight = (int) Math.min(depthMapHeight - 1, top + height);
+        Point maxCoordinates = new Point();
+
+        double maxDepth = Double.POSITIVE_INFINITY;
+        for (int j = (int) top; j < availableHeight; j++) {
+            for (int i = (int) left; i < availableWidth; i++) {
+                maxDepth = Math.max(maxDepth, depthMap[(int)(i + j * depthMapWidth)]);
+                maxCoordinates.x = i;
+                maxCoordinates.y = j;
+            }
+        }
+        return maxCoordinates;
     }
 
     /**

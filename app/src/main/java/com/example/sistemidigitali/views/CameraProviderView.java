@@ -1,7 +1,5 @@
 package com.example.sistemidigitali.views;
 
-import static com.example.sistemidigitali.debugUtility.Debug.println;
-
 import android.annotation.SuppressLint;
 import android.content.Context;
 import android.content.Intent;
@@ -9,7 +7,6 @@ import android.graphics.Bitmap;
 import android.graphics.Matrix;
 import android.hardware.camera2.CameraCharacteristics;
 import android.hardware.camera2.CameraManager;
-import android.hardware.camera2.params.StreamConfigurationMap;
 import android.util.Size;
 import android.view.MotionEvent;
 import android.view.ScaleGestureDetector;
@@ -216,7 +213,6 @@ public class CameraProviderView {
                     public void onCaptureSuccess(@NonNull ImageProxy imageProxy) {
                         Bitmap frame = imageUtility.convertImageToBitmap(imageProxy.getImage(), getRotationDegree(imageProxy), currentLensOrientation == CameraSelector.LENS_FACING_FRONT);
                         frames.add(frame);
-                        println("FRAME: ", frame.getWidth(), frame.getHeight(),"PROXY: ",imageProxy.getWidth(),imageProxy.getHeight());
                         imageProxy.close();
 
                         /*
@@ -272,10 +268,7 @@ public class CameraProviderView {
         matrix.preTranslate(translateX, translateY);
         matrix.postScale(scalingFactor, scalingFactor, 0.5F * screenWidth, 0.5F * screenHeight);
 
-
-        //long init = System.currentTimeMillis();
         List<Detection> detections = CameraProviderView.objectDetector.detect(tensorImage);
-        //println(System.currentTimeMillis() - init);
 
         EventBus.getDefault().post(new UpdateDetectionsRectsEvent(this.context, detections, this.flipNeeded, matrix, new ArrayList<>()));
         imageProxy.close();

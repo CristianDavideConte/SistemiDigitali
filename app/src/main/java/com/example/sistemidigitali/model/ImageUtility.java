@@ -192,5 +192,4 @@ public class ImageUtility {
             return new ImageSavedEvent(e.getMessage(), picturePublicUri);
         }
     }
-
 }

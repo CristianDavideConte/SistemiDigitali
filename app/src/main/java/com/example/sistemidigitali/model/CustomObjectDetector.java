@@ -45,15 +45,15 @@ public class CustomObjectDetector {
 
         try {
             if (type == CustomObjectDetectorType.HIGH_ACCURACY)
-                this.detector = ObjectDetector.createFromFileAndOptions(context, MODEL_FILE_F16, defaultOptionsBuilder.setMaxResults(10).build());
+                this.detector = ObjectDetector.createFromFileAndOptions(context, MODEL_FILE_F16, defaultOptionsBuilder.setMaxResults(1).build());
             else
-                this.detector = ObjectDetector.createFromFileAndOptions(context, MODEL_FILE_IO8, defaultOptionsBuilder.setMaxResults(1).build());
+                this.detector = ObjectDetector.createFromFileAndOptions(context, MODEL_FILE_IO8, defaultOptionsBuilder.setMaxResults(10).build());
         } catch (Exception e) {
             try {
                 if (type == CustomObjectDetectorType.HIGH_ACCURACY)
-                    this.detector = ObjectDetector.createFromFileAndOptions(context, MODEL_FILE_F16, unsupportedOpOptionsBuilder.setMaxResults(10).build());
+                    this.detector = ObjectDetector.createFromFileAndOptions(context, MODEL_FILE_F16, unsupportedOpOptionsBuilder.setMaxResults(1).build());
                 else
-                    this.detector = ObjectDetector.createFromFileAndOptions(context, MODEL_FILE_IO8, unsupportedOpOptionsBuilder.setMaxResults(1).build());
+                    this.detector = ObjectDetector.createFromFileAndOptions(context, MODEL_FILE_IO8, unsupportedOpOptionsBuilder.setMaxResults(10).build());
             } catch (Exception e2) {
                 e2.printStackTrace();
             }
