@@ -1,5 +1,6 @@
 package com.example.sistemidigitali.views;
 
+import static com.example.sistemidigitali.debugUtility.Debug.println;
 import static com.example.sistemidigitali.model.CustomDepthEstimator.PX_TO_M_CONVERSION_FACTOR;
 import static com.example.sistemidigitali.model.CustomDepthEstimator.STANDARD_FACE_WIDTH_PX;
 import static com.example.sistemidigitali.model.CustomDepthEstimator.STANDARD_RESOLUTION_WIDTH;
@@ -341,7 +342,6 @@ public class AnalyzeActivity extends AppCompatActivity {
             final RectF boundingBoxDetection1 = detection1.getBoundingBox();
             final RectF boundingBoxDetection2 = detection2.getBoundingBox();
 
-            final double resolutionScalingFactor = STANDARD_RESOLUTION_WIDTH / this.frame.getWidth();
 
             //Useful variables
             final double frameCenterX = this.frame.getWidth() * 0.5;
@@ -349,6 +349,8 @@ public class AnalyzeActivity extends AppCompatActivity {
             final double frameWidth = this.frame.getWidth();
             final double frameHeight = this.frame.getHeight();
 
+            final double detection1CenterX = boundingBoxDetection1.centerX();
+            final double detection2CenterX = boundingBoxDetection2.centerX();
             final double detection1CenterY = boundingBoxDetection1.centerY();
             final double detection2CenterY = boundingBoxDetection2.centerY();
 
@@ -359,33 +361,39 @@ public class AnalyzeActivity extends AppCompatActivity {
 
             final double detection1Width = boundingBoxDetection1.width();
             final double detection2Width = boundingBoxDetection2.width();
+            final double detection1Height = boundingBoxDetection1.height();
+            final double detection2Height = boundingBoxDetection2.height();
 
-            final double detection1AvgDepth = this.getAvgDepthInDetection(detection1);
-            final double detection2AvgDepth = this.getAvgDepthInDetection(detection2);
+            final double resolutionScalingFactor = STANDARD_RESOLUTION_WIDTH / frameWidth;
 
             //These are the distances (in meters) from the observer to the center of the detections.
             //N.B. The detections and the observer can have different heights (these distances may have an angle).
-            final double distance1 = (STANDARD_FACE_WIDTH_PX / detection1Width);
-            final double distance2 = (STANDARD_FACE_WIDTH_PX / detection2Width);
-
-            final Point x1y1 = detection1AvgDepth > detection2AvgDepth ? this.getMinDepthInDetection(detection1) : this.getMaxDepthInDetection(detection1);
-            final Point x2y2 = detection1AvgDepth > detection2AvgDepth ? this.getMaxDepthInDetection(detection2) : this.getMinDepthInDetection(detection2);
+            final double distance1 = STANDARD_FACE_WIDTH_PX / detection1Width;
+            final double distance2 = STANDARD_FACE_WIDTH_PX / detection2Width;
 
             //These are the distances (in meters) between every detection and the center (x-axis) of the frame,
             //scaled by taking into account the distance the detection is at.
-            final double x1 = PX_TO_M_CONVERSION_FACTOR * distance1 * (frameCenterX - (double) x1y1.x / TARGET_DEPTH_MAP_WIDTH * frameWidth);
-            final double x2 = PX_TO_M_CONVERSION_FACTOR * distance2 * (frameCenterX - (double) x2y2.x / TARGET_DEPTH_MAP_WIDTH * frameWidth);
+            final double x1 = detection1CenterX > frameCenterX ?
+                                distance1 * (frameCenterX - detection1CenterX + detection1Width * 0.5) * PX_TO_M_CONVERSION_FACTOR :
+                                distance1 * (frameCenterX - detection1CenterX - detection1Width * 0.5) * PX_TO_M_CONVERSION_FACTOR;
+            final double x2 = detection2CenterX > frameCenterX ?
+                                distance2 * (frameCenterX - detection2CenterX + detection2Width * 0.5) * PX_TO_M_CONVERSION_FACTOR :
+                                distance2 * (frameCenterX - detection2CenterX - detection2Width * 0.5) * PX_TO_M_CONVERSION_FACTOR;
 
             //These are the distances (in meters) between every detection and the center (y-axis) of the frame,
             //scaled by taking into account the distance the detection is at.
-            final double y1 = PX_TO_M_CONVERSION_FACTOR * distance1 * (frameCenterY - (double) x1y1.y / TARGET_DEPTH_MAP_HEIGHT * frameHeight);
-            final double y2 = PX_TO_M_CONVERSION_FACTOR * distance2 * (frameCenterY - (double) x2y2.y / TARGET_DEPTH_MAP_HEIGHT * frameHeight);
+            final double y1 = detection1CenterY > frameCenterY ?
+                                distance1 * (frameCenterY - detection1CenterY + detection1Height * 0.5) * PX_TO_M_CONVERSION_FACTOR :
+                                distance1 * (frameCenterY - detection1CenterY - detection1Height * 0.5) * PX_TO_M_CONVERSION_FACTOR;
+            final double y2 = detection2CenterY > frameCenterY ?
+                                distance2 * (frameCenterY - detection2CenterY + detection2Height * 0.5) * PX_TO_M_CONVERSION_FACTOR :
+                                distance2 * (frameCenterY - detection2CenterY - detection2Height * 0.5) * PX_TO_M_CONVERSION_FACTOR;
 
             //These are the normalized distances between the observer and the detections.
             //"Normalized" means: these are the distances between the lowest between the observer and every detection,
             //and the corresponding lowered point on the other (makes the observer and the detection's heights the same).
-            final double distance1Projection = Math.sqrt(distance1 * distance1 - y1 * y1);
-            final double distance2Projection = Math.sqrt(distance2 * distance2 - y2 * y2);
+            final double distance1Projection = Math.sqrt((distance1 * distance1) / (resolutionScalingFactor * resolutionScalingFactor) - y1 * y1);
+            final double distance2Projection = Math.sqrt((distance2 * distance2) / (resolutionScalingFactor * resolutionScalingFactor) - y2 * y2);
 
             //These are the depths (in meters) of every detection from the observer point of view,
             final double z1 = Math.sqrt(Math.abs(distance1Projection * distance1Projection - x1 * x1));
@@ -398,13 +406,14 @@ public class AnalyzeActivity extends AppCompatActivity {
              */
             final List<Integer> colors = getDepthLineColors(distance);
 
-            final double centersDistance = x1 - x2;
-            double startX = centersDistance > 0 ? detection1Right : detection1Left;
-            double endX   = centersDistance > 0 ? detection2Left : detection2Right;
-            if (Math.abs(startX - endX) * resolutionScalingFactor < 500 &&
-                    Math.abs(detection1CenterY - detection2CenterY) * resolutionScalingFactor > 200) {
-                        startX = boundingBoxDetection1.centerX();
-                        endX = boundingBoxDetection2.centerX();
+            double startX = x1 > x2 ? detection1Right : detection1Left;
+            double endX   = x1 > x2 ? detection2Left : detection2Right;
+            final double detectionLineDeltaX = Math.abs(startX - endX);
+            final double detectionLineDeltaY = Math.abs(detection1CenterY - detection2CenterY);
+            if (detectionLineDeltaX * resolutionScalingFactor < 130 &&
+                detectionLineDeltaY * resolutionScalingFactor > 130) {
+                    startX = boundingBoxDetection1.centerX();
+                    endX = boundingBoxDetection2.centerX();
             }
             this.detectionLines.add(
                     new DetectionLine(

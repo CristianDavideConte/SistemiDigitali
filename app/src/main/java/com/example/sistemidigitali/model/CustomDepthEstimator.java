@@ -19,8 +19,8 @@ import java.nio.channels.FileChannel;
 public class CustomDepthEstimator {
     private static final String DEPTH_ESTIMATOR_FILE = "midas_small_2_1.tflite";
 
-    public static final double STANDARD_RESOLUTION_WIDTH = 3494; //In Pixels
-    public static final double STANDARD_RESOLUTION_HEIGHT = 4656; //In Pixels
+    public static final double STANDARD_RESOLUTION_WIDTH = 1728; //In Pixels
+    public static final double STANDARD_RESOLUTION_HEIGHT = 2304; //In Pixels
 
     public static final double STANDARD_FACE_WIDTH_M = 0.152; //In Meters
     public static final double STANDARD_FACE_HEIGHT_M = 0.232; //In Meters
