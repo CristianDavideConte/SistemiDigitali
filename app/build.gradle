@@ -42,6 +42,7 @@ android {
     androidResources {
         noCompress 'tflite'
     }
+    namespace 'com.example.sistemidigitali'
 }
 
 dependencies {
