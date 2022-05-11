@@ -67,9 +67,10 @@ Also the `MiDas` neural network is not perfect and may yield some inconsistent d
 ---
 
 ### Resources
-The PDF paper of this work is available at: []() <br/>
-The Power Point presentation of this work is available at: []() <br/>
-The dataset used for training the NN of this work is available at: []() <br/>
+The PDF paper of this work is available at: [`./githubResources/Relazione Sistemi Digitali M.pdf`](https://github.com/CristianDavideConte/SistemiDigitali/blob/main/githubResources/Relazione%20Sistemi%20Digitali%20M.pdf) <br/>
+The Power Point presentation of this work is available at: [`./githubResources/Presentazione Sistemi Digitali M.pptx`](https://github.com/CristianDavideConte/SistemiDigitali/blob/main/githubResources/Presentazione%20Sistemi%20Digitali%20M.pptx) <br/>
+The PDF presentation of this work is available at: [`./githubResources/Presentazione Sistemi Digitali M.pdf`](https://github.com/CristianDavideConte/SistemiDigitali/blob/main/githubResources/Presentazione%20Sistemi%20Digitali%20M.pdf) <br/>
+The dataset used for training the NN of this work is available at: [`IEEEDataPort`](https://ieee-dataport.org/open-access/ways-wear-mask-or-respirator-wwmr-db) <br/>
 The application APK is available at: []() <br/>
 
 ---
