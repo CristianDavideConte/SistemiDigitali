@@ -1,7 +1,7 @@
 # Covid Protection Checker
 ## Main application
 ### Description
-An Android 10+ application which can detect and classify the types and the main ways that masks/respirators are worn by people according to the [`WWMR-DB dataset`](https://ieee-dataport.org/open-access/ways-wear-mask-or-respirator-wwmr-db).
+An Android 11+ application which can detect and classify the types and the main ways that masks/respirators are worn by people according to the [`WWMR-DB dataset`](https://ieee-dataport.org/open-access/ways-wear-mask-or-respirator-wwmr-db).
 
 The detected ways of wearing masks/respirators are:
 - `mask/respirator correctly worn`
