@@ -85,6 +85,7 @@ The PDF paper of this work is available at: [`./githubResources/Relazione Sistem
 The Power Point presentation of this work is available at: [`./githubResources/Presentazione Sistemi Digitali M.pptx`](https://github.com/CristianDavideConte/SistemiDigitali/blob/main/githubResources/Presentazione%20Sistemi%20Digitali%20M.pptx) <br/>
 The PDF presentation of this work is available at: [`./githubResources/Presentazione Sistemi Digitali M.pdf`](https://github.com/CristianDavideConte/SistemiDigitali/blob/main/githubResources/Presentazione%20Sistemi%20Digitali%20M.pdf) <br/>
 The dataset used for training the NN of this work is available at: [`IEEEDataPort`](https://ieee-dataport.org/open-access/ways-wear-mask-or-respirator-wwmr-db) <br/>
+The Google Colab training file of this work is available at: [`./githubResources/TrainingAI-SisDig.ipynb`](https://github.com/CristianDavideConte/SistemiDigitali/blob/main/githubResources/TrainingAI-SisDig.ipynb)
 
 ---
 
