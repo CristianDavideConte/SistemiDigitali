@@ -80,6 +80,6 @@ The dataset used for training the NN of this work is available at: [`IEEEDataPor
 
 ---
 
-## Authors:
+## Authors
 Cristian Davide Conte <br/>
 Simone Morelli
