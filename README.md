@@ -40,7 +40,10 @@ For instance: <br/><br/>
 The `advanced analysis` feature relies on another custom trained convolution neural network, but insted of being based upon the fast and lightweight spec of the `live detection` feature, it uses the `EfficientDet-Lite 4` as the underlaying basis. <br/>
 This choice allow to more accurate detections at the cost of a lower framerate (30fps of the live detection vs 4fps of the advanced analysis).
 
-An example of the advanced analysis:
+An example of the advanced analysis: <br/><br/>
+
+
+![Advanced Analysis example](./githubResources/pictures/Analyze.png)
 
 --- 
 
