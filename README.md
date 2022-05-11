@@ -30,7 +30,8 @@ Once live-detected, a face correctly/incorrectly wearing a mask/respirator will 
 - `yellow` if the mask/respirator is worn incorrectly
 - `red` if the mask/respirator is not worn at all
 
-For instance:
+For instance: <br/>
+
 ![Live Detection example](./githubResources/pictures/LiveDetection.png)
 
 ---
