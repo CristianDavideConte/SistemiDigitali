@@ -67,7 +67,7 @@ The underlaying method is based upon 3 main steps:
 - using the proportions of the human face to understand at which distance each person is at
 - correcting the distortion of the measurements due to the distances between the people and the observer (smartphone)
 
-This are some of the obtained results: <br/><br/>
+These are some of the obtained results: <br/><br/>
 
 ![Distance measurements example](./githubResources/pictures/Extension.png)
 
